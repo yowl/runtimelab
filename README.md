@@ -1,3 +1,7 @@
+MsQuic for .NET 5
+======
+This repo contains sources to build the System.Net.Experimental.MsQuic package used to light up HTTP/3 support in SocketsHttpHandler and Kestrel.
+
 MsQuic
 ======
 
