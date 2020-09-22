@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://schemas.microsoft.com/packaging/2013/01/nuspec.xsd">
     <metadata minClientVersion="2.12">
-        <id>System.Net.Http.Experimental.MsQuic</id>
+        <id>System.Net.Experimental.MsQuic</id>
         <version>5.0.0.1</version>
-        <description>Contains native MsQuic binaries for use with System.Net.Http in .NET 5</description>
+        <description>Contains native MsQuic binaries for use with SocketsHttpHandler and Kestrel in .NET 5</description>
         <authors>Microsoft</authors>
         <owners>microsoft,dotnetframework</owners>
         <requireLicenseAcceptance>false</requireLicenseAcceptance>
