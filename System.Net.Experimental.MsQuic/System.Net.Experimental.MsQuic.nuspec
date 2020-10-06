@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2013/01/nuspec.xsd">
     <metadata minClientVersion="2.12">
         <id>System.Net.Experimental.MsQuic</id>
-        <version>5.0.0.1</version>
+        <version>5.0.0.2</version>
         <description>Contains native MsQuic binaries for use with SocketsHttpHandler and Kestrel in .NET 5</description>
         <authors>Microsoft</authors>
         <owners>microsoft,dotnetframework</owners>
@@ -18,10 +18,10 @@
     <files>
         <file src="icon.png" target="" />
 	
-        <file src="..\artifacts\bin\windows\x86_Release_schannel\msquic.dll" target="runtimes/win10-x86/msquic.dll"/>
-        <file src="..\artifacts\bin\windows\x86_Release_schannel\msquic.pdb" target="runtimes/win10-x86/msquic.pdb"/>
+        <file src="..\artifacts\bin\windows\x86_Release_schannel\msquic.dll" target="runtimes/win10-x86/native/msquic.dll"/>
+        <file src="..\artifacts\bin\windows\x86_Release_schannel\msquic.pdb" target="runtimes/win10-x86/native/msquic.pdb"/>
 	
-        <file src="..\artifacts\bin\windows\x64_Release_schannel\msquic.dll" target="runtimes/win10-x64/msquic.dll"/>
-        <file src="..\artifacts\bin\windows\x64_Release_schannel\msquic.pdb" target="runtimes/win10-x64/msquic.pdb"/>
+        <file src="..\artifacts\bin\windows\x64_Release_schannel\msquic.dll" target="runtimes/win10-x64/native/msquic.dll"/>
+        <file src="..\artifacts\bin\windows\x64_Release_schannel\msquic.pdb" target="runtimes/win10-x64/native/msquic.pdb"/>
     </files>
 </package>
