@@ -27,6 +27,7 @@ namespace ILCompiler
 
         private string _outputFilePath;
         private bool _isVerbose;
+        private bool _isLlvmCodegen;
 
         private string _dgmlLogFileName;
         private bool _generateFullDgmlLog;
@@ -157,6 +158,8 @@ namespace ILCompiler
                 syntax.DefineOption("Os", ref optimizeSpace, "Enable optimizations, favor code space");
                 syntax.DefineOption("Ot", ref optimizeTime, "Enable optimizations, favor code speed");
                 syntax.DefineOption("g", ref _enableDebugInfo, "Emit debugging information");
+                syntax.DefineOption("wasm", ref _isLlvmCodegen, "Compile for Web Assembly code-generation");
+                syntax.DefineOption("llvm", ref _isLlvmCodegen, "Compile for LLVM code-generation");
                 syntax.DefineOption("nativelib", ref _nativeLib, "Compile as static or shared library");
                 syntax.DefineOption("exportsfile", ref _exportsFile, "File to write exported method definitions");
                 syntax.DefineOption("dgmllog", ref _dgmlLogFileName, "Save result of dependency analysis as DGML");
@@ -282,6 +285,11 @@ namespace ILCompiler
                     _targetArchitecture = TargetArchitecture.ARM;
                 else if (_targetArchitectureStr.Equals("arm64", StringComparison.OrdinalIgnoreCase))
                     _targetArchitecture = TargetArchitecture.ARM64;
+                else if (_targetArchitectureStr.Equals("wasm", StringComparison.OrdinalIgnoreCase) || _targetArchitectureStr.Equals("llvm", StringComparison.OrdinalIgnoreCase)) // handle both so old projects still work
+                {
+                    _targetArchitecture = TargetArchitecture.Wasm32; // TODO: handle generic LLVM and Wasm64 
+                    _isLlvmCodegen = true;
+                }
                 else
                     throw new CommandLineException("Target architecture is not supported");
             }
@@ -419,7 +427,7 @@ namespace ILCompiler
 
             SharedGenericsMode genericsMode = SharedGenericsMode.CanonicalReferenceTypes;
 
-            var simdVectorLength = instructionSetSupport.GetVectorTSimdVector();
+            var simdVectorLength = (_isLlvmCodegen) ? SimdVectorLength.None : instructionSetSupport.GetVectorTSimdVector();
             var targetAbi = TargetAbi.CoreRT;
             var targetDetails = new TargetDetails(_targetArchitecture, _targetOS, targetAbi, simdVectorLength);
             CompilerTypeSystemContext typeSystemContext = 
@@ -552,12 +560,20 @@ namespace ILCompiler
             // Compile
             //
 
-            CompilationBuilder builder = new RyuJitCompilationBuilder(typeSystemContext, compilationGroup);
+            CompilationBuilder builder;
+            if (_isLlvmCodegen)
+                builder = new LLVMCodegenCompilationBuilder(typeSystemContext, compilationGroup);
+            else
+                builder = new RyuJitCompilationBuilder(typeSystemContext, compilationGroup);
 
             string compilationUnitPrefix = _multiFile ? System.IO.Path.GetFileNameWithoutExtension(_outputFilePath) : "";
             builder.UseCompilationUnitPrefix(compilationUnitPrefix);
 
-            PInvokeILEmitterConfiguration pinvokePolicy = new ConfigurablePInvokePolicy(typeSystemContext.Target);
+            PInvokeILEmitterConfiguration pinvokePolicy;
+            if (!_isLlvmCodegen)
+                pinvokePolicy = new ConfigurablePInvokePolicy(typeSystemContext.Target);
+            else
+                pinvokePolicy = new DirectPInvokePolicy();
 
             RemovedFeature removedFeatures = 0;
             foreach (string feature in _removedFeatures)
@@ -632,7 +648,7 @@ namespace ILCompiler
             // fixable by using a CompilationGroup for the scanner that has a bigger worldview, but
             // let's cross that bridge when we get there).
             bool useScanner = _useScanner ||
-                (_optimizationMode != OptimizationMode.None && !_multiFile);
+                              (_optimizationMode != OptimizationMode.None && !_isLlvmCodegen && !_multiFile);
 
             useScanner &= !_noScanner;
 

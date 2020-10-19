@@ -35,6 +35,7 @@ Param(
 if($env:Platform) {
   $env:Platform=""  
 }
+Set-PSDebug -Trace 2
 function Print-Usage() {
   Write-Host "Common settings:"
   Write-Host "  -configuration <value>  Build configuration: 'Debug' or 'Release' (short: -c)"
