@@ -26,18 +26,25 @@ set( GC_SOURCES
   gcload.cpp
   handletablecache.cpp)
 
-if(CLR_CMAKE_HOST_UNIX OR CLR_CMAKE_TARGET_ARCH_WASM)
+if(CLR_CMAKE_HOST_UNIX)
   include(unix/configure.cmake)
   set ( GC_SOURCES
     ${GC_SOURCES}
     unix/gcenv.unix.cpp
     unix/events.cpp
     unix/cgroup.cpp)
+elseif(CLR_CMAKE_TARGET_ARCH_WASM)
+    include(unix/configure.cmake)
+    set ( GC_SOURCES
+    ${GC_SOURCES}
+    unix/gcenv.wasm.cpp
+    unix/events.cpp
+    unix/cgroup.cpp)
 else()
   set ( GC_SOURCES
     ${GC_SOURCES}
     windows/gcenv.windows.cpp)
-endif(CLR_CMAKE_HOST_UNIX OR CLR_CMAKE_TARGET_ARCH_WASM)
+endif(CLR_CMAKE_HOST_UNIX)
 
 if (CLR_CMAKE_TARGET_ARCH_AMD64 AND CLR_CMAKE_TARGET_WIN32)
   set ( GC_SOURCES
