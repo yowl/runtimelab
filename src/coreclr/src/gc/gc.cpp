@@ -30477,8 +30477,40 @@ uint8_t* gc_heap::find_first_object (uint8_t* start, uint8_t* first_object)
             prev_brick = (brick_entry + prev_brick);
 
         }
-        o = ((prev_brick < min_brick) ? first_object :
-                      brick_address (prev_brick) + brick_entry - 1);
+         if(prev_brick < min_brick){
+            o = first_object;
+        }
+        else
+        {
+                      o = brick_address (prev_brick) + brick_entry - 1;
+                      if(((int)o & 3) != 0)
+                      {
+                          printf("caclulated address not aligned %p prev_brick %p, brick_address %p brick_entry %d\n", o, prev_brick, brick_address(prev_brick), brick_entry);
+
+                          min_brick = (ptrdiff_t)brick_of(first_object);
+                          prev_brick = (ptrdiff_t)brick - 1;
+                          brick_entry = 0;
+                          printf("min brick %d prev_brick %d\n", min_brick, prev_brick);
+                          while (1)
+                          {
+                              if (prev_brick < min_brick)
+                              {
+                                  printf("prev_brick < min_brick\n");
+                                  break;
+                              }
+                              if ((brick_entry = get_brick_entry(prev_brick)) >= 0)
+                              {
+                                  printf("brick_entry = get_brick_entry(prev_brick)  brick_entry %d get_brick_entry(prev_brick) %d\n", brick_entry, get_brick_entry(prev_brick));
+                                  break;
+                              }
+                              assert(!((brick_entry == 0)));
+                              prev_brick = (brick_entry + prev_brick);
+                              printf("brick_entry %d prev_brick now %d\n", brick_entry, prev_brick);
+                          }
+                      }
+ 
+        }
+ 
         assert (o <= start);
     }
 

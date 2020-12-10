@@ -318,7 +318,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     <Exec Command="$(CppLibCreator)  @&quot;$(NativeIntermediateOutputPath)lib.rsp&quot;" Condition="'$(OS)' == 'Windows_NT' and '$(NativeLib)' == 'Static' and '$(TargetOS)' != 'browser'" />
 
     <PropertyGroup>
-      <EmccArgs>&quot;$(NativeObject)&quot; -o &quot;$(NativeBinary)&quot; -s ALLOW_MEMORY_GROWTH=1 -s ERROR_ON_UNDEFINED_SYMBOLS=0 -s DISABLE_EXCEPTION_CATCHING=0 --emrun </EmccArgs>
+      <EmccArgs>&quot;$(NativeObject)&quot; -o &quot;$(NativeBinary)&quot; -s INITIAL_MEMORY=402653184 -s ABORTING_MALLOC=0 -s ERROR_ON_UNDEFINED_SYMBOLS=0 -s DISABLE_EXCEPTION_CATCHING=0 --emrun -g3  </EmccArgs>
       <EmccArgs Condition="'$(Platform)'=='wasm'">$(EmccArgs) &quot;$(IlcPath)/sdk/libPortableRuntime.a&quot; &quot;$(IlcPath)/sdk/libbootstrapper.a&quot; &quot;$(IlcPath)/framework/libSystem.Native.a&quot; $(EmccExtraArgs)</EmccArgs>
       <EmccArgs Condition="'$(Configuration)'=='Release'">$(EmccArgs) -O2 -flto</EmccArgs>
       <EmccArgs Condition="'$(Configuration)'=='Debug'">$(EmccArgs) -g3</EmccArgs>
