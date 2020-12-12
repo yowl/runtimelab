@@ -325,15 +325,31 @@ namespace Internal.IL
             }
 
             string[] localNames = new string[_locals.Length];
+            LLVMMetadataRef[] debugVars = new LLVMMetadataRef[_locals.Length];
+            LLVMMetadataRef diLocation = default;
             if (_debugInformation != null)
             {
-                foreach (ILLocalVariable localDebugInfo in _debugInformation.GetLocalVariables() ?? Enumerable.Empty<ILLocalVariable>())
+                ILSequencePoint curSequencePoint = GetSequencePoint(_currentOffset);
+
+                // LLVM can't process empty string file names
+                bool canScopeVariables = !string.IsNullOrWhiteSpace(curSequencePoint.Document);
+                if (canScopeVariables)
                 {
-                    // Check whether the slot still exists as the compiler may remove it for intrinsics
-                    int slot = localDebugInfo.Slot;
-                    if (slot < localNames.Length)
+                    DebugMetadata debugMetadata = GetOrCreateDebugMetadata(curSequencePoint);
+                    diLocation = CreateDebugFunctionAndDiLocation(debugMetadata, curSequencePoint);
+                    foreach (ILLocalVariable localDebugInfo in _debugInformation.GetLocalVariables() ?? Enumerable.Empty<ILLocalVariable>())
                     {
-                        localNames[localDebugInfo.Slot] = localDebugInfo.Name;
+                        // Check whether the slot still exists as the compiler may remove it for intrinsics
+                        int slot = localDebugInfo.Slot;
+                        if (slot < localNames.Length)
+                        {
+                            localNames[localDebugInfo.Slot] = localDebugInfo.Name;
+                        }
+                        if (!localDebugInfo.CompilerGenerated)
+                        {
+                            debugVars[localDebugInfo.Slot] = LLVMSharpInterop.DIBuilderCreateAutoVariable(_compilation.DIBuilder, _debugFunction, localDebugInfo.Name, debugMetadata.File,
+                                (uint)curSequencePoint.LineNumber, GetDIType(_locals[localDebugInfo.Slot].Type), 0, /* TODO */ LLVMDIFlags.LLVMDIFlagZero, /* TODO */32);
+                        }
                     }
                 }
             }
@@ -352,6 +368,12 @@ namespace Internal.IL
 
                     LLVMValueRef localStackSlot = prologBuilder.BuildAlloca(GetLLVMTypeForTypeDesc(_locals[i].Type), localName);
                     _localSlots[i] = localStackSlot;
+                    LLVMMetadataRef debugVar = debugVars[i];
+                    if (debugVar.Handle != IntPtr.Zero)
+                    {
+                        var call = LLVMSharpInterop.DIBuilderInsertDeclareAtEnd(_compilation.DIBuilder, localStackSlot, debugVar, LLVMSharpInterop.DIBuilderCreateExpression(_compilation.DIBuilder, IntPtr.Zero, 0), diLocation, prologBlock);
+                        LLVMSharpInterop.InstructionSetDebugLoc(call, diLocation); // is this required as its passed above?
+                    }
                 }
             }
 
@@ -433,6 +455,17 @@ namespace Internal.IL
             LLVMBasicBlockRef block0 = GetLLVMBasicBlockForBlock(_basicBlocks[0]);
             prologBuilder.PositionBefore(prologBuilder.BuildBr(block0));
             _builder.PositionAtEnd(block0);
+        }
+
+        private static LLVMMetadataRef m = default;
+        private LLVMMetadataRef GetDIType(TypeDesc type)
+        {
+            //TODO cache
+            if (m.Handle == IntPtr.Zero)
+            {
+                m = LLVMSharpInterop.DIBuilderCreateBasicType(_compilation.DIBuilder, type.ToString(), (uint)type.GetElementSize().AsInt, 0, LLVMDIFlags.LLVMDIFlagZero);
+            }
+            return m;
         }
 
         private LLVMValueRef CreateLLVMFunction(string mangledName, MethodSignature signature, bool hasHiddenParameter)
@@ -763,7 +796,7 @@ namespace Internal.IL
                 LLVMMetadataRef functionMetaType = _compilation.DIBuilder.CreateSubroutineType(debugMetadata.File,
                     ReadOnlySpan<LLVMMetadataRef>.Empty, LLVMDIFlags.LLVMDIFlagZero);
 
-                uint lineNumber = (uint) _debugInformation.GetSequencePoints().FirstOrDefault().LineNumber;
+                uint lineNumber = (uint) _debugInformation.GetSequencePoints().FirstOrDefault().LineNumber - 1;
                 _debugFunction = _compilation.DIBuilder.CreateFunction(debugMetadata.File, _method.Name, _method.Name,
                     debugMetadata.File,
                     lineNumber, functionMetaType, 1, 1, lineNumber, 0, 0);
