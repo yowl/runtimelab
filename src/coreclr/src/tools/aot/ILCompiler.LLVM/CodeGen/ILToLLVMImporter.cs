@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -324,6 +325,10 @@ namespace Internal.IL
                 }
             }
 
+            if (_mangledName == "repro__Program_____Main__")
+            {
+
+            }
             string[] localNames = new string[_locals.Length];
             LLVMMetadataRef[] debugVars = new LLVMMetadataRef[_locals.Length];
             LLVMMetadataRef diLocation = default;
@@ -336,7 +341,8 @@ namespace Internal.IL
                 if (canScopeVariables)
                 {
                     DebugMetadata debugMetadata = GetOrCreateDebugMetadata(curSequencePoint);
-                    diLocation = CreateDebugFunctionAndDiLocation(debugMetadata, curSequencePoint);
+                    diLocation = CreateDebugFunctionAndDiLocation(debugMetadata, curSequencePoint, null /* TODO parameter types */);
+                    prologBuilder.CurrentDebugLocation = Context.MetadataAsValue(diLocation);
                     foreach (ILLocalVariable localDebugInfo in _debugInformation.GetLocalVariables() ?? Enumerable.Empty<ILLocalVariable>())
                     {
                         // Check whether the slot still exists as the compiler may remove it for intrinsics
@@ -348,7 +354,7 @@ namespace Internal.IL
                         if (!localDebugInfo.CompilerGenerated)
                         {
                             debugVars[localDebugInfo.Slot] = LLVMSharpInterop.DIBuilderCreateAutoVariable(_compilation.DIBuilder, _debugFunction, localDebugInfo.Name, debugMetadata.File,
-                                (uint)curSequencePoint.LineNumber, GetDIType(_locals[localDebugInfo.Slot].Type), 0, /* TODO */ LLVMDIFlags.LLVMDIFlagZero, /* TODO */32);
+                                (uint)curSequencePoint.LineNumber, GetDIType(_locals[localDebugInfo.Slot].Type), 0, /* TODO */ LLVMDIFlags.LLVMDIFlagZero, 0);
                         }
                     }
                 }
@@ -457,15 +463,22 @@ namespace Internal.IL
             _builder.PositionAtEnd(block0);
         }
 
-        private static LLVMMetadataRef m = default;
+        // enum LLVMDIEnconding
+        // {
+        //     ATE_signed = 0x0000005
+        // }
+
+        private static readonly Dictionary<TypeDesc, LLVMMetadataRef> _diTypes = new Dictionary<TypeDesc, LLVMMetadataRef>();
         private LLVMMetadataRef GetDIType(TypeDesc type)
         {
-            //TODO cache
-            if (m.Handle == IntPtr.Zero)
+            // TODO: lock?
+            if (_diTypes.TryGetValue(type, out LLVMMetadataRef diType))
             {
-                m = LLVMSharpInterop.DIBuilderCreateBasicType(_compilation.DIBuilder, type.ToString(), (uint)type.GetElementSize().AsInt, 0, LLVMDIFlags.LLVMDIFlagZero);
+                return diType;
             }
-            return m;
+            diType = LLVMSharpInterop.DIBuilderCreateBasicType(_compilation.DIBuilder, type.ToString(), (uint)type.GetElementSize().AsInt * 8, 5, LLVMDIFlags.LLVMDIFlagZero);
+            _diTypes.Add(type, diType);
+            return diType;
         }
 
         private LLVMValueRef CreateLLVMFunction(string mangledName, MethodSignature signature, bool hasHiddenParameter)
@@ -789,17 +802,27 @@ namespace Internal.IL
             }
         }
 
-        LLVMMetadataRef CreateDebugFunctionAndDiLocation(DebugMetadata debugMetadata, ILSequencePoint sequencePoint)
+        LLVMMetadataRef CreateDebugFunctionAndDiLocation(DebugMetadata debugMetadata, ILSequencePoint sequencePoint,
+            HashSet<LLVMMetadataRef> llvmMetadataRefs = null)
         {
             if (_debugFunction.Handle == IntPtr.Zero)
             {
-                LLVMMetadataRef functionMetaType = _compilation.DIBuilder.CreateSubroutineType(debugMetadata.File,
-                    ReadOnlySpan<LLVMMetadataRef>.Empty, LLVMDIFlags.LLVMDIFlagZero);
-
+                LLVMMetadataRef functionMetaType;
+                if (llvmMetadataRefs == null)
+                {
+                    functionMetaType = _compilation.DIBuilder.CreateSubroutineType(debugMetadata.File,
+                        ReadOnlySpan<LLVMMetadataRef>.Empty, LLVMDIFlags.LLVMDIFlagZero);
+                }
+                else
+                {
+                    // TODO: cache functionMetaTypes
+                    functionMetaType = _compilation.DIBuilder.CreateSubroutineType(debugMetadata.File,
+                        new ReadOnlySpan<LLVMMetadataRef>(llvmMetadataRefs.ToArray()), LLVMDIFlags.LLVMDIFlagZero);
+                }
                 uint lineNumber = (uint) _debugInformation.GetSequencePoints().FirstOrDefault().LineNumber - 1;
-                _debugFunction = _compilation.DIBuilder.CreateFunction(debugMetadata.File, _method.Name, _method.Name,
+                _debugFunction = _compilation.DIBuilder.CreateFunction(debugMetadata.File, _method.Name, null,
                     debugMetadata.File,
-                    lineNumber, functionMetaType, 1, 1, lineNumber, 0, 0);
+                    lineNumber, functionMetaType, 0, 1, lineNumber, 0, 0);
                 LLVMSharpInterop.DISetSubProgram(_llvmFunction, _debugFunction);
             }
             return Context.CreateDebugLocation((uint)sequencePoint.LineNumber, 0, _debugFunction, default(LLVMMetadataRef));
@@ -835,8 +858,8 @@ namespace Internal.IL
 
                 // todo: get the right value for isOptimized
                 LLVMMetadataRef compileUnitMetadata = _compilation.DIBuilder.CreateCompileUnit(
-                    LLVMDWARFSourceLanguage.LLVMDWARFSourceLanguageC,
-                    fileMetadata, "ILC", 0 /* Optimized */, String.Empty, 1, String.Empty,
+                    LLVMDWARFSourceLanguage.LLVMDWARFSourceLanguageC99,
+                    fileMetadata, "ILC", 0 /* Optimized */, String.Empty, 0, String.Empty,
                     LLVMDWARFEmissionKind.LLVMDWARFEmissionFull, 0, 0, 0);
                 Module.AddNamedMetadataOperand("llvm.dbg.cu", compileUnitMetadata);
 
