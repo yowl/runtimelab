@@ -476,7 +476,12 @@ namespace Internal.IL
             {
                 return diType;
             }
-            diType = LLVMSharpInterop.DIBuilderCreateBasicType(_compilation.DIBuilder, type.ToString(), (uint)type.GetElementSize().AsInt * 8, 5, LLVMDIFlags.LLVMDIFlagZero);
+
+            if (type == GetWellKnownType(WellKnownType.Char))
+            {
+                diType = LLVMSharpInterop.DIBuilderCreateBasicType(_compilation.DIBuilder, type.ToString(), (uint)type.GetElementSize().AsInt * 8, (uint)DW_ATE_Types.DW_ATE_UTF, LLVMDIFlags.LLVMDIFlagZero);
+            }
+            else diType = LLVMSharpInterop.DIBuilderCreateBasicType(_compilation.DIBuilder, type.ToString(), (uint)type.GetElementSize().AsInt * 8, (uint)DW_ATE_Types.DW_ATE_signed, LLVMDIFlags.LLVMDIFlagZero);
             _diTypes.Add(type, diType);
             return diType;
         }

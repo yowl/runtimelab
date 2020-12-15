@@ -151,4 +151,26 @@ namespace Internal.IL
             }
         }
     }
+
+
+    // from http://dwarfstd.org/Download.php
+    internal enum DW_ATE_Types
+    {
+        DW_ATE_address, // linear machine address (for segmented addresses see Section 2.12)
+        DW_ATE_boolean, // true or false 
+        DW_ATE_complex_float, // complex binary floating-point number 
+        DW_ATE_float, // binary floating-point number 
+        DW_ATE_imaginary_float, // imaginary binary floating-point number   
+        DW_ATE_signed, // signed binary integer 
+        DW_ATE_signed_char, // signed character 
+        DW_ATE_unsigned, // unsigned binary integer 
+        DW_ATE_unsigned_char, // unsigned character 
+        DW_ATE_packed_decimal, // packed decimal
+        DW_ATE_numeric_string, // numeric string
+        DW_ATE_edited, // edited string
+        DW_ATE_signed_fixed, // signed fixed-point scaled integer
+        DW_ATE_unsigned_fixed, // unsigned fixed-point scaled integer
+        DW_ATE_decimal_float, // decimal floating-point number
+        DW_ATE_UTF // Unicode character
+    }
 }
