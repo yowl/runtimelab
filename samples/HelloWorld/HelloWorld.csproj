@@ -8,5 +8,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM" Version="6.0.0-*" />
   </ItemGroup>
-
+  <PropertyGroup>
+    <EmccExtraArgs>-s STANDALONE_WASM=1 -s DISABLE_EXCEPTION_CATCHING=1</EmccExtraArgs>
+  </PropertyGroup>
 </Project>
