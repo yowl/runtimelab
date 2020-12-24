@@ -136,6 +136,7 @@
           DependsOnTargets="
             EnsureLocalArtifactsExist;
             EnsureLocalOSGroupConfigurationArchitectureSpecificArtifactsExist">
+   <Message Text="ResolveLibrariesFromLocalBuild"/>
     <ItemGroup>
       <LibrariesRefAssemblies Condition="'$(IncludeOOBLibraries)' != 'true'" Include="$(LibrariesSharedFrameworkRefArtifactsPath)*.dll;$(LibrariesSharedFrameworkRefArtifactsPath)*.pdb" />
       <LibrariesRefAssemblies Condition="'$(IncludeOOBLibraries)' == 'true'" Include="$(LibrariesAllRefArtifactsPath)*.dll;$(LibrariesAllRefArtifactsPath)*.pdb" />
@@ -178,6 +179,10 @@
                              Include="
         $(LibrariesNativeArtifactsPath)include\wasm\*.h;"
         NativeSubDirectory="include\wasm"
+        IsNative="true" />
+      <!-- System.Globalization.Naive static library is in the lib subdirectory -->
+      <LibrariesRuntimeFiles Condition="'$(TargetOS)' == 'Browser' and '$(RuntimeFlavor)' == 'coreclr'"
+                             Include="$(LibrariesNativeArtifactsPath)lib\*.a;"
         IsNative="true" />
     </ItemGroup>
 

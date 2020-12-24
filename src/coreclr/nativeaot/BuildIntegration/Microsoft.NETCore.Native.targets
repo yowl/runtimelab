@@ -287,7 +287,9 @@ The .NET Foundation licenses this file to you under the MIT license.
     <MakeDir Directories="$([System.IO.Path]::GetDirectoryName($(NativeBinary)))" />
 
     <PropertyGroup>
-      <EmccArgs>&quot;$(LlvmObject)&quot; -c -o &quot;$(NativeObject)&quot; -s ERROR_ON_UNDEFINED_SYMBOLS=0 -s DISABLE_EXCEPTION_CATCHING=0 -s ABORTING_MALLOC=0</EmccArgs>
+      <EmccArgs>&quot;$(LlvmObject)&quot; -c -o &quot;$(NativeObject)&quot; -s ERROR_ON_UNDEFINED_SYMBOLS=0 -s ABORTING_MALLOC=0 $(EmccExtraArgs)</EmccArgs>
+      <!-- If explicitly set, then do not turn exception handling on.  WASI has no exception handling so must be turned off if targeting WASI -->
+      <EmccArgs Condition="!$(EmccExtraArgs.Contains('DISABLE_EXCEPTION_CATCHING'))">$(EmccArgs) -s DISABLE_EXCEPTION_CATCHING=0</EmccArgs>
       <EmccArgs Condition="'$(NativeDebugSymbols)' != 'true'">$(EmccArgs) -O2</EmccArgs>
       <EmccArgs Condition="'$(NativeDebugSymbols)' == 'true'">$(EmccArgs) -g3</EmccArgs>
     </PropertyGroup>
@@ -342,7 +344,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <EmccArgs>&quot;$(NativeObject)&quot; -o &quot;$(NativeBinary)&quot; -s ALLOW_MEMORY_GROWTH=1 -s ERROR_ON_UNDEFINED_SYMBOLS=0 --emrun </EmccArgs>
       <!-- If explicitly set, then do not turn exception handling on.  WASI has no exception handling so must be turned off if targeting WASI -->
       <EmccArgs Condition="!$(EmccExtraArgs.Contains('DISABLE_EXCEPTION_CATCHING'))">$(EmccArgs) -s DISABLE_EXCEPTION_CATCHING=0</EmccArgs>
-      <EmccArgs Condition="'$(Platform)'=='wasm'">$(EmccArgs) &quot;$(IlcPath)/sdk/libPortableRuntime.a&quot; &quot;$(IlcPath)/sdk/libbootstrapper.a&quot; &quot;$(IlcPath)/framework/libSystem.Native.a&quot; $(EmccExtraArgs)</EmccArgs>
+      <EmccArgs Condition="'$(Platform)'=='wasm'">$(EmccArgs) &quot;$(IlcPath)/sdk/libPortableRuntime.a&quot; &quot;$(IlcPath)/sdk/libbootstrapper.a&quot; &quot;$(IlcPath)/framework/libSystem.Native.a&quot; &quot;$(IlcPath)/framework/libSystem.Globalization.Native.a&quot; $(EmccExtraArgs)</EmccArgs>
       <EmccArgs Condition="'$(NativeDebugSymbols)' != 'true'">$(EmccArgs) -O2 -flto</EmccArgs>
       <EmccArgs Condition="'$(NativeDebugSymbols)' == 'true'">$(EmccArgs) -g3</EmccArgs>
     </PropertyGroup>
