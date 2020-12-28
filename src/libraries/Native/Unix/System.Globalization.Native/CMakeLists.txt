@@ -17,7 +17,7 @@ if(CLR_CMAKE_TARGET_UNIX)
         message("including ICU")
         # add ICU support to emscripten and workaround https://github.com/emscripten-core/emscripten/issues/9302
         # dont error on deprecated function use
-        add_compile_options(-s USE_ICU=1 -I$ENV{EMSDK}/upstream/emscripten/cache/ports/icu/icu/source/i18n -Wno-deprecated-declarations)
+	add_compile_options(-s USE_ICU=1 -I$ENV{EMSDK}/upstream/emscripten/cache/ports/icu/icu/source/i18n -Wno-deprecated-declarations -s STANDALONE_WASM=1)
     elseif (NOT CLR_CMAKE_TARGET_ANDROID)
         set(ICU_HOMEBREW_INC_PATH "/usr/local/opt/icu4c/include")
 
