@@ -66,6 +66,8 @@ int32_t SystemNative_GetCryptographicallySecureRandomBytes(uint8_t* buffer, int3
     assert(buffer != NULL);
 
 #ifdef __EMSCRIPTEN__
+    return 0;
+    /*
     extern int32_t dotnet_browser_entropy(uint8_t* buffer, int32_t bufferLength);
     static bool sMissingBrowserCrypto;
     if (!sMissingBrowserCrypto)
@@ -76,6 +78,7 @@ int32_t SystemNative_GetCryptographicallySecureRandomBytes(uint8_t* buffer, int3
         else
             return 0;
     }
+    */
 #else
 
     static volatile int rand_des = -1;
@@ -134,6 +137,6 @@ int32_t SystemNative_GetCryptographicallySecureRandomBytes(uint8_t* buffer, int3
             return 0;
         }
     }
-#endif
     return -1;
+#endif
 }

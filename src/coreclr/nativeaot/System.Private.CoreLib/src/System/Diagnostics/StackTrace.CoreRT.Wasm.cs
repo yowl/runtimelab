@@ -10,8 +10,10 @@ namespace System.Diagnostics
     {
         private readonly StringBuilder _builder = new StringBuilder();
 
+/*
         [DllImport("*")]
         static unsafe extern int emscripten_get_callstack(int flags, byte* outBuf, int maxBytes);
+*/
 
         private unsafe void InitializeForCurrentThread(int skipFrames, bool needFileInfo)
         {
@@ -24,7 +26,9 @@ namespace System.Diagnostics
 
             fixed (byte* curChar = backtraceBuffer)
             {
-                callstackLen = emscripten_get_callstack(8 /* original source stack if source maps available, not tested */, curChar, backtraceBuffer.Length);
+                  *curChar = 0;
+                  callstackLen = 0;
+//                callstackLen = emscripten_get_callstack(8 /* original source stack if source maps available, not tested */, curChar, backtraceBuffer.Length);
             }
             int _numOfFrames = 1;
             int lineStartIx = 0;
