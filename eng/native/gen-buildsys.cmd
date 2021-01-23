@@ -48,7 +48,7 @@ if /i "%__Arch%" == "wasm" (
     if /i "%CMAKE_BUILD_TYPE%" == "debug" (
         set __ExtraCmakeParams=%__ExtraCmakeParams% -g -O0
     )
-    set CMAKE_CXX_FLAGS=%CMAKE_CXX_FLAGS% -s DISABLE_EXCEPTION_CATCHING=1 -s SUPPORT_LONGJMP=0
+    set CMAKE_CXX_FLAGS=%CMAKE_CXX_FLAGS% -s DISABLE_EXCEPTION_CATCHING=1 -s SUPPORT_LONGJMP=0 -s STANDALONE_WASM=1
     set __ExtraCmakeParams=%__ExtraCmakeParams% "-DCMAKE_BUILD_TYPE=%CMAKE_BUILD_TYPE%" "-DCMAKE_TOOLCHAIN_FILE=%EMSDK%/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" -DCLR_CMAKE_TARGET_ARCH=wasm -DCLR_CMAKE_TARGET_ARCH_WASM=1 -DCLR_CMAKE_HOST_ARCH=Windows_NT -DCLR_CMAKE_HOST_OS=Emscripten -DRUNTIME_FLAVOR=CoreClr -DCLR_CMAKE_HOST_UNIX_WASM=1 "-DCLR_ENG_NATIVE_DIR=%__repoRoot%\eng\native" "-DCMAKE_REPO_ROOT=%__repoRoot%" -DCLR_CMAKE_KEEP_NATIVE_SYMBOLS=1
     set __UseEmcmake=1
 ) else (
