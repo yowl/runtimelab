@@ -7,7 +7,10 @@ namespace HelloWorld
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
+PrintLine("start");
+//            Console.WriteLine("Hello World!");
+PrintLine("Hello World!");
+PrintLine("end");
         }
 
 	   private static unsafe void PrintString(string s)

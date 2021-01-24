@@ -369,7 +369,7 @@ bool GCToOSInterface::Initialize()
     g_pageSizeUnixInl = uint32_t((pageSize > 0) ? pageSize : 0x1000);
 
     // Calculate and cache the number of processors on this machine
-    int cpuCount = sysconf(SYSCONF_GET_NUMPROCS);
+    int cpuCount = 1; // wasmtime workaround sysconf(SYSCONF_GET_NUMPROCS);
     if (cpuCount == -1)
     {
         return false;
@@ -390,7 +390,8 @@ bool GCToOSInterface::Initialize()
 #if !(defined(TARGET_OSX) && defined(HOST_ARM64))
     else
     {
-        assert(g_helperPage == 0);
+	    /* STANDALONE does not have mmap */
+/*        assert(g_helperPage == 0);
 
         g_helperPage = static_cast<uint8_t*>(mmap(0, OS_PAGE_SIZE, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0));
 
@@ -418,6 +419,7 @@ bool GCToOSInterface::Initialize()
             munlock(g_helperPage, OS_PAGE_SIZE);
             return false;
         }
+	*/
     }
 #endif // !(defined(TARGET_OSX) && defined(HOST_ARM64))
 
@@ -747,7 +749,8 @@ void* GCToOSInterface::VirtualReserveAndCommitLargePages(size_t size, uint16_t n
 //  true if it has succeeded, false if it has failed
 bool GCToOSInterface::VirtualCommit(void* address, size_t size, uint16_t node)
 {
-    bool success = mprotect(address, size, PROT_WRITE | PROT_READ) == 0;
+//    bool success = mprotect(address, size, PROT_WRITE | PROT_READ) == 0;
+    bool success = true;
 
 #if HAVE_NUMA_H
     if (success && g_numaAvailable && (node != NUMA_NODE_UNDEFINED))

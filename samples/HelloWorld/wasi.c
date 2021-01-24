@@ -1,9 +1,10 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 int *__cxa_thread_atexit(void (*func)(), void *obj,
                                    void *dso_symbol)
 {
-	printf("__cxa_thread_atexit\n");
 	return 0;
 }
 
@@ -15,7 +16,6 @@ void (*pthread_create(int sig, int i, int j, void (*func)(int)))(int)
 
 void (*signal(int sig, void (*func)(int)))(int)
 {
-	printf("signal %d\n", sig);
 	return 0;
 }
 void (*gai_strerror(int sig ))(int)
@@ -30,7 +30,7 @@ void (*flock(int sig, int i ))(int)
 }
 int __syscall220(int i, int j, int k)
 {
-	printf("__syscall220\n");
+	printf("getdents64\n");
 	return 0;
 }
 int __syscall272(int i, int j, int k, int i4, int i5, int i6, int i7)
@@ -65,7 +65,6 @@ int __syscall150(int i, int j)
 }
 int __syscall125(int i, int j, int k)
 {
-	printf("__sys_mprotect\n");
 	return 0;
 }
 int __syscall151(int i, int j)
@@ -112,6 +111,27 @@ void __syscall10(int i, int j4)
 {
 	printf("__sys_unlink\n");
 }
+
+/*
+void * __syscall192(void *start, size_t len, int prot, int flags, int fd, off_t off)
+{
+	* mmap *
+	printf("mmap\n");
+	if(start == NULL)
+	{
+		start = malloc(len);
+	}
+	memset(start, 0, len);
+	return start;
+}
+
+int __syscall91(void *start, size_t len)
+{
+	* munmap *
+	return 0;
+}
+*/
+
 void emscripten_thread_sleep(double j4)
 {
 	printf("emscripten_thread_sleep\n");

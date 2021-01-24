@@ -1094,6 +1094,10 @@ bool InitializeSystemInfo()
 
 #if HAVE_SYSCONF
     nrcpus = sysconf(SYSCONF_GET_NUMPROCS);
+    if(nrcpus < 1 )
+    {
+        nrcpus = 1; // in wasmtime this is returning -1
+    }
     if (nrcpus < 1)
     {
         ASSERT_UNCONDITIONALLY("sysconf failed for " SYSCONF_GET_NUMPROCS_NAME "\n");
