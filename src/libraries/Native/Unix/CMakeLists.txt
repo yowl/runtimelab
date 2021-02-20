@@ -72,6 +72,7 @@ if(CLR_CMAKE_TARGET_BROWSER)
     add_compile_options(-Wno-alloca)
     add_compile_options(-Wno-implicit-int-float-conversion)
 
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_PTHREADS=1")
     set(GEN_SHARED_LIB 0)
     set(STATIC_LIB_DESTINATION .)
 endif()

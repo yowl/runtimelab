@@ -17,7 +17,8 @@ if(CLR_CMAKE_TARGET_UNIX)
 	    message("including ICU")
 	    # add ICU support to emscripten and workaround https://github.com/emscripten-core/emscripten/issues/9302
 	    # ucol_setVariableTop is deprecated so disable warnings
-	    add_compile_options(-s USE_ICU=1 -I$ENV{EMSDK}/upstream/emscripten/cache/ports/icu/icu/source/i18n -Wno-deprecated-declarations)
+            add_compile_options("SHELL:-s USE_PTHREADS=1 -s USE_ICU=1")
+	    add_compile_options(-I$ENV{EMSDK}/upstream/emscripten/cache/ports/icu/icu/source/i18n -Wno-deprecated-declarations)
     elseif (NOT CLR_CMAKE_TARGET_ANDROID)
         set(ICU_HOMEBREW_INC_PATH "/usr/local/opt/icu4c/include")
 

@@ -40,6 +40,7 @@ if /i "%__Ninja%" == "1" (
 )
 echo gen-buildsys %__Arch%
 if /i "%__Arch%" == "wasm" (
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s USE_PTHREADS=1")
     if "%EMSDK%" == "" (
        echo Error: Should set EMSDK environment variable pointing to emsdk root.
        exit /B 1

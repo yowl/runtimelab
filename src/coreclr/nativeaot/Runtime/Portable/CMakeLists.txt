@@ -5,6 +5,8 @@ project(PortableRuntime)
 
 add_definitions(-DUSE_PORTABLE_HELPERS)
 
+message("portable cmakelist")
+message(${CMAKE_CXX_FLAGS})
 add_library(PortableRuntime STATIC ${COMMON_RUNTIME_SOURCES} ${PORTABLE_RUNTIME_SOURCES})
 
 # Get the current list of definitions
