@@ -28,6 +28,7 @@ static const char* (*_getMangledMethodName)(void*, CORINFO_METHOD_STRUCT_*);
 static char* _outputFileName;
 static Function* _doNothingFunction;
 
+Compiler* _compiler;
 Compiler::Info _info;
 
 extern "C" DLLEXPORT void registerLlvmCallbacks(void* thisPtr, const char* outputFileName, const char* triple, const char* dataLayout, const char* (*getMangledMethodNamePtr)(void*, CORINFO_METHOD_STRUCT_*))
@@ -63,18 +64,62 @@ void Llvm::llvmShutdown()
 #endif //DEBUG
     llvm::raw_fd_ostream OS(_outputFileName, ec);
     llvm::WriteBitcodeToFile(*_module, OS);
-    //_module->end();
     delete _module;
 //    Module.Verify(LLVMVerifierFailureAction.LLVMAbortProcessAction);
 }
 
 FunctionType* GetFunctionTypeForMethod(Compiler::Info info)
 {
+    _compiler->eeGetCallSiteSig(_compiler->eeTryResolveToken() pResolvedToken->token, pResolvedToken->tokenScope, pResolvedToken->tokenContext, sig);
+
+    bool hasHiddenParam =
+
+    internal static LLVMTypeRef GetLLVMSignatureForMethod(MethodSignature signature, bool hasHiddenParam)
+    {
+        TypeDesc returnType = signature.ReturnType;
+        LLVMTypeRef llvmReturnType;
+        bool returnOnStack = false;
+        if (!NeedsReturnStackSlot(signature))
+        {
+            returnOnStack = true;
+            llvmReturnType = ILImporter.GetLLVMTypeForTypeDesc(returnType);
+        }
+        else
+        {
+            llvmReturnType = LLVMTypeRef.Void;
+        }
+
+        List<LLVMTypeRef> signatureTypes = new List<LLVMTypeRef>();
+        signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)); // Shadow stack pointer
+
+        if (!returnOnStack && !signature.ReturnType.IsVoid)
+        {
+            signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
+        }
+
+        if (hasHiddenParam)
+        {
+            signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)); // *EEType
+        }
+
+        // Intentionally skipping the 'this' pointer since it could always be a GC reference
+        // and thus must be on the shadow stack
+        foreach(TypeDesc type in signature)
+        {
+            if (ILImporter.CanStoreTypeOnStack(type))
+            {
+                signatureTypes.Add(ILImporter.GetLLVMTypeForTypeDesc(type));
+            }
+        }
+
+        return LLVMTypeRef.CreateFunction(llvmReturnType, signatureTypes.ToArray(), false);
+    }
+
     if (info.compArgsCount != 0 || info.compRetType != TYP_VOID)
     {
         fatal(CORJIT_SKIPPED);
     }
-    // all functions have shadow stack as first arg (i8*)
+    // all managed functions have shadow stack as first arg (i8*)
     return FunctionType::get(Type::getVoidTy(_llvmContext), ArrayRef<Type*>(Type::getInt8PtrTy(_llvmContext)), false);
 }
 
@@ -105,15 +150,33 @@ bool visitNode(llvm::IRBuilder<> &builder, GenTree* node)
     return true;
 }
 
+Function* CreateLLVMFunction(const char* mangledName, Compiler::Info& info)
+{
+    info.c
+    return Function::Create(GetFunctionTypeForMethod(info), Function::ExternalLinkage, 0U, mangledName, _module); // TODO: ExternalLinkage forced as linked from old module
+}
+
+Function* GetOrCreateLLVMFunction(const char* mangledName, Compiler::Info& info)
+{
+    Function* llvmFunction = _module->getFunction(mangledName);
+
+    if (llvmFunction == nullptr)
+    {
+        return CreateLLVMFunction(mangledName, signature, hasHiddenParam);
+    }
+    return llvmFunction;
+}
+
 //------------------------------------------------------------------------
 // Compile: Compile IR to LLVM, adding to the LLVM Module
 //
 void Llvm::Compile(Compiler* pCompiler)
 {
+    _compiler = pCompiler;
     _info = pCompiler->info;
 
     const char* mangledName = (*_getMangledMethodName)(_thisPtr, _info.compMethodHnd);
-    Function* function = Function::Create(GetFunctionTypeForMethod(_info), Function::ExternalLinkage, 0U, mangledName, _module); // TODO: ExternalLinkage forced as linked from old module
+    Function* function = GetOrCreateLLVMFunction(mangledName, info);
 
     BasicBlock* firstBb = pCompiler->fgFirstBB;
     llvm::IRBuilder<> builder(_llvmContext);
