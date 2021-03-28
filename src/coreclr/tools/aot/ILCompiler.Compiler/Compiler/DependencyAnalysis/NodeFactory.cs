@@ -396,6 +396,11 @@ namespace ILCompiler.DependencyAnalysis
                 return EagerCctorTable.NewNode(MethodEntrypoint(method));
             });
 
+            _symbolWithOffsetNodes = new NodeCache<SymbolWithOffsetKey, SymbolWithOffsetNode>((SymbolWithOffsetKey key) =>
+            {
+                return new SymbolWithOffsetNode(key.Symbol, key.Offset);
+            });
+
             _delegateMarshalingDataNodes = new NodeCache<DefType, DelegateMarshallingDataNode>(type =>
             {
                 return new DelegateMarshallingDataNode(type);
@@ -1072,6 +1077,13 @@ namespace ILCompiler.DependencyAnalysis
             return _structMarshalingDataNodes.GetOrAdd(type);
         }
 
+        private NodeCache<SymbolWithOffsetKey, SymbolWithOffsetNode> _symbolWithOffsetNodes;
+
+        public ISymbolNode SymbolWithOffset(ISymbolNode symbol, int offset)
+        {
+            return _symbolWithOffsetNodes.GetOrAdd(new SymbolWithOffsetKey(symbol, offset));
+        }
+
         /// <summary>
         /// Returns alternative symbol name that object writer should produce for given symbols
         /// in addition to the regular one.
@@ -1254,6 +1266,27 @@ namespace ILCompiler.DependencyAnalysis
             public bool Equals(ReadOnlyDataBlobKey other) => Name.Equals(other.Name);
             public override bool Equals(object obj) => obj is ReadOnlyDataBlobKey && Equals((ReadOnlyDataBlobKey)obj);
             public override int GetHashCode() => Name.GetHashCode();
+        }
+
+        protected struct SymbolWithOffsetKey : IEquatable<SymbolWithOffsetKey>
+        {
+            public readonly ISymbolNode Symbol;
+            public readonly int Offset;
+
+            public SymbolWithOffsetKey(ISymbolNode symbol, int offset)
+            {
+                Symbol = symbol;
+                Offset = offset;
+            }
+
+            public bool Equals(SymbolWithOffsetKey other) => Symbol == other.Symbol && Offset == other.Offset;
+            public override bool Equals(object obj) => obj is SymbolWithOffsetKey && Equals((SymbolWithOffsetKey)obj);
+            public override int GetHashCode()
+            {
+                int hashCode = Symbol.GetHashCode();
+                hashCode = hashCode * 23 + Offset;
+                return hashCode;
+            }
         }
 
         protected struct UninitializedWritableDataBlobKey : IEquatable<UninitializedWritableDataBlobKey>

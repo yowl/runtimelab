@@ -124,6 +124,10 @@ namespace ILCompiler
         {
             MethodDesc method = methodCodeNodeNeedingCode.Method;
 
+            if (method.ToString().Contains("KillParent"))
+            {
+
+            }
             try
             {
                 var sig = method.Signature;

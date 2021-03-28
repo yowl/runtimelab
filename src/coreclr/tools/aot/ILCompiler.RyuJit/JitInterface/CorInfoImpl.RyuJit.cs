@@ -1891,7 +1891,7 @@ namespace Internal.JitInterface
                         pResult->fieldLookup = CreateConstLookupToSymbol(helper);
                     }
                 }
-                else
+                else if (field.IsThreadStatic || field.HasGCStaticBase)
                 {
                     fieldAccessor = CORINFO_FIELD_ACCESSOR.CORINFO_FIELD_STATIC_SHARED_STATIC_HELPER;
                     pResult->helper = CorInfoHelpFunc.CORINFO_HELP_READYTORUN_STATIC_BASE;
@@ -1910,9 +1910,7 @@ namespace Internal.JitInterface
                     }
                     else
                     {
-                        helperId = field.HasGCStaticBase ?
-                            ReadyToRunHelperId.GetGCStaticBase :
-                            ReadyToRunHelperId.GetNonGCStaticBase;
+                        helperId = ReadyToRunHelperId.GetGCStaticBase;
 
                         //
                         // Currently, we only do this optimization for regular statics, but it
@@ -1930,6 +1928,26 @@ namespace Internal.JitInterface
                     {
                         pResult->fieldLookup = CreateConstLookupToSymbol(
                             _compilation.NodeFactory.ReadyToRunHelper(helperId, field.OwningType));
+                    }
+                }
+                else
+                {
+                    var owningType = field.OwningType;
+                    if ((owningType.IsWellKnownType(WellKnownType.IntPtr) ||
+                         owningType.IsWellKnownType(WellKnownType.UIntPtr)) &&
+                        field.Name == "Zero")
+                    {
+                        fieldAccessor = CORINFO_FIELD_ACCESSOR.CORINFO_FIELD_INTRINSIC_ZERO;
+                    }
+                    else
+                    {
+                        fieldAccessor = CORINFO_FIELD_ACCESSOR.CORINFO_FIELD_STATIC_ADDRESS;
+
+                        // We are not going through a helper. The constructor has to be triggered explicitly.
+                        if (_compilation.HasLazyStaticConstructor(field.OwningType))
+                        {
+                            fieldFlags |= CORINFO_FIELD_FLAGS.CORINFO_FLG_FIELD_INITCLASS;
+                        }
                     }
                 }
             }

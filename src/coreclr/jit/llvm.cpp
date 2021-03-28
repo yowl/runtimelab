@@ -6,6 +6,8 @@
 #include "compiler.h"
 #include "block.h"
 #include "gentree.h"
+#include "compiler.hpp"
+
 #include "llvm.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/IR/LLVMContext.h"
@@ -29,6 +31,7 @@ static char* _outputFileName;
 static Function* _doNothingFunction;
 
 Compiler::Info _info;
+Compiler* _compiler;
 
 extern "C" DLLEXPORT void registerLlvmCallbacks(void* thisPtr, const char* outputFileName, const char* triple, const char* dataLayout, const char* (*getMangledMethodNamePtr)(void*, CORINFO_METHOD_STRUCT_*))
 {
@@ -87,10 +90,28 @@ void EmitDoNothingCall(llvm::IRBuilder<>& builder)
     builder.CreateCall(_doNothingFunction);
 }
 
+void buildCall(llvm::IRBuilder<>& builder, GenTree* node)
+{
+    GenTreeCall* gtCall = node->AsCall();
+    if (gtCall->gtCallType == CT_HELPER)
+    {
+        if (gtCall->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_STATIC_BASE))
+        {
+
+        }
+        else fatal(CORJIT_SKIPPED);
+    }
+    else fatal(CORJIT_SKIPPED);
+
+}
+
 bool visitNode(llvm::IRBuilder<> &builder, GenTree* node)
 {
     switch (node->OperGet())
     {
+        case GT_CALL:
+            buildCall(builder, node);
+            break;
         case GT_IL_OFFSET:
             break;
         case GT_NO_OP:
@@ -110,6 +131,7 @@ bool visitNode(llvm::IRBuilder<> &builder, GenTree* node)
 //
 void Llvm::Compile(Compiler* pCompiler)
 {
+    _compiler = pCompiler;
     _info = pCompiler->info;
 
     const char* mangledName = (*_getMangledMethodName)(_thisPtr, _info.compMethodHnd);

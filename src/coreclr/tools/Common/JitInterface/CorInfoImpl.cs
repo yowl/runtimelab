@@ -2871,8 +2871,7 @@ namespace Internal.JitInterface
         private void* getFieldAddress(CORINFO_FIELD_STRUCT_* field, void** ppIndirection)
         {
             FieldDesc fieldDesc = HandleToObject(field);
-            Debug.Assert(fieldDesc.HasRva);
-            ISymbolNode node = _compilation.GetFieldRvaData(fieldDesc);
+            ISymbolNode node = _compilation.GetFieldData(fieldDesc);
             void *handle = (void *)ObjectToHandle(node);
             if (node.RepresentsIndirectionCell)
             {
