@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <TraversalGlobalProperties Condition="'$(BuildAllConfigurations)' != 'true'">BuildTargetFramework=$([MSBuild]::ValueOrDefault('$(BuildTargetFramework)', '$(NetCoreAppCurrent)'))</TraversalGlobalProperties>
+<UseAppHost>false</UseAppHost>
   </PropertyGroup>
 
   <!--

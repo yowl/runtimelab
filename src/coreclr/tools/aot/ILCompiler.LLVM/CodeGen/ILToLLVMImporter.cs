@@ -5284,15 +5284,15 @@ namespace Internal.IL
         private const string InternalCalls = "InternalCalls";
         private const string TypeCast = "TypeCast";
         private const string DispatchResolve = "DispatchResolve";
-        private const string ThreadStatics = "ThreadStatics";
-        private const string ClassConstructorRunner = "ClassConstructorRunner";
+        internal const string ThreadStatics = "ThreadStatics";
+        internal const string ClassConstructorRunner = "ClassConstructorRunner";
 
         private ExpressionEntry CallRuntime(TypeSystemContext context, string className, string methodName, StackEntry[] arguments, TypeDesc forcedReturnType = null, bool fromLandingPad = false, LLVMBuilderRef builder = default(LLVMBuilderRef))
         {
             return CallRuntime("System.Runtime", context, className, methodName, arguments, forcedReturnType, fromLandingPad, builder);
         }
 
-        private ExpressionEntry CallRuntime(string @namespace, TypeSystemContext context, string className, string methodName, StackEntry[] arguments, TypeDesc forcedReturnType = null, bool fromLandingPad = false, LLVMBuilderRef builder = default(LLVMBuilderRef))
+        internal ExpressionEntry CallRuntime(string @namespace, TypeSystemContext context, string className, string methodName, StackEntry[] arguments, TypeDesc forcedReturnType = null, bool fromLandingPad = false, LLVMBuilderRef builder = default(LLVMBuilderRef))
         {
             if (builder.Handle == IntPtr.Zero)
                 builder = _builder;

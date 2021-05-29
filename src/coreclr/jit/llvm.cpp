@@ -90,7 +90,11 @@ void Llvm::llvmShutdown()
 
 [[noreturn]] void failFunctionCompilation()
 {
-    _function->deleteBody();
+    if (_function != nullptr)
+    {
+        _function->deleteBody();
+    }
+
     fatal(CORJIT_SKIPPED);
 }
 
@@ -360,7 +364,7 @@ void importStoreInd(llvm::IRBuilder<>& builder, GenTree* node)
     }
     else
     {
-        castingStore(builder, toStore, address, node->AsOp()->gtOp2->gtType);
+        castingStore(builder, toStore, address, node->gtType);
     }
 }
 
@@ -459,6 +463,11 @@ void Llvm::Compile(Compiler* pCompiler)
     {
         _function = Function::Create(getFunctionTypeForMethodHandle(_info.compMethodHnd), Function::ExternalLinkage, 0U, mangledName,
                                      _module); // TODO: ExternalLinkage forced as linked from old module
+    }
+    llvm::Argument* arg = &*_function->arg_begin();
+    for (int i = 0; i < _function->arg_size(); i++)
+    {
+        _localsMap->insert({pCompiler->compMap2ILvarNum(i), arg + i});
     }
 
     BasicBlock* firstBb = pCompiler->fgFirstBB;

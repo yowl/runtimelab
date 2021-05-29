@@ -120,7 +120,7 @@ namespace ILCompiler.DependencyAnalysis
                 if (objAndOffset.Target is IHasStartSymbol)
                 {
                     ISymbolNode startSymbol = ((IHasStartSymbol)objAndOffset.Target).StartSymbol;
-                    
+
                     if (startSymbol == symbol)
                     {
                         Debug.Assert(symbolDefNode.Offset == 0);
@@ -323,7 +323,7 @@ namespace ILCompiler.DependencyAnalysis
                 {
                     var CreatePointer = LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0);
                     var bitCast = LLVMValueRef.CreateConstBitCast(valRef, CreatePointer);
-                    LLVMValueRef[] index = new LLVMValueRef[] {LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, Offset, false)};
+                    LLVMValueRef[] index = new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, Offset, false) };
                     valRef = LLVMValueRef.CreateConstGEP(bitCast, index);
                 }
 
@@ -428,7 +428,7 @@ namespace ILCompiler.DependencyAnalysis
         {
             _currentObjectData.Append(blob);
         }
-        
+
         public void EmitIntValue(ulong value, int size)
         {
             switch (size)
@@ -460,7 +460,7 @@ namespace ILCompiler.DependencyAnalysis
                     _currentObjectData.Add(pBytes[i]);
             }
         }
-        
+
         public void EmitSymbolDef(LLVMValueRef realSymbol, string symbolIdentifier, int offsetFromSymbolName)
         {
             string symbolAddressGlobalName = symbolIdentifier + GlobalSymbolSuffix;
@@ -728,7 +728,7 @@ namespace ILCompiler.DependencyAnalysis
                     ObjectNode node = depNode as ObjectNode;
                     if (node == null)
                         continue;
-                    
+
                     if (node.ShouldSkipEmittingObjectNode(factory))
                         continue;
 
@@ -771,7 +771,7 @@ namespace ILCompiler.DependencyAnalysis
                         }
                     }
 #endif
-   
+
                     ObjectNodeSection section = node.Section;
                     if (objectWriter.ShouldShareSymbol(node))
                     {
@@ -950,11 +950,11 @@ namespace ILCompiler.DependencyAnalysis
             {
                 // Locate the VTable slot that points to the dictionary
                 int vtableSlot = VirtualMethodSlotHelper.GetGenericDictionarySlot(factory, (TypeDesc)node.DictionaryOwner);
-            
+
                 int pointerSize = factory.Target.PointerSize;
                 // Load the dictionary pointer from the VTable
                 int slotOffset = EETypeNode.GetVTableOffset(pointerSize) + (vtableSlot * pointerSize);
-                var slotGep = builder.BuildGEP(helperFunc.GetParam(1), new[] {LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)slotOffset, false)}, "slotGep");
+                var slotGep = builder.BuildGEP(helperFunc.GetParam(1), new[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)slotOffset, false) }, "slotGep");
                 var slotGepPtrPtr = builder.BuildPointerCast(slotGep,
                     LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), "slotGepPtrPtr");
                 ctx = builder.BuildLoad(slotGepPtrPtr, "dictGep");
@@ -967,20 +967,20 @@ namespace ILCompiler.DependencyAnalysis
             }
 
             LLVMValueRef resVar = OutputCodeForDictionaryLookup(builder, factory, node, node.LookupSignature, ctx, gepName);
-            
+
             switch (node.Id)
             {
                 case ReadyToRunHelperId.GetNonGCStaticBase:
                     {
                         MetadataType target = (MetadataType)node.Target;
-            
+
                         if (compilation.HasLazyStaticConstructor(target))
                         {
                             importer.OutputCodeForTriggerCctor(target, resVar);
                         }
                     }
                     break;
-            
+
                 case ReadyToRunHelperId.GetGCStaticBase:
                     {
                         MetadataType target = (MetadataType)node.Target;
@@ -988,7 +988,7 @@ namespace ILCompiler.DependencyAnalysis
                         var ptrPtrPtr = builder.BuildBitCast(resVar, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), 0), "ptrPtrPtr");
 
                         resVar = builder.BuildLoad(builder.BuildLoad(ptrPtrPtr, "ind1"), "ind2");
-            
+
                         if (compilation.HasLazyStaticConstructor(target))
                         {
                             GenericLookupResult nonGcRegionLookup = factory.GenericLookup.TypeNonGCStaticBase(target);
@@ -997,11 +997,11 @@ namespace ILCompiler.DependencyAnalysis
                         }
                     }
                     break;
-            
+
                 case ReadyToRunHelperId.GetThreadStaticBase:
                     {
                         MetadataType target = (MetadataType)node.Target;
-            
+
                         if (compilation.HasLazyStaticConstructor(target))
                         {
                             GenericLookupResult nonGcRegionLookup = factory.GenericLookup.TypeNonGCStaticBase(target);
@@ -1011,7 +1011,7 @@ namespace ILCompiler.DependencyAnalysis
                         resVar = importer.OutputCodeForGetThreadStaticBaseForType(resVar).ValueAsType(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), builder);
                     }
                     break;
-            
+
                 case ReadyToRunHelperId.DelegateCtor:
                     {
                         DelegateCreationInfo target = (DelegateCreationInfo)node.Target;
@@ -1020,7 +1020,7 @@ namespace ILCompiler.DependencyAnalysis
                         importer.OutputCodeForDelegateCtorInit(builder, helperFunc, constructor, fatPtr);
                     }
                     break;
-            
+
                 // These are all simple: just get the thing from the dictionary and we're done
                 case ReadyToRunHelperId.TypeHandle:
                 case ReadyToRunHelperId.TypeHandleForCasting:
@@ -1045,6 +1045,11 @@ namespace ILCompiler.DependencyAnalysis
             }
         }
 
+        private static LLVMValueRef BuildConstInt32(int number)
+        {
+            return LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)number, false);
+        }
+
         private void GetCodeForReadyToRunHelper(LLVMCodegenCompilation compilation, ReadyToRunHelperNode node, NodeFactory factory)
         {
             LLVMBuilderRef builder = compilation.Module.Context.CreateBuilder();
@@ -1061,7 +1066,7 @@ namespace ILCompiler.DependencyAnalysis
                 case ReadyToRunHelperId.GetNonGCStaticBase:
                     {
                         MetadataType target = (MetadataType)node.Target;
-                        
+
                         var symbolNode = factory.TypeNonGCStaticsSymbol(target);
                         LLVMValueRef addressOfAddress = GetSymbolValuePointer(Module, symbolNode, factory.NameMangler, false);
                         LLVMValueRef ptr = builder.BuildLoad(addressOfAddress, "LoadAddressOfSymbolNode");
@@ -1076,36 +1081,129 @@ namespace ILCompiler.DependencyAnalysis
                 case ReadyToRunHelperId.GetGCStaticBase:
                     {
                         MetadataType target = (MetadataType)node.Target;
-                        
+
                         var symbolNode = factory.TypeGCStaticsSymbol(target);
                         LLVMValueRef addressOfAddress = GetSymbolValuePointer(Module, symbolNode, factory.NameMangler, false);
                         LLVMValueRef basePtrPtr = builder.BuildLoad(addressOfAddress, "LoadAddressOfSymbolNode");
                         LLVMValueRef ptr = builder.BuildLoad(builder.BuildLoad(builder.BuildPointerCast(basePtrPtr, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), 0), "castBasePtrPtr"), "basePtr"), "base");
-                        
+
                         if (compilation.HasLazyStaticConstructor(target))
                         {
                             var nonGcSymbolNode = factory.TypeNonGCStaticsSymbol(target);
                             LLVMValueRef nonGcAddressOfAddress = GetSymbolValuePointer(Module, nonGcSymbolNode, factory.NameMangler, false);
                             LLVMValueRef nonGcBase = builder.BuildLoad(nonGcAddressOfAddress, "LoadAddressOfSymbolNode");
-                        
+
                             importer.OutputCodeForTriggerCctor(target, nonGcBase);
                         }
                         resVar = builder.BuildPointerCast(ptr, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
                     }
                     break;
                 case ReadyToRunHelperId.GetThreadStaticBase:
+                    // A copy of the logic from TriggerCctorWithThreadStaticStorage
                     {
-                        throw new NotImplementedException();
-                        // MetadataType target = (MetadataType)node.Target;
-                        //
-                        // if (compilation.HasLazyStaticConstructor(target))
+                        // private ISymbolNode TriggerCctorWithThreadStaticStorage(MetadataType type, bool needsCctorCheck, out ExpressionEntry returnExp)
                         // {
-                        //     GenericLookupResult nonGcRegionLookup = factory.GenericLookup.TypeNonGCStaticBase(target);
-                        //     var threadStaticBase = OutputCodeForDictionaryLookup(builder, factory, node, nonGcRegionLookup, ctx, "tsGep");
-                        //     importer.OutputCodeForTriggerCctor(target, threadStaticBase);
-                        // }
-                        // resVar = importer.OutputCodeForGetThreadStaticBaseForType(resVar).ValueAsType(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), builder);
+                        MetadataType target = (MetadataType)node.Target;
+                        ISymbolNode threadStaticIndexSymbol = factory.TypeThreadStaticIndex(target);
+                        //LLVMValueRef threadStaticIndex = LoadAddressOfSymbolNode(threadStaticIndexSymbol);
+                        LLVMValueRef addressOfAddress = GetSymbolValuePointer(Module, threadStaticIndexSymbol, factory.NameMangler, false);
+                        LLVMValueRef threadStaticIndex = builder.BuildLoad(
+                            builder.BuildPointerCast(addressOfAddress, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), 0), "castBasePtrPtr"), "LoadAddressOfSymbolNode");
+                        //
+                        //         StackEntry typeManagerSlotEntry = new LoadExpressionEntry(StackValueKind.ValueType, "typeManagerSlot", threadStaticIndex, GetWellKnownType(WellKnownType.Int32));
+                        StackEntry typeManagerSlotEntry = new LoadExpressionEntry(StackValueKind.ValueType, "typeManagerSlot", threadStaticIndex, compilation.GetWellKnownType(WellKnownType.Int32));
+                        //         LLVMValueRef typeTlsIndexPtr =
+                        //             _builder.BuildGEP(threadStaticIndex, new LLVMValueRef[] { BuildConstInt32(1) }, "typeTlsIndexPtr"); // index is the second field after the ptr.
+                        LLVMValueRef typeTlsIndexPtr = builder.BuildGEP(threadStaticIndex, new LLVMValueRef[] { BuildConstInt32(1) }, "typeTlsIndexPtr"); // index is the second field after the ptr.
+                                                                                                                                                          //         StackEntry tlsIndexExpressionEntry = new LoadExpressionEntry(StackValueKind.ValueType, "typeTlsIndex", typeTlsIndexPtr, GetWellKnownType(WellKnownType.Int32));
+                        StackEntry tlsIndexExpressionEntry = new LoadExpressionEntry(StackValueKind.ValueType, "typeTlsIndex", typeTlsIndexPtr, compilation.GetWellKnownType(WellKnownType.Int32));
+                        //
+                        //         if (needsCctorCheck)
+                        //         {
+                        if (compilation.HasLazyStaticConstructor(target))
+                        {
+
+                            //             ISymbolNode classConstructionContextSymbol = _compilation.NodeFactory.TypeNonGCStaticsSymbol(type);
+                            ISymbolNode nonGcSymbolNode = factory.TypeNonGCStaticsSymbol(target);
+                            //             _dependencies.Add(classConstructionContextSymbol, "LLVM cctor thread static storage");
+                            //             LLVMValueRef firstNonGcStatic = LoadAddressOfSymbolNode(classConstructionContextSymbol);
+                            LLVMValueRef nonGcAddressOfAddress = GetSymbolValuePointer(Module, nonGcSymbolNode, factory.NameMangler, false);
+                            LLVMValueRef nonGcBase = builder.BuildLoad(nonGcAddressOfAddress, "LoadAddressOfSymbolNode");                            //
+                            //             LLVMValueRef classConstructionContextPtr = _builder.BuildGEP(firstNonGcStatic, new LLVMValueRef[] { BuildConstInt32(-2) }, "classConstructionContext");
+                            LLVMValueRef classConstructionContextPtr = builder.BuildGEP(nonGcBase, new LLVMValueRef[] { BuildConstInt32(-2) }, "classConstructionContext");
+                            //             StackEntry classConstructionContext = new AddressExpressionEntry(StackValueKind.NativeInt, "classConstructionContext", classConstructionContextPtr,
+                            //                 GetWellKnownType(WellKnownType.IntPtr));
+                            StackEntry classConstructionContext = new AddressExpressionEntry(StackValueKind.NativeInt, "classConstructionContext", classConstructionContextPtr,
+                                compilation.GetWellKnownType(WellKnownType.IntPtr));
+                            //
+                            //             returnExp = CallRuntime("System.Runtime.CompilerServices", _compilation.TypeSystemContext, ClassConstructorRunner, "CheckStaticClassConstructionReturnThreadStaticBase", new StackEntry[]
+                            //                                                                          {
+                            //                                                              typeManagerSlotEntry,
+                            //                                                              tlsIndexExpressionEntry,
+                            //                                                              classConstructionContext
+                            //                                                                          });
+                            resVar = importer.CallRuntime("System.Runtime.CompilerServices", compilation.TypeSystemContext, ILImporter.ClassConstructorRunner, "CheckStaticClassConstructionReturnThreadStaticBase", new StackEntry[]
+                                                                                         {
+                                                                             typeManagerSlotEntry,
+                                                                             tlsIndexExpressionEntry,
+                                                                             classConstructionContext
+                                                                                         }, null, false, builder).ValueAsType(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), builder);
+                            //             return threadStaticIndexSymbol;
+                            //         }
+                        }
+                        else
+                        {
+                            //             returnExp = CallRuntime("Internal.Runtime", _compilation.TypeSystemContext, ThreadStatics, "GetThreadStaticBaseForType", new StackEntry[]
+                            //                                                                                                                          {
+                            //                                                                                                              typeManagerSlotEntry,
+                            //                                                                                                              tlsIndexExpressionEntry
+                            //                                                                                                                          });
+                            resVar = importer.CallRuntime("Internal.Runtime", compilation.TypeSystemContext, ILImporter.ThreadStatics, "GetThreadStaticBaseForType", new StackEntry[]
+                                                                                                                                         {
+                                                                                                                             typeManagerSlotEntry,
+                                                                                                                             tlsIndexExpressionEntry
+                                                                                                                                         }, null, false, builder).ValueAsType(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), builder);
+                            //             return threadStaticIndexSymbol;
+                            //         }
+
+                        }
                     }
+                    break;
+                //                         define void @HelloWasm_AnotherClassWithFourThreadStatics___cctor(i8* % 0) !dbg!484189 {
+                //                         Prolog:
+                //   % Temp0_ = getelementptr i8, i8 * % 0, i32 0
+                //   br label % Block0
+                //
+                // Block0:; preds = % Prolog
+                // % LoadAddressOfSymbolNode = load i32 *, i32** @__TypeThreadStaticIndex_HelloWasm_AnotherClassWithFourThreadStatics___SYMBOL, align 4, !dbg!484190
+                // % typeTlsIndexPtr = getelementptr i32, i32 * % LoadAddressOfSymbolNode, i32 1, !dbg!484190
+                // % LoadAddressOfSymbolNode1 = load i32 *, i32** @__NonGCStaticBase_HelloWasm_AnotherClassWithFourThreadStatics___SYMBOL, align 4, !dbg!484190
+                // % classConstructionContext = getelementptr i32, i32 * % LoadAddressOfSymbolNode1, i32 - 2, !dbg!484190
+                // % 1 = getelementptr i8, i8 * % 0, i32 0, !dbg!484190
+                // % CastPtr = bitcast i32 * % LoadAddressOfSymbolNode to % "[S.P.CoreLib]Internal.Runtime.CompilerHelpers.TypeManagerSlot" * *, !dbg!484190
+                // % LoadtypeManagerSlot = load % "[S.P.CoreLib]Internal.Runtime.CompilerHelpers.TypeManagerSlot" *, % "[S.P.CoreLib]Internal.Runtime.CompilerHelpers.TypeManagerSlot" * * % CastPtr, align 4, !dbg!484190
+                // % LoadtypeTlsIndex = load i32, i32 * % typeTlsIndexPtr, align 4, !dbg!484190
+                // % CastPtrclassConstructionContext = bitcast i32 * % classConstructionContext to % "[S.P.CoreLib]System.Runtime.CompilerServices.StaticClassConstructionContext" *, !dbg!484190
+                //   call void @S_P_CoreLib_System_Runtime_CompilerServices_ClassConstructorRunner__CheckStaticClassConstructionReturnThreadStaticBase(i8* % 1, i8 * % Temp0_, % "[S.P.CoreLib]Internal.Runtime.CompilerHelpers.TypeManagerSlot" * % LoadtypeManagerSlot, i32 % LoadtypeTlsIndex, % "[S.P.CoreLib]System.Runtime.CompilerServices.StaticClassConstructionContext" * % CastPtrclassConstructionContext), !dbg!484190
+                //            % CastPtrTemp0_ = bitcast i8 * % Temp0_ to i8**, !dbg!484190
+                //              % LdTemp0_ = load i8 *, i8 * * % CastPtrTemp0_, align 4, !dbg!484190
+                //                  % classStatic_addr = getelementptr i8, i8 * % LdTemp0_, i32 4, !dbg!484190
+                //                    % CastPtrint32 = bitcast i8 * % classStatic_addr to i32*, !dbg!484190
+                //   store i32 13, i32 * % CastPtrint32, align 4, !dbg!484190
+                //   ret void, !dbg!484190
+                // }
+                // MetadataType target = (MetadataType)node.Target;
+                // var symbolNode = factory.TypeThreadStaticsSymbol(target);
+                // LLVMValueRef addressOfAddress = GetSymbolValuePointer(Module, symbolNode, factory.NameMangler, false);
+                // LLVMValueRef ptr = builder.BuildLoad(addressOfAddress, "LoadAddressOfSymbolNode");
+                // if (compilation.HasLazyStaticConstructor(target))
+                // {
+                //     GenericLookupResult nonGcRegionLookup = factory.GenericLookup.TypeNonGCStaticBase(target);
+                //     var threadStaticBase = OutputCodeForDictionaryLookup(builder, factory, node, nonGcRegionLookup, ctx, "tsGep");
+                //     importer.OutputCodeForTriggerCctor(target, threadStaticBase);
+                // }
+                // resVar = builder.BuildPointerCast(ptr, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
+                // resVar = importer.OutputCodeForGetThreadStaticBaseForType(resVar).ValueAsType(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), builder);
 
                 case ReadyToRunHelperId.DelegateCtor:
                     {
@@ -1152,7 +1250,7 @@ namespace ILCompiler.DependencyAnalysis
             int offset = dictionarySlot * factory.Target.PointerSize;
 
             // Load the generic dictionary cell
-            LLVMValueRef retGep = builder.BuildGEP(ctx, new[] {LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)offset, false)}, "retGep");
+            LLVMValueRef retGep = builder.BuildGEP(ctx, new[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)offset, false) }, "retGep");
             LLVMValueRef castGep = builder.BuildBitCast(retGep, LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), "ptrPtr");
             LLVMValueRef retRef = builder.BuildLoad(castGep, gepName);
 
@@ -1236,7 +1334,7 @@ namespace Internal.IL
             MethodDesc constructor,
             LLVMValueRef fatFunction)
         {
-            StackEntry[] argValues = new StackEntry [constructor.Signature.Length + 1]; // for delegate this
+            StackEntry[] argValues = new StackEntry[constructor.Signature.Length + 1]; // for delegate this
             var shadowStack = helperFunc.GetParam(0);
             argValues[0] = new LoadExpressionEntry(StackValueKind.ObjRef, "this", shadowStack, GetWellKnownType(WellKnownType.Object));
             for (var i = 0; i < constructor.Signature.Length; i++)
@@ -1244,7 +1342,7 @@ namespace Internal.IL
                 if (i == 1)
                 {
                     argValues[i + 1] = new ExpressionEntry(StackValueKind.Int32, "arg" + (i + 1),
-                        builder.BuildIntToPtr(fatFunction, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), "toPtr"), 
+                        builder.BuildIntToPtr(fatFunction, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), "toPtr"),
                         GetWellKnownType(WellKnownType.IntPtr));
                 }
                 else

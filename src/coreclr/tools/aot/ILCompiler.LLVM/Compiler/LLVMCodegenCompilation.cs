@@ -122,12 +122,12 @@ namespace ILCompiler
             try
             {
                 var sig = method.Signature;
-                if (sig.Length == 0 &&
-                    sig.ReturnType.IsVoid &&
+                if (/*sig.Length == 0 &&
+                    sig.ReturnType.IsVoid &&*/
                     !method.RequiresInstArg() &&
                     sig.IsStatic) // speed up
                 {
-                    if (NodeFactory.NameMangler.GetMangledMethodName(method).ToString().Contains("SpecialIP"))
+                    if (NodeFactory.NameMangler.GetMangledMethodName(method).ToString().Contains("TlsOverPerCoreLockedStacksArrayPool"))
                     {
 
                     }
