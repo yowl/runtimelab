@@ -63,8 +63,9 @@ std::unordered_map<unsigned int, Value*>* _localsMap;
 CORINFO_SIG_INFO                          _sigInfo; // sigInfo of function being compiled
 llvm::IRBuilder<>*                        _prologBuilder;
 std::vector<SpilledExpressionEntry>       _spilledExpressions;
+BasicBlock*                               _currentBlock;
 
-extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
+extern "C" DLLEXPORT void                 registerLlvmCallbacks(void*       thisPtr,
                                                 const char* outputFileName,
                                                 const char* triple,
                                                 const char* dataLayout,
@@ -843,6 +844,17 @@ Value* storeLocalVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
     }
 }
 
+llvm::BasicBlock* getLLVMBasicBlockForBlock(BasicBlock* block)
+{
+    llvm::BasicBlock* llvmBlock;
+    if (_blkToLlvmBlkVectorMap->Lookup(block, &llvmBlock))
+        return llvmBlock;
+
+    llvmBlock = llvm::BasicBlock::Create(_llvmContext, "", _function);
+    _blkToLlvmBlkVectorMap->Set(block, llvmBlock);
+    return llvmBlock;
+}
+
 Value* visitNode(llvm::IRBuilder<>& builder, GenTree* node)
     {
     switch (node->OperGet())
@@ -857,12 +869,19 @@ Value* visitNode(llvm::IRBuilder<>& builder, GenTree* node)
             break;
         case GT_IND:
             return buildInd(builder, node, getGenTreeValue(node->AsOp()->gtOp1));
+        case GT_JTRUE:
+            builder.CreateCondBr(getGenTreeValue(node->AsOp()->gtOp1), getLLVMBasicBlockForBlock(_currentBlock->bbJumpDest),
+                                 getLLVMBasicBlockForBlock(_currentBlock->bbNext));
+            break;
+
         case GT_LCL_VAR:
             return localVar(builder, node->AsLclVar());
         case GT_NE:
             return buildNe(builder, node, getGenTreeValue(node->AsOp()->gtOp1), getGenTreeValue(node->AsOp()->gtOp2));
         case GT_NO_OP:
             emitDoNothingCall(builder);
+            break;
+        case GT_NOP:
             break;
         case GT_RETURN:
             buildReturn(builder, node);
@@ -879,14 +898,9 @@ Value* visitNode(llvm::IRBuilder<>& builder, GenTree* node)
     return nullptr;
 }
 
-llvm::BasicBlock* getLLVMBasicBlockForBlock(BasicBlock* block)
+void startImportingBasicBlock(BasicBlock* block)
 {
-    llvm::BasicBlock* llvmBlock;
-    if (_blkToLlvmBlkVectorMap->Lookup(block, &llvmBlock)) return llvmBlock;
-
-    llvmBlock = llvm::BasicBlock::Create(_llvmContext, "", _function);
-    _blkToLlvmBlkVectorMap->Set(block, llvmBlock);
-    return llvmBlock;
+    _currentBlock = block;
 }
 
 void endImportingBasicBlock(BasicBlock* block)
@@ -894,6 +908,10 @@ void endImportingBasicBlock(BasicBlock* block)
     if (block->bbJumpKind == BBjumpKinds::BBJ_NONE && block->bbNext)
     {
         _builder->CreateBr(getLLVMBasicBlockForBlock(block->bbNext));
+    }
+    else if (block->bbJumpKind == BBjumpKinds::BBJ_ALWAYS)
+    {
+        _builder->CreateBr(getLLVMBasicBlockForBlock(block->bbJumpDest));
     }
 }
 
@@ -944,6 +962,8 @@ void Llvm::Compile(Compiler* pCompiler)
         {
             failFunctionCompilation();
         }
+
+        startImportingBasicBlock(block);
 
         llvm::BasicBlock* entry = getLLVMBasicBlockForBlock(block);
         builder.SetInsertPoint(entry);
