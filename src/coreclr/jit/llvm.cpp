@@ -51,6 +51,38 @@ struct SpilledExpressionEntry
     CorInfoType m_CorInfoType;
 };
 
+struct LocalVar
+{
+    Value* llvmValue;
+
+    LocalVar(Value* llvmValue);
+    virtual Value* getValue(llvm::IRBuilder<>& builder);
+};
+
+// constructor
+LocalVar::LocalVar(Value* llvmValue) : llvmValue(llvmValue)
+{
+}
+
+Value* LocalVar::getValue(llvm::IRBuilder<>& builder)
+{
+    return llvmValue;
+}
+
+struct TempLocalVar : LocalVar
+{
+    TempLocalVar(Value* llvmAddress, Value* llvmValue);
+    Value* getValue(llvm::IRBuilder<>& builder) override;
+};
+
+// constructors
+TempLocalVar::TempLocalVar(Value* llvmAddress, Value* llvmValue) : LocalVar(llvmAddress) {}
+
+Value* TempLocalVar::getValue(llvm::IRBuilder<>& builder)
+{
+    return builder.CreateLoad(llvmValue);
+}
+
 typedef JitHashTable<BasicBlock*, JitPtrKeyFuncs<BasicBlock>, llvm::BasicBlock*> BlkToLlvmBlkVectorMap;
 
 static Module*          _module    = nullptr;
@@ -75,7 +107,7 @@ IL_OFFSETX                                _currentOffset;
 BlkToLlvmBlkVectorMap*                    _blkToLlvmBlkVectorMap;
 llvm::IRBuilder<>*                        _builder;
 std::unordered_map<GenTree*, Value*>*     _sdsuMap;
-std::unordered_map<unsigned int, Value*>* _localsMap;
+std::unordered_map<unsigned int, struct LocalVar>* _localsMap;
 
 // DWARF
 std::unordered_map<std::string, struct DebugMetadata> _debugMetadataMap;
@@ -240,6 +272,15 @@ unsigned int padNextOffset(CorInfoType corInfoType, unsigned int atOffset)
         failFunctionCompilation(); // TODO value type sizes and alignment
     }
     return padOffset(corInfoType, atOffset) + size;
+}
+
+/// <summary>
+/// Returns true if the var_types can be stored on the LLVM stack
+/// instead of the shadow stack in this method.  
+/// </summary>
+bool canStoreVarTypeOnLlvmStack(var_types varType)
+{
+    return false; // TODO: is this possible to determine from just the var_type, or from a LclVarDsc?  For now just store all locals on the shadow stack
 }
 
 /// <summary>
@@ -641,7 +682,6 @@ llvm::Value* buildUserFuncCall(GenTreeCall* call, llvm::IRBuilder<>& builder)
     }
     std::vector<llvm::Value*> argVec;
 
-    unsigned int offset = getTotalParameterOffset(_sigInfo) + getTotalLocalOffset();
     // shadowstack arg first
     Value* shadowStackForCallee = getShadowStackForCallee(builder);
     argVec.push_back(shadowStackForCallee);
@@ -823,7 +863,6 @@ Value* localVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
                     llvmRef = builder.CreateLoad(builder.CreateBitCast(argAddress, (Type::getInt8PtrTy(_llvmContext)->getPointerTo())));
                 }
             }
-
             _localsMap->insert({lclNum, llvmRef});
         }
         else
@@ -834,7 +873,7 @@ Value* localVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
     }
     else
     {
-        llvmRef = _localsMap->at(lclNum);
+        llvmRef = _localsMap->at(lclNum).getValue(builder);
     }
 
     mapGenTreeToValue(lclVar, llvmRef);
@@ -858,6 +897,45 @@ Value* widenIntIfNecessary(llvm::IRBuilder<>& builder, Value* intValue)
     return intValue;
 }
 
+int getLocalOffsetAtIndex(GenTreeLclVar* lclVar)
+{
+    LclVarDsc* local = _compiler->lvaGetDesc(lclVar);
+    int        offset;
+
+    if (!local->lvTracked)
+    {
+        offset = -1;
+    }
+    else
+    {
+        offset = 0;
+        for (int i = 0; i < lclVar->GetLclNum(); i++)
+        {
+            if (!canStoreVariableOnStack(_compiler->getlva _locals[i].Type))
+            {
+                offset = PadNextOffset(_locals[i].Type, offset);
+            }
+        }
+        offset = PadOffset(local.Type, offset);
+    }
+    return offset;
+}
+
+Value* getLocalVarAddress(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar) {
+    //// TODO: 1 - need the address context logic from ILToLLVMImporter when exception blocks are implemented
+    ////       2 - ILToLLVMImporter caches the gep in the prolog, this creates the gep each time which is wasteful - look to copy more of the logic from ILToLLVMImporter.LoadVarAddress
+    unsigned int varOffset = getLocalOffsetAtIndex(lclVar);
+    if (varOffset == -1)
+    {
+        Debug.Assert(_localSlots[index].Handle != IntPtr.Zero);
+        return _localSlots[index];
+    }
+    varOffset = varOffset + GetTotalParameterOffset();
+    return builder.CreateGEP(_currentFunclet.GetParam(0),
+                    new LLVMValueRef[]{LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (uint)(varOffset), false)},
+                    $ "{kind}{index}_");
+}
+
 Value* storeLocalVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
 {
     if (lclVar->gtFlags & GTF_VAR_DEF)
@@ -870,9 +948,12 @@ Value* storeLocalVar(llvm::IRBuilder<>& builder, GenTreeLclVar* lclVar)
             valueRef = widenIntIfNecessary(builder, valueRef);
         }
 
-        LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar);
+        struct TempLocalVar tempLocalVar =
+        {
+            getLocalVarAddress(builder, lclVar), valueRef
+        };
 
-        _localsMap->insert({lclVar->GetLclNum(), valueRef});
+        _localsMap->insert({lclVar->GetLclNum(), tempLocalVar});
         return valueRef;
     }
     else
@@ -1056,7 +1137,7 @@ void Llvm::Compile(Compiler* pCompiler)
     _blkToLlvmBlkVectorMap = &blkToLlvmBlkVectorMap;
     std::unordered_map<GenTree*, Value*> sdsuMap;
     _sdsuMap = &sdsuMap;
-    _localsMap = new std::unordered_map<unsigned int, Value*>();
+    _localsMap = new std::unordered_map<unsigned int, struct LocalVar>();
     _spilledExpressions.clear();
     const char* mangledName = (*_getMangledMethodName)(_thisPtr, _info.compMethodHnd);
     _function               = _module->getFunction(mangledName);
