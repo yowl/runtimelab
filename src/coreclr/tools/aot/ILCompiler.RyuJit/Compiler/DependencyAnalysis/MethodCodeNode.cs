@@ -3,13 +3,27 @@
 
 using System.Diagnostics;
 using System.Text;
+using ILCompiler.DependencyAnalysisFramework;
 using Internal.Text;
 using Internal.TypeSystem;
 
 namespace ILCompiler.DependencyAnalysis
 {
+    public interface IMethodCodeNode : IMethodNode, ISymbolDefinitionNode
+    {
+        void SetCode(ObjectNode.ObjectData data, bool isFoldable);
+        void InitializeFrameInfos(FrameInfo[] frameInfos);
+        void InitializeDebugEHClauseInfos(DebugEHClauseInfo[] debugEhClauseInfos);
+        void InitializeGCInfo(byte[] gcInfo);
+        void InitializeEHInfo(ObjectNode.ObjectData ehInfo);
+        void InitializeDebugLocInfos(DebugLocInfo[] debugLocInfos);
+        void InitializeDebugVarInfos(DebugVarInfo[] debugVarInfos);
+        void InitializeNonRelocationDependencies(DependencyNodeCore<NodeFactory>.DependencyList additionalDependencies);
+        void InitializeIsStateMachineMoveNextMethod(bool debugInfoIsStateMachineMoveNextMethod);
+    }
+
     [DebuggerTypeProxy(typeof(MethodCodeNodeDebugView))]
-    public class MethodCodeNode : ObjectNode, IMethodBodyNode, INodeWithCodeInfo, INodeWithDebugInfo, ISymbolDefinitionNode, ISpecialUnboxThunkNode
+    public class MethodCodeNode : ObjectNode, IMethodBodyNode, INodeWithCodeInfo, INodeWithDebugInfo, ISymbolDefinitionNode, ISpecialUnboxThunkNode, IMethodCodeNode
     {
         private MethodDesc _method;
         private ObjectData _methodCode;
@@ -21,6 +35,7 @@ namespace ILCompiler.DependencyAnalysis
         private DebugEHClauseInfo[] _debugEHClauseInfos;
         private DependencyList _nonRelocationDependencies;
         private bool _isFoldable;
+        private bool _isStateMachineMoveNextMethod;
 
         public MethodCodeNode(MethodDesc method)
         {
@@ -126,15 +141,18 @@ namespace ILCompiler.DependencyAnalysis
             _gcInfo = gcInfo;
         }
 
-        public void InitializeEHInfo(MethodExceptionHandlingInfoNode ehInfo)
+        public void InitializeEHInfo(ObjectData ehInfo)
         {
             Debug.Assert(_ehInfo == null);
-            _ehInfo = ehInfo;
+            if (ehInfo != null)
+                _ehInfo = new MethodExceptionHandlingInfoNode(_method, ehInfo);
         }
 
         public DebugLocInfo[] DebugLocInfos => _debugLocInfos;
         public DebugVarInfo[] DebugVarInfos => _debugVarInfos;
         public DebugEHClauseInfo[] DebugEHClauseInfos => _debugEHClauseInfos;
+
+        public bool IsStateMachineMoveNextMethod => _isStateMachineMoveNextMethod;
 
         public void InitializeDebugLocInfos(DebugLocInfo[] debugLocInfos)
         {
@@ -146,6 +164,11 @@ namespace ILCompiler.DependencyAnalysis
         {
             Debug.Assert(_debugVarInfos == null);
             _debugVarInfos = debugVarInfos;
+        }
+
+        public void InitializeIsStateMachineMoveNextMethod(bool value)
+        {
+            _isStateMachineMoveNextMethod = value;
         }
 
         public void InitializeDebugEHClauseInfos(DebugEHClauseInfo[] debugEHClauseInfos)

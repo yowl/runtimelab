@@ -1,4 +1,4 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Text;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 using Mono.Linker.Steps;
@@ -514,8 +513,12 @@ namespace Mono.Linker.Dataflow
 				return false;
 
 			var callingMethodDefinition = callingMethodBody.Method;
-			bool shouldEnableReflectionWarnings = ShouldEnableReflectionPatternReporting (callingMethodDefinition);
-			var reflectionContext = new ReflectionPatternContext (_context, shouldEnableReflectionWarnings, callingMethodDefinition, calledMethod.Resolve (), operation);
+			var reflectionContext = new ReflectionPatternContext (
+				_context,
+				ShouldEnableReflectionPatternReporting (callingMethodDefinition),
+				callingMethodDefinition,
+				calledMethod.Resolve (),
+				operation);
 
 			DynamicallyAccessedMemberTypes returnValueDynamicallyAccessedMemberTypes = 0;
 
@@ -821,9 +824,8 @@ namespace Mono.Linker.Dataflow
 						reflectionContext.AnalyzingPattern ();
 
 						var parameters = calledMethod.Parameters;
-						if ((parameters.Count == 3 && (methodParams[2].Kind == ValueNodeKind.MethodReturn || methodParams[2].Kind == ValueNodeKind.ConstInt || methodParams[2].Kind == ValueNodeKind.LoadField)
-							&& (methodParams[2].AsConstInt () == null || methodParams[2].AsConstInt () != 0)) ||
-							(parameters.Count == 5 && (methodParams[4].AsConstInt () == null || methodParams[4].AsConstInt () != 0))) {
+						if ((parameters.Count == 3 && parameters[2].ParameterType.MetadataType == MetadataType.Boolean && methodParams[2].AsConstInt () != 0) ||
+							(parameters.Count == 5 && methodParams[4].AsConstInt () != 0)) {
 							reflectionContext.RecordUnrecognizedPattern (2096, $"Call to '{calledMethod.GetDisplayName ()}' can perform case insensitive lookup of the type, currently ILLink can not guarantee presence of all the matching types");
 							break;
 						}
@@ -862,11 +864,13 @@ namespace Mono.Linker.Dataflow
 						reflectionContext.AnalyzingPattern ();
 
 						var parameters = calledMethod.Parameters;
-						BindingFlags bindingFlags = BindingFlags.Public | BindingFlags.Instance;
-						if (parameters.Count > 1) {
-							if (methodParams[1].AsConstInt () != null)
-								bindingFlags |= (BindingFlags) methodParams[1].AsConstInt ();
-						}
+						BindingFlags? bindingFlags;
+						if (parameters.Count > 1 && calledMethod.Parameters[0].ParameterType.Name == "BindingFlags")
+							bindingFlags = GetBindingFlagsFromValue (methodParams[1]);
+						else
+							// Assume a default value for BindingFlags for methods that don't use BindingFlags as a parameter
+							bindingFlags = BindingFlags.Public | BindingFlags.Instance;
+
 						int? ctorParameterCount = parameters.Count switch
 						{
 							1 => (methodParams[1] as ArrayValue)?.Size.AsConstInt (),
@@ -878,12 +882,15 @@ namespace Mono.Linker.Dataflow
 						// Go over all types we've seen
 						foreach (var value in methodParams[0].UniqueValues ()) {
 							if (value is SystemTypeValue systemTypeValue) {
-								MarkConstructorsOnType (ref reflectionContext, systemTypeValue.TypeRepresented, null, bindingFlags);
+								if (BindingFlagsAreUnsupported (bindingFlags))
+									RequireDynamicallyAccessedMembers (ref reflectionContext, DynamicallyAccessedMemberTypes.PublicConstructors | DynamicallyAccessedMemberTypes.NonPublicConstructors, value, calledMethodDefinition);
+								else
+									MarkConstructorsOnType (ref reflectionContext, systemTypeValue.TypeRepresented, null, bindingFlags);
 								reflectionContext.RecordHandledPattern ();
 							} else {
 								// Otherwise fall back to the bitfield requirements
-								var requiredMemberTypes = bindingFlags.HasFlag (BindingFlags.Public) ? DynamicallyAccessedMemberTypes.PublicConstructors : DynamicallyAccessedMemberTypes.None;
-								requiredMemberTypes |= bindingFlags.HasFlag (BindingFlags.NonPublic) ? DynamicallyAccessedMemberTypes.NonPublicConstructors : DynamicallyAccessedMemberTypes.None;
+								var requiredMemberTypes = HasBindingFlag (bindingFlags, BindingFlags.Public) ? DynamicallyAccessedMemberTypes.PublicConstructors : DynamicallyAccessedMemberTypes.None;
+								requiredMemberTypes |= HasBindingFlag (bindingFlags, BindingFlags.NonPublic) ? DynamicallyAccessedMemberTypes.NonPublicConstructors : DynamicallyAccessedMemberTypes.None;
 								// We can scope down the public constructors requirement if we know the number of parameters is 0
 								if (requiredMemberTypes == DynamicallyAccessedMemberTypes.PublicConstructors && ctorParameterCount == 0)
 									requiredMemberTypes = DynamicallyAccessedMemberTypes.PublicParameterlessConstructor;
@@ -898,8 +905,8 @@ namespace Mono.Linker.Dataflow
 				// GetMethod (string, BindingFlags)
 				// GetMethod (string, Type[])
 				// GetMethod (string, Type[], ParameterModifier[])
-				// GetMethod (string, BindingFlags, Binder, Type[], ParameterModifier[]) 6
-				// GetMethod (string, BindingFlags, Binder, CallingConventions, Type[], ParameterModifier[]) 7
+				// GetMethod (string, BindingFlags, Binder, Type[], ParameterModifier[])
+				// GetMethod (string, BindingFlags, Binder, CallingConventions, Type[], ParameterModifier[])
 				// GetMethod (string, int, Type[])
 				// GetMethod (string, int, Type[], ParameterModifier[]?)
 				// GetMethod (string, int, BindingFlags, Binder?, Type[], ParameterModifier[]?)
@@ -908,19 +915,20 @@ namespace Mono.Linker.Dataflow
 				case IntrinsicId.Type_GetMethod: {
 						reflectionContext.AnalyzingPattern ();
 
-						BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public;
-						if (calledMethod.Parameters.Count > 1 && calledMethod.Parameters[1].ParameterType.Name == "BindingFlags" && methodParams[2].AsConstInt () != null) {
-							bindingFlags = (BindingFlags) methodParams[2].AsConstInt ();
-						} else if (calledMethod.Parameters.Count > 2 && calledMethod.Parameters[2].ParameterType.Name == "BindingFlags" && methodParams[3].AsConstInt () != null) {
-							bindingFlags = (BindingFlags) methodParams[3].AsConstInt ();
-						}
-
+						BindingFlags? bindingFlags;
+						if (calledMethod.Parameters.Count > 1 && calledMethod.Parameters[1].ParameterType.Name == "BindingFlags")
+							bindingFlags = GetBindingFlagsFromValue (methodParams[2]);
+						else if (calledMethod.Parameters.Count > 2 && calledMethod.Parameters[2].ParameterType.Name == "BindingFlags")
+							bindingFlags = GetBindingFlagsFromValue (methodParams[3]);
+						else
+							// Assume a default value for BindingFlags for methods that don't use BindingFlags as a parameter
+							bindingFlags = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public;
 						var requiredMemberTypes = GetDynamicallyAccessedMemberTypesFromBindingFlagsForMethods (bindingFlags);
 						foreach (var value in methodParams[0].UniqueValues ()) {
 							if (value is SystemTypeValue systemTypeValue) {
 								foreach (var stringParam in methodParams[1].UniqueValues ()) {
 									if (stringParam is KnownStringValue stringValue) {
-										if (BindingFlagsAreSupported (bindingFlags))
+										if (BindingFlagsAreUnsupported (bindingFlags))
 											RequireDynamicallyAccessedMembers (ref reflectionContext, DynamicallyAccessedMemberTypes.PublicMethods | DynamicallyAccessedMemberTypes.NonPublicMethods, value, calledMethodDefinition);
 										else
 											MarkMethodsOnTypeHierarchy (ref reflectionContext, systemTypeValue.TypeRepresented, m => m.Name == stringValue.Contents, bindingFlags);
@@ -945,17 +953,20 @@ namespace Mono.Linker.Dataflow
 				case IntrinsicId.Type_GetNestedType: {
 						reflectionContext.AnalyzingPattern ();
 
-						BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public;
-						if (calledMethod.Parameters.Count > 1 && calledMethod.Parameters[1].ParameterType.Name == "BindingFlags" && methodParams[2].AsConstInt () != null) {
-							bindingFlags = (BindingFlags) methodParams[2].AsConstInt ();
-						}
+						BindingFlags? bindingFlags;
+						if (calledMethod.Parameters.Count > 1 && calledMethod.Parameters[1].ParameterType.Name == "BindingFlags")
+							bindingFlags = GetBindingFlagsFromValue (methodParams[2]);
+						else
+							// Assume a default value for BindingFlags for methods that don't use BindingFlags as a parameter
+							bindingFlags = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public;
 
 						var requiredMemberTypes = GetDynamicallyAccessedMemberTypesFromBindingFlagsForNestedTypes (bindingFlags);
+						bool everyParentTypeHasAll = true;
 						foreach (var value in methodParams[0].UniqueValues ()) {
 							if (value is SystemTypeValue systemTypeValue) {
 								foreach (var stringParam in methodParams[1].UniqueValues ()) {
 									if (stringParam is KnownStringValue stringValue) {
-										if (BindingFlagsAreSupported (bindingFlags))
+										if (BindingFlagsAreUnsupported (bindingFlags))
 											// We have chosen not to populate the methodReturnValue for now
 											RequireDynamicallyAccessedMembers (ref reflectionContext, DynamicallyAccessedMemberTypes.PublicNestedTypes | DynamicallyAccessedMemberTypes.NonPublicNestedTypes, value, calledMethodDefinition);
 										else {
@@ -976,7 +987,27 @@ namespace Mono.Linker.Dataflow
 								// Otherwise fall back to the bitfield requirements
 								RequireDynamicallyAccessedMembers (ref reflectionContext, requiredMemberTypes, value, calledMethodDefinition);
 							}
+
+							if (value is LeafValueWithDynamicallyAccessedMemberNode leafValueWithDynamicallyAccessedMember) {
+								if (leafValueWithDynamicallyAccessedMember.DynamicallyAccessedMemberTypes != DynamicallyAccessedMemberTypes.All)
+									everyParentTypeHasAll = false;
+							} else if (!(value is NullValue || value is SystemTypeValue)) {
+								// Known Type values are always OK - either they're fully resolved above and thus the return value
+								// is set to the known resolved type, or if they're not resolved, they won't exist at runtime
+								// and will cause exceptions - and thus don't introduce new requirements on marking.
+								// nulls are intentionally ignored as they will lead to exceptions at runtime
+								// and thus don't introduce new requirements on marking.
+								everyParentTypeHasAll = false;
+							}
 						}
+
+						// If the parent type (all the possible values) has DynamicallyAccessedMemberTypes.All it means its nested types are also fully marked
+						// (see MarkStep.MarkEntireType - it will recursively mark entire type on nested types). In that case we can annotate 
+						// the returned type (the nested type) with DynamicallyAccessedMemberTypes.All as well.
+						// Note it's OK to blindly overwrite any potential annotation on the return value from the method definition
+						// since DynamicallyAccessedMemberTypes.All is a superset of any other annotation.
+						if (everyParentTypeHasAll && methodReturnValue == null)
+							methodReturnValue = new MethodReturnValue (calledMethodDefinition.MethodReturnType, DynamicallyAccessedMemberTypes.All);
 					}
 					break;
 
@@ -1031,10 +1062,12 @@ namespace Mono.Linker.Dataflow
 					&& calledMethod.HasThis: {
 
 						reflectionContext.AnalyzingPattern ();
-						BindingFlags bindingFlags = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public;
-						if (calledMethod.Parameters.Count > 1 && calledMethod.Parameters[1].ParameterType.Name == "BindingFlags" && methodParams[2].AsConstInt () != null) {
-							bindingFlags = (BindingFlags) methodParams[2].AsConstInt ();
-						}
+						BindingFlags? bindingFlags;
+						if (calledMethod.Parameters.Count > 1 && calledMethod.Parameters[1].ParameterType.Name == "BindingFlags")
+							bindingFlags = GetBindingFlagsFromValue (methodParams[2]);
+						else
+							// Assume a default value for BindingFlags for methods that don't use BindingFlags as a parameter
+							bindingFlags = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public;
 
 						DynamicallyAccessedMemberTypes memberTypes = fieldPropertyOrEvent switch
 						{
@@ -1050,19 +1083,19 @@ namespace Mono.Linker.Dataflow
 									if (stringParam is KnownStringValue stringValue) {
 										switch (fieldPropertyOrEvent) {
 										case IntrinsicId.Type_GetEvent:
-											if (BindingFlagsAreSupported (bindingFlags))
+											if (BindingFlagsAreUnsupported (bindingFlags))
 												RequireDynamicallyAccessedMembers (ref reflectionContext, DynamicallyAccessedMemberTypes.PublicEvents | DynamicallyAccessedMemberTypes.NonPublicEvents, value, calledMethodDefinition);
 											else
 												MarkEventsOnTypeHierarchy (ref reflectionContext, systemTypeValue.TypeRepresented, filter: e => e.Name == stringValue.Contents, bindingFlags);
 											break;
 										case IntrinsicId.Type_GetField:
-											if (BindingFlagsAreSupported (bindingFlags))
+											if (BindingFlagsAreUnsupported (bindingFlags))
 												RequireDynamicallyAccessedMembers (ref reflectionContext, DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields, value, calledMethodDefinition);
 											else
 												MarkFieldsOnTypeHierarchy (ref reflectionContext, systemTypeValue.TypeRepresented, filter: f => f.Name == stringValue.Contents, bindingFlags);
 											break;
 										case IntrinsicId.Type_GetProperty:
-											if (BindingFlagsAreSupported (bindingFlags))
+											if (BindingFlagsAreUnsupported (bindingFlags))
 												RequireDynamicallyAccessedMembers (ref reflectionContext, DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.NonPublicProperties, value, calledMethodDefinition);
 											else
 												MarkPropertiesOnTypeHierarchy (ref reflectionContext, systemTypeValue.TypeRepresented, filter: p => p.Name == stringValue.Contents, bindingFlags);
@@ -1301,18 +1334,7 @@ namespace Mono.Linker.Dataflow
 						reflectionContext.RecordHandledPattern ();
 					}
 
-					if (shouldEnableReflectionWarnings &&
-						_context.Annotations.TryGetLinkerAttribute (calledMethodDefinition, out RequiresUnreferencedCodeAttribute requiresUnreferencedCode)) {
-						string message =
-							$"Calling '{calledMethodDefinition.GetDisplayName ()}' which has `RequiresUnreferencedCodeAttribute` can break functionality when trimming application code. " +
-							$"{requiresUnreferencedCode.Message}.";
-
-						if (requiresUnreferencedCode.Url != null) {
-							message += " " + requiresUnreferencedCode.Url;
-						}
-
-						_context.LogWarning (message, 2026, callingMethodDefinition, operation.Offset, MessageSubCategory.TrimAnalysis);
-					}
+					_markStep.CheckAndReportRequiresUnreferencedCode (calledMethodDefinition, new MessageOrigin (callingMethodDefinition, operation.Offset));
 
 					// To get good reporting of errors we need to track the origin of the value for all method calls
 					// but except Newobj as those are special.
@@ -1363,6 +1385,10 @@ namespace Mono.Linker.Dataflow
 				methodParams[3].AsConstInt () != null) {
 				parameterlessConstructor = false;
 				bindingFlags = BindingFlags.Instance | (BindingFlags) methodParams[3].AsConstInt ();
+			} else if (calledMethod.Parameters.Count == 8 && calledMethod.Parameters[2].ParameterType.MetadataType == MetadataType.Boolean &&
+				  methodParams[3].AsConstInt () == null) {
+				parameterlessConstructor = false;
+				bindingFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 			}
 
 			int methodParamsOffset = calledMethod.HasImplicitThis () ? 1 : 0;
@@ -1371,7 +1397,7 @@ namespace Mono.Linker.Dataflow
 				if (assemblyNameValue is KnownStringValue assemblyNameStringValue) {
 					foreach (var typeNameValue in methodParams[methodParamsOffset + 1].UniqueValues ()) {
 						if (typeNameValue is KnownStringValue typeNameStringValue) {
-							var resolvedAssembly = _context.GetLoadedAssembly (assemblyNameStringValue.Contents);
+							var resolvedAssembly = _context.TryResolve (assemblyNameStringValue.Contents);
 							if (resolvedAssembly == null) {
 								reflectionContext.RecordUnrecognizedPattern (2061, $"The assembly name '{assemblyNameStringValue.Contents}' passed to method '{calledMethod.GetDisplayName ()}' references assembly which is not available.");
 								continue;
@@ -1667,33 +1693,34 @@ namespace Mono.Linker.Dataflow
 			reflectionContext.RecordHandledPattern ();
 		}
 
-		static bool BindingFlagsAreSupported (BindingFlags bindingFlags)
-		{
-			return (bindingFlags & BindingFlags.IgnoreCase) == BindingFlags.IgnoreCase || (int) bindingFlags > 255;
-		}
+		static BindingFlags? GetBindingFlagsFromValue (ValueNode parameter) => (BindingFlags?) parameter.AsConstInt ();
+
+		static bool BindingFlagsAreUnsupported (BindingFlags? bindingFlags) => bindingFlags == null || (bindingFlags & BindingFlags.IgnoreCase) == BindingFlags.IgnoreCase || (int) bindingFlags > 255;
+
+		static bool HasBindingFlag (BindingFlags? bindingFlags, BindingFlags? search) => bindingFlags != null && (bindingFlags & search) == search;
 
 		void MarkTypeForDynamicallyAccessedMembers (ref ReflectionPatternContext reflectionContext, TypeDefinition typeDefinition, DynamicallyAccessedMemberTypes requiredMemberTypes)
 		{
 			foreach (var member in typeDefinition.GetDynamicallyAccessedMembers (requiredMemberTypes)) {
 				switch (member) {
 				case MethodDefinition method:
-					MarkMethod (ref reflectionContext, method);
+					MarkMethod (ref reflectionContext, method, DependencyKind.DynamicallyAccessedMember);
 					break;
 				case FieldDefinition field:
-					MarkField (ref reflectionContext, field);
+					MarkField (ref reflectionContext, field, DependencyKind.DynamicallyAccessedMember);
 					break;
 				case TypeDefinition nestedType:
-					MarkNestedType (ref reflectionContext, nestedType);
+					MarkNestedType (ref reflectionContext, nestedType, DependencyKind.DynamicallyAccessedMember);
 					break;
 				case PropertyDefinition property:
-					MarkProperty (ref reflectionContext, property);
+					MarkProperty (ref reflectionContext, property, DependencyKind.DynamicallyAccessedMember);
 					break;
 				case EventDefinition @event:
-					MarkEvent (ref reflectionContext, @event);
+					MarkEvent (ref reflectionContext, @event, DependencyKind.DynamicallyAccessedMember);
 					break;
 				case null:
 					var source = reflectionContext.Source;
-					reflectionContext.RecordRecognizedPattern (typeDefinition, () => _markStep.MarkEntireType (typeDefinition, includeBaseTypes: true, new DependencyInfo (DependencyKind.AccessedViaReflection, source), source));
+					reflectionContext.RecordRecognizedPattern (typeDefinition, () => _markStep.MarkEntireType (typeDefinition, includeBaseTypes: true, includeInterfaceTypes: true, new DependencyInfo (DependencyKind.DynamicallyAccessedMember, source), source));
 					break;
 				}
 			}
@@ -1705,28 +1732,29 @@ namespace Mono.Linker.Dataflow
 			reflectionContext.RecordRecognizedPattern (typeReference?.Resolve (), () => _markStep.MarkTypeVisibleToReflection (typeReference, new DependencyInfo (DependencyKind.AccessedViaReflection, source), source));
 		}
 
-		void MarkMethod (ref ReflectionPatternContext reflectionContext, MethodDefinition method)
+		void MarkMethod (ref ReflectionPatternContext reflectionContext, MethodDefinition method, DependencyKind dependencyKind = DependencyKind.AccessedViaReflection)
 		{
 			var source = reflectionContext.Source;
-			reflectionContext.RecordRecognizedPattern (method, () => _markStep.MarkIndirectlyCalledMethod (method, new DependencyInfo (DependencyKind.AccessedViaReflection, source), source));
+			var offset = reflectionContext.Instruction?.Offset;
+			reflectionContext.RecordRecognizedPattern (method, () => _markStep.MarkIndirectlyCalledMethod (method, new DependencyInfo (dependencyKind, source), new MessageOrigin (source, offset)));
 		}
 
-		void MarkNestedType (ref ReflectionPatternContext reflectionContext, TypeDefinition nestedType)
+		void MarkNestedType (ref ReflectionPatternContext reflectionContext, TypeDefinition nestedType, DependencyKind dependencyKind = DependencyKind.AccessedViaReflection)
 		{
 			var source = reflectionContext.Source;
-			reflectionContext.RecordRecognizedPattern (nestedType, () => _markStep.MarkTypeVisibleToReflection (nestedType, new DependencyInfo (DependencyKind.AccessedViaReflection, source), source));
+			reflectionContext.RecordRecognizedPattern (nestedType, () => _markStep.MarkTypeVisibleToReflection (nestedType, new DependencyInfo (dependencyKind, source), source));
 		}
 
-		void MarkField (ref ReflectionPatternContext reflectionContext, FieldDefinition field)
+		void MarkField (ref ReflectionPatternContext reflectionContext, FieldDefinition field, DependencyKind dependencyKind = DependencyKind.AccessedViaReflection)
 		{
 			var source = reflectionContext.Source;
-			reflectionContext.RecordRecognizedPattern (field, () => _markStep.MarkField (field, new DependencyInfo (DependencyKind.AccessedViaReflection, source)));
+			reflectionContext.RecordRecognizedPattern (field, () => _markStep.MarkField (field, new DependencyInfo (dependencyKind, source)));
 		}
 
-		void MarkProperty (ref ReflectionPatternContext reflectionContext, PropertyDefinition property)
+		void MarkProperty (ref ReflectionPatternContext reflectionContext, PropertyDefinition property, DependencyKind dependencyKind = DependencyKind.AccessedViaReflection)
 		{
 			var source = reflectionContext.Source;
-			var dependencyInfo = new DependencyInfo (DependencyKind.AccessedViaReflection, source);
+			var dependencyInfo = new DependencyInfo (dependencyKind, source);
 			reflectionContext.RecordRecognizedPattern (property, () => {
 				// Marking the property itself actually doesn't keep it (it only marks its attributes and records the dependency), we have to mark the methods on it
 				_markStep.MarkProperty (property, dependencyInfo);
@@ -1739,10 +1767,10 @@ namespace Mono.Linker.Dataflow
 			});
 		}
 
-		void MarkEvent (ref ReflectionPatternContext reflectionContext, EventDefinition @event)
+		void MarkEvent (ref ReflectionPatternContext reflectionContext, EventDefinition @event, DependencyKind dependencyKind = DependencyKind.AccessedViaReflection)
 		{
 			var source = reflectionContext.Source;
-			var dependencyInfo = new DependencyInfo (DependencyKind.AccessedViaReflection, reflectionContext.Source);
+			var dependencyInfo = new DependencyInfo (dependencyKind, reflectionContext.Source);
 			reflectionContext.RecordRecognizedPattern (@event, () => {
 				// MarkEvent actually marks the add/remove/invoke methods as well, so no need to mark those explicitly
 				_markStep.MarkEvent (@event, dependencyInfo);
@@ -1762,13 +1790,13 @@ namespace Mono.Linker.Dataflow
 				MarkMethod (ref reflectionContext, method);
 		}
 
-		void MarkFieldsOnTypeHierarchy (ref ReflectionPatternContext reflectionContext, TypeDefinition type, Func<FieldDefinition, bool> filter, BindingFlags bindingFlags = BindingFlags.Default)
+		void MarkFieldsOnTypeHierarchy (ref ReflectionPatternContext reflectionContext, TypeDefinition type, Func<FieldDefinition, bool> filter, BindingFlags? bindingFlags = BindingFlags.Default)
 		{
 			foreach (var field in type.GetFieldsOnTypeHierarchy (filter, bindingFlags))
 				MarkField (ref reflectionContext, field);
 		}
 
-		TypeDefinition[] MarkNestedTypesOnType (ref ReflectionPatternContext reflectionContext, TypeDefinition type, Func<TypeDefinition, bool> filter, BindingFlags bindingFlags = BindingFlags.Default)
+		TypeDefinition[] MarkNestedTypesOnType (ref ReflectionPatternContext reflectionContext, TypeDefinition type, Func<TypeDefinition, bool> filter, BindingFlags? bindingFlags = BindingFlags.Default)
 		{
 			var result = new ArrayBuilder<TypeDefinition> ();
 
@@ -1780,40 +1808,40 @@ namespace Mono.Linker.Dataflow
 			return result.ToArray ();
 		}
 
-		void MarkPropertiesOnTypeHierarchy (ref ReflectionPatternContext reflectionContext, TypeDefinition type, Func<PropertyDefinition, bool> filter, BindingFlags bindingFlags = BindingFlags.Default)
+		void MarkPropertiesOnTypeHierarchy (ref ReflectionPatternContext reflectionContext, TypeDefinition type, Func<PropertyDefinition, bool> filter, BindingFlags? bindingFlags = BindingFlags.Default)
 		{
 			foreach (var property in type.GetPropertiesOnTypeHierarchy (filter, bindingFlags))
 				MarkProperty (ref reflectionContext, property);
 		}
 
-		void MarkEventsOnTypeHierarchy (ref ReflectionPatternContext reflectionContext, TypeDefinition type, Func<EventDefinition, bool> filter, BindingFlags bindingFlags = BindingFlags.Default)
+		void MarkEventsOnTypeHierarchy (ref ReflectionPatternContext reflectionContext, TypeDefinition type, Func<EventDefinition, bool> filter, BindingFlags? bindingFlags = BindingFlags.Default)
 		{
 			foreach (var @event in type.GetEventsOnTypeHierarchy (filter, bindingFlags))
 				MarkEvent (ref reflectionContext, @event);
 		}
 
-		static DynamicallyAccessedMemberTypes GetDynamicallyAccessedMemberTypesFromBindingFlagsForNestedTypes (BindingFlags bindingFlags) =>
-			(bindingFlags.HasFlag (BindingFlags.Public) ? DynamicallyAccessedMemberTypes.PublicNestedTypes : DynamicallyAccessedMemberTypes.None) |
-			(bindingFlags.HasFlag (BindingFlags.NonPublic) ? DynamicallyAccessedMemberTypes.NonPublicNestedTypes : DynamicallyAccessedMemberTypes.None);
+		static DynamicallyAccessedMemberTypes GetDynamicallyAccessedMemberTypesFromBindingFlagsForNestedTypes (BindingFlags? bindingFlags) =>
+			(HasBindingFlag (bindingFlags, BindingFlags.Public) ? DynamicallyAccessedMemberTypes.PublicNestedTypes : DynamicallyAccessedMemberTypes.None) |
+			(HasBindingFlag (bindingFlags, BindingFlags.NonPublic) ? DynamicallyAccessedMemberTypes.NonPublicNestedTypes : DynamicallyAccessedMemberTypes.None);
 
-		static DynamicallyAccessedMemberTypes GetDynamicallyAccessedMemberTypesFromBindingFlagsForConstructors (BindingFlags bindingFlags) =>
-			(bindingFlags.HasFlag (BindingFlags.Public) ? DynamicallyAccessedMemberTypes.PublicConstructors : DynamicallyAccessedMemberTypes.None) |
-			(bindingFlags.HasFlag (BindingFlags.NonPublic) ? DynamicallyAccessedMemberTypes.NonPublicConstructors : DynamicallyAccessedMemberTypes.None);
+		static DynamicallyAccessedMemberTypes GetDynamicallyAccessedMemberTypesFromBindingFlagsForConstructors (BindingFlags? bindingFlags) =>
+			(HasBindingFlag (bindingFlags, BindingFlags.Public) ? DynamicallyAccessedMemberTypes.PublicConstructors : DynamicallyAccessedMemberTypes.None) |
+			(HasBindingFlag (bindingFlags, BindingFlags.NonPublic) ? DynamicallyAccessedMemberTypes.NonPublicConstructors : DynamicallyAccessedMemberTypes.None);
 
-		static DynamicallyAccessedMemberTypes GetDynamicallyAccessedMemberTypesFromBindingFlagsForMethods (BindingFlags bindingFlags) =>
-			(bindingFlags.HasFlag (BindingFlags.Public) ? DynamicallyAccessedMemberTypes.PublicMethods : DynamicallyAccessedMemberTypes.None) |
-			(bindingFlags.HasFlag (BindingFlags.NonPublic) ? DynamicallyAccessedMemberTypes.NonPublicMethods : DynamicallyAccessedMemberTypes.None);
+		static DynamicallyAccessedMemberTypes GetDynamicallyAccessedMemberTypesFromBindingFlagsForMethods (BindingFlags? bindingFlags) =>
+			(HasBindingFlag (bindingFlags, BindingFlags.Public) ? DynamicallyAccessedMemberTypes.PublicMethods : DynamicallyAccessedMemberTypes.None) |
+			(HasBindingFlag (bindingFlags, BindingFlags.NonPublic) ? DynamicallyAccessedMemberTypes.NonPublicMethods : DynamicallyAccessedMemberTypes.None);
 
-		static DynamicallyAccessedMemberTypes GetDynamicallyAccessedMemberTypesFromBindingFlagsForFields (BindingFlags bindingFlags) =>
-			(bindingFlags.HasFlag (BindingFlags.Public) ? DynamicallyAccessedMemberTypes.PublicFields : DynamicallyAccessedMemberTypes.None) |
-			(bindingFlags.HasFlag (BindingFlags.NonPublic) ? DynamicallyAccessedMemberTypes.NonPublicFields : DynamicallyAccessedMemberTypes.None);
+		static DynamicallyAccessedMemberTypes GetDynamicallyAccessedMemberTypesFromBindingFlagsForFields (BindingFlags? bindingFlags) =>
+			(HasBindingFlag (bindingFlags, BindingFlags.Public) ? DynamicallyAccessedMemberTypes.PublicFields : DynamicallyAccessedMemberTypes.None) |
+			(HasBindingFlag (bindingFlags, BindingFlags.NonPublic) ? DynamicallyAccessedMemberTypes.NonPublicFields : DynamicallyAccessedMemberTypes.None);
 
-		static DynamicallyAccessedMemberTypes GetDynamicallyAccessedMemberTypesFromBindingFlagsForProperties (BindingFlags bindingFlags) =>
-			(bindingFlags.HasFlag (BindingFlags.Public) ? DynamicallyAccessedMemberTypes.PublicProperties : DynamicallyAccessedMemberTypes.None) |
-			(bindingFlags.HasFlag (BindingFlags.NonPublic) ? DynamicallyAccessedMemberTypes.NonPublicProperties : DynamicallyAccessedMemberTypes.None);
+		static DynamicallyAccessedMemberTypes GetDynamicallyAccessedMemberTypesFromBindingFlagsForProperties (BindingFlags? bindingFlags) =>
+			(HasBindingFlag (bindingFlags, BindingFlags.Public) ? DynamicallyAccessedMemberTypes.PublicProperties : DynamicallyAccessedMemberTypes.None) |
+			(HasBindingFlag (bindingFlags, BindingFlags.NonPublic) ? DynamicallyAccessedMemberTypes.NonPublicProperties : DynamicallyAccessedMemberTypes.None);
 
-		static DynamicallyAccessedMemberTypes GetDynamicallyAccessedMemberTypesFromBindingFlagsForEvents (BindingFlags bindingFlags) =>
-			(bindingFlags.HasFlag (BindingFlags.Public) ? DynamicallyAccessedMemberTypes.PublicEvents : DynamicallyAccessedMemberTypes.None) |
-			(bindingFlags.HasFlag (BindingFlags.NonPublic) ? DynamicallyAccessedMemberTypes.NonPublicEvents : DynamicallyAccessedMemberTypes.None);
+		static DynamicallyAccessedMemberTypes GetDynamicallyAccessedMemberTypesFromBindingFlagsForEvents (BindingFlags? bindingFlags) =>
+			(HasBindingFlag (bindingFlags, BindingFlags.Public) ? DynamicallyAccessedMemberTypes.PublicEvents : DynamicallyAccessedMemberTypes.None) |
+			(HasBindingFlag (bindingFlags, BindingFlags.NonPublic) ? DynamicallyAccessedMemberTypes.NonPublicEvents : DynamicallyAccessedMemberTypes.None);
 	}
 }

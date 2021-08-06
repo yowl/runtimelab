@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 
 using Internal.Reflection.Core.Execution;
@@ -16,12 +17,12 @@ namespace System.Reflection.Runtime.MethodInfos
         public static MethodInvoker GetCustomMethodInvokerIfNeeded(this MethodBase methodBase)
         {
             Type declaringType = methodBase.DeclaringType;
-            bool isNullable = declaringType.IsConstructedGenericType && declaringType.GetGenericTypeDefinition() == CommonRuntimeTypes.Nullable;
+            bool isNullable = declaringType.IsConstructedGenericType && declaringType.GetGenericTypeDefinition() == typeof(Nullable<>);
 
             Dictionary<MethodBase, CustomMethodInvokerAction> map;
             if (isNullable)
                 map = NullableActions.Map;
-            else if (declaringType == CommonRuntimeTypes.String)
+            else if (declaringType == typeof(string))
                 map = StringActions.Map;
             else
                 return null;
@@ -45,6 +46,8 @@ namespace System.Reflection.Runtime.MethodInfos
             map.AddMethod(declaringType, ConstructorInfo.ConstructorName, parameterTypes, action);
         }
 
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
+            Justification = "GetConstructor/GetMethod being null is handled and expected.")]
         private static void AddMethod(this Dictionary<MethodBase, CustomMethodInvokerAction> map, Type declaringType, string name, Type[] parameterTypes, CustomMethodInvokerAction action)
         {
             const BindingFlags bf = BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly | BindingFlags.ExactBinding;

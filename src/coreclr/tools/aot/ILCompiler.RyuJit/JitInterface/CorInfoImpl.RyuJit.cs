@@ -22,7 +22,7 @@ using RyuJitCompilation = ILCompiler.Compilation;
 
 namespace Internal.JitInterface
 {
-    unsafe partial class CorInfoImpl
+    unsafe public partial class CorInfoImpl
     {
         private struct SequencePoint
         {
@@ -36,7 +36,8 @@ namespace Internal.JitInterface
         private int SizeOfReversePInvokeTransitionFrame => 2 * PointerSize;
 
         private RyuJitCompilation _compilation;
-        private MethodCodeNode _methodCodeNode;
+        private MethodDebugInformation _debugInfo;
+        private IMethodCodeNode _methodCodeNode;
         private DebugLocInfo[] _debugLocInfos;
         private DebugVarInfo[] _debugVarInfos;
         private Dictionary<int, SequencePoint> _sequencePoints;
@@ -58,7 +59,7 @@ namespace Internal.JitInterface
             return _unboxingThunkFactory.GetUnboxingMethod(method);
         }
 
-        public void CompileMethod(MethodCodeNode methodCodeNodeNeedingCode, MethodIL methodIL = null)
+        public void CompileMethod(IMethodCodeNode methodCodeNodeNeedingCode, MethodIL methodIL = null)
         {
             _methodCodeNode = methodCodeNodeNeedingCode;
             _isFallbackBodyCompilation = methodIL != null;
@@ -541,6 +542,10 @@ namespace Internal.JitInterface
                     id = ReadyToRunHelper.TypeHandleToRuntimeTypeHandle;
                     break;
 
+                case CorInfoHelpFunc.CORINFO_HELP_GETCURRENTMANAGEDTHREADID:
+                    id = ReadyToRunHelper.GetCurrentManagedThreadId;
+                    break;
+
                 default:
                     throw new NotImplementedException(ftnNum.ToString());
             }
@@ -564,8 +569,12 @@ namespace Internal.JitInterface
             MethodDesc method = HandleToObject(ftn);
 
             // TODO: Implement MapMethodDeclToMethodImpl from CoreCLR
-            if (method.IsVirtual)
+            if (method.IsVirtual &&
+                method.OwningType is MetadataType mdType &&
+                mdType.VirtualMethodImplsForType.Length > 0)
+            {
                 throw new NotImplementedException("getFunctionEntryPoint");
+            }
 
             pResult = CreateConstLookupToSymbol(_compilation.NodeFactory.MethodEntrypoint(method));
         }
@@ -818,6 +827,8 @@ namespace Internal.JitInterface
             try
             {
                 MethodDebugInformation debugInfo = _compilation.GetDebugInfo(methodIL);
+
+                _debugInfo = debugInfo;
 
                 // TODO: NoLineNumbers
                 //if (!_compilation.Options.NoLineNumbers)
@@ -1263,17 +1274,25 @@ namespace Internal.JitInterface
                     referencingArrayAddressMethod = targetMethod.IsArrayAddressMethod();
                 }
 
-                MethodDesc concreteMethod = targetMethod;
-                targetMethod = targetMethod.GetCanonMethodTarget(CanonicalFormKind.Specific);
-
                 pResult->kind = CORINFO_CALL_KIND.CORINFO_CALL;
 
-                if (targetMethod.IsConstructor && targetMethod.OwningType.IsString)
+                TypeDesc owningType = targetMethod.OwningType;
+                if (owningType.IsString && targetMethod.IsConstructor)
                 {
                     // Calling a string constructor doesn't call the actual constructor.
                     pResult->codePointerOrStubLookup.constLookup = CreateConstLookupToSymbol(
                         _compilation.NodeFactory.StringAllocator(targetMethod)
                         );
+                }
+                else if (owningType.IsArray && targetMethod.IsConstructor)
+                {
+                    // Constructors on arrays are special and don't actually have entrypoints.
+                    // That would be fine by itself and wouldn't need special casing. But
+                    // constructors on SzArray have a weird property that causes them not to have canonical forms.
+                    // int[][] has a .ctor(int32,int32) to construct the jagged array in one go, but its canonical
+                    // form of __Canon[] doesn't have the two-parameter constructor. The canonical form would need
+                    // to have an unlimited number of constructors to cover stuff like "int[][][][][][]..."
+                    pResult->codePointerOrStubLookup.constLookup = default;
                 }
                 else if (pResult->exactContextNeedsRuntimeLookup)
                 {
@@ -1282,6 +1301,8 @@ namespace Internal.JitInterface
                     // (Note: The generic lookup in R2R is performed by a call to a helper at runtime, not by
                     // codegen emitted at crossgen time)
 
+                    targetMethod = targetMethod.GetCanonMethodTarget(CanonicalFormKind.Specific);
+
                     Debug.Assert(!forceUseRuntimeLookup);
                     pResult->codePointerOrStubLookup.constLookup = CreateConstLookupToSymbol(
                         GetMethodEntrypoint(targetMethod)
@@ -1289,6 +1310,9 @@ namespace Internal.JitInterface
                 }
                 else
                 {
+                    MethodDesc concreteMethod = targetMethod;
+                    targetMethod = targetMethod.GetCanonMethodTarget(CanonicalFormKind.Specific);
+
                     ISymbolNode instParam = null;
 
                     if (targetMethod.RequiresInstMethodDescArg())
@@ -1629,13 +1653,15 @@ namespace Internal.JitInterface
             }
         }
 
-        private HRESULT allocMethodBlockCounts(uint count, ref BlockCounts* pBlockCounts)
+        private unsafe HRESULT allocPgoInstrumentationBySchema(CORINFO_METHOD_STRUCT_* ftnHnd, PgoInstrumentationSchema* pSchema, uint countSchemaItems, byte** pInstrumentationData)
         {
-            throw new NotImplementedException("allocMethodBlockCounts");
+            throw new NotImplementedException("allocPgoInstrumentationBySchema");
         }
 
-        private HRESULT getMethodBlockCounts(CORINFO_METHOD_STRUCT_* ftnHnd, ref uint pCount, ref BlockCounts* pBlockCounts, ref uint pNumRuns)
-        { throw new NotImplementedException("getBBProfileData"); }
+        private HRESULT getPgoInstrumentationResults(CORINFO_METHOD_STRUCT_* ftnHnd, ref PgoInstrumentationSchema* pSchema, ref uint pCountSchemaItems, byte** pInstrumentationData)
+        {
+            throw new NotImplementedException("getPgoInstrumentationResults");
+        }
 
         private CORINFO_CLASS_STRUCT_* getLikelyClass(CORINFO_METHOD_STRUCT_* ftnHnd, CORINFO_CLASS_STRUCT_* baseHnd, uint IlOffset, ref uint pLikelihood, ref uint pNumberOfClasses)
         {
@@ -1692,6 +1718,11 @@ namespace Internal.JitInterface
 
             if (method.IsRawPInvoke())
                 return false;
+
+            // Stub is required to trigger precise static constructor
+            TypeDesc owningType = method.OwningType;
+            if (_compilation.HasLazyStaticConstructor(owningType) && !((MetadataType)owningType).IsBeforeFieldInit)
+                return true;
 
             // We could have given back the PInvoke stub IL to the JIT and let it inline it, without
             // checking whether there is any stub required. Save the JIT from doing the inlining by checking upfront.

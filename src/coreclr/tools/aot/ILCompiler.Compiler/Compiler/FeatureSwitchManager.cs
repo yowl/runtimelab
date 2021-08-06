@@ -774,7 +774,7 @@ namespace ILCompiler
 
                 if (_value == Throw)
                 {
-                    codestream.EmitCallThrowHelper(emit, method.Context.GetHelperEntryPoint("ThrowHelpers", "ThrowBodyRemoved"));
+                    codestream.EmitCallThrowHelper(emit, method.Context.GetHelperEntryPoint("ThrowHelpers", "ThrowFeatureBodyRemoved"));
                 }
                 else if (_value == null)
                 {
@@ -876,7 +876,7 @@ namespace ILCompiler
 
             private object TryCreateSubstitution(TypeDesc type, string value)
             {
-                switch (type.Category)
+                switch (type.UnderlyingType.Category)
                 {
                     case TypeFlags.Int32:
                         if (string.IsNullOrEmpty(value))

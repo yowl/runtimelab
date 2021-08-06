@@ -7,6 +7,8 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Internal.TypeSystem;
 using ILCompiler;
 using LLVMSharp.Interop;
@@ -16,6 +18,9 @@ using ILCompiler.DependencyAnalysisFramework;
 using ILCompiler.LLVM;
 using Internal.IL.Stubs;
 using Internal.TypeSystem.Ecma;
+using LLVMSharp;
+using ArrayType = Internal.TypeSystem.ArrayType;
+using PointerType = Internal.TypeSystem.PointerType;
 
 namespace Internal.IL
 {
@@ -107,7 +112,7 @@ namespace Internal.IL
         private ExceptionRegion[] _exceptionRegions;
         public ILImporter(LLVMCodegenCompilation compilation, MethodDesc method, MethodIL methodIL, string mangledName, bool isUnboxingThunk)
         {
-            Module = compilation.Module;
+            Module = LLVMCodegenCompilation.Module;
             _compilation = compilation;
             _method = method;
             _isUnboxingThunk = isUnboxingThunk;
@@ -220,17 +225,7 @@ namespace Internal.IL
             finally
             {
                 // Generate thunk for runtime exports
-                if ((_method.IsRuntimeExport || _method.IsUnmanagedCallersOnly) && _method is EcmaMethod)  // TODO: Reverse delegate invokes probably need something here, but what would be the export name?
-                {
-                    EcmaMethod ecmaMethod = ((EcmaMethod)_method);
-                    string exportName = ecmaMethod.IsRuntimeExport ? ecmaMethod.GetRuntimeExportName() : ecmaMethod.GetUnmanagedCallersOnlyExportName();
-                    if (exportName == null)
-                    {
-                        exportName = ecmaMethod.Name;
-                    }
-
-                    EmitNativeToManagedThunk(_compilation, _method, exportName, _llvmFunction);
-                }
+                GenerateRuntimeExportThunk(_compilation, _method, _llvmFunction);
             }
         }
 
@@ -278,7 +273,7 @@ namespace Internal.IL
             // Keep track of where we are in the llvm signature, starting after the
             // shadow stack pointer and return address
             int signatureIndex = 1;
-            if (NeedsReturnStackSlot(_signature))
+            if (LLVMCodegenCompilation.NeedsReturnStackSlot(_signature))
             {
                 signatureIndex++;
             }
@@ -438,31 +433,14 @@ namespace Internal.IL
             _builder.PositionAtEnd(block0);
         }
 
-        private LLVMValueRef CreateLLVMFunction(string mangledName, MethodSignature signature, bool hasHiddenParameter)
-        {
-            return Module.AddFunction(mangledName, GetLLVMSignatureForMethod(signature, hasHiddenParameter));
-        }
-
         private LLVMValueRef GetOrCreateLLVMFunction(string mangledName, MethodSignature signature, bool hasHiddenParam)
         {
-            LLVMValueRef llvmFunction = Module.GetNamedFunction(mangledName);
-
-            if(llvmFunction.Handle == IntPtr.Zero)
-            {
-                return CreateLLVMFunction(mangledName, signature, hasHiddenParam);
-            }
-            return llvmFunction;
+            return GetOrCreateLLVMFunction(Module, mangledName, signature, hasHiddenParam);
         }
 
         private LLVMValueRef GetOrCreateLLVMFunction(string mangledName, LLVMTypeRef functionType)
         {
-            LLVMValueRef llvmFunction = Module.GetNamedFunction(mangledName);
-
-            if (llvmFunction.Handle == IntPtr.Zero)
-            {
-                return Module.AddFunction(mangledName, functionType);
-            }
-            return llvmFunction;
+            return GetOrCreateLLVMFunction(Module, mangledName, functionType);
         }
 
         /// <summary>
@@ -491,19 +469,6 @@ namespace Internal.IL
             }
 
             return funclet;
-        }
-
-        private void ImportCallMemset(LLVMValueRef targetPointer, byte value, int length, LLVMBuilderRef builder)
-        {
-            LLVMValueRef objectSizeValue = BuildConstInt32(length);
-            ImportCallMemset(targetPointer, value, objectSizeValue, builder);
-        }
-
-        private void ImportCallMemset(LLVMValueRef targetPointer, byte value, LLVMValueRef length, LLVMBuilderRef builder = default(LLVMBuilderRef))
-        {
-            if (builder.Handle == IntPtr.Zero) builder = _builder;
-            var memsetSignature = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), LLVMTypeRef.Int8, LLVMTypeRef.Int32, LLVMTypeRef.Int1 }, false);
-            builder.BuildCall(GetOrCreateLLVMFunction("llvm.memset.p0i8.i32", memsetSignature), new LLVMValueRef[] { targetPointer, BuildConstInt8(value), length, BuildConstInt1(0) }, String.Empty);
         }
 
         private void PushLoadExpression(StackValueKind kind, string name, LLVMValueRef rawLLVMValue, TypeDesc type)
@@ -764,8 +729,7 @@ namespace Internal.IL
             if (_debugFunction.Handle == IntPtr.Zero)
             {
                 LLVMMetadataRef functionMetaType = _compilation.DIBuilder.CreateSubroutineType(debugMetadata.File,
-                    ReadOnlySpan<LLVMMetadataRef>.Empty, LLVMDIFlags.LLVMDIFlagZero);
-
+                    ReadOnlySpan<LLVMMetadataRef>.Empty /* TODO */, LLVMDIFlags.LLVMDIFlagZero);
                 uint lineNumber = (uint) _debugInformation.GetSequencePoints().FirstOrDefault().LineNumber;
                 _debugFunction = _compilation.DIBuilder.CreateFunction(debugMetadata.File, _method.Name, _method.Name,
                     debugMetadata.File,
@@ -807,7 +771,7 @@ namespace Internal.IL
                 LLVMMetadataRef compileUnitMetadata = _compilation.DIBuilder.CreateCompileUnit(
                     LLVMDWARFSourceLanguage.LLVMDWARFSourceLanguageC,
                     fileMetadata, "ILC", 0 /* Optimized */, String.Empty, 1, String.Empty,
-                    LLVMDWARFEmissionKind.LLVMDWARFEmissionFull, 0, 0, 0);
+                    LLVMDWARFEmissionKind.LLVMDWARFEmissionFull, 0, 0, 0, String.Empty, String.Empty);
                 Module.AddNamedMetadataOperand("llvm.dbg.cu", compileUnitMetadata);
 
                 debugMetadata = new DebugMetadata(fileMetadata, compileUnitMetadata);
@@ -1163,7 +1127,7 @@ namespace Internal.IL
                 if (IsStruct(f.FieldType) && llvmValue.TypeOf.IsPackedStruct)
                 {
                     LLVMValueRef targetAddress = _builder.BuildGEP(address, new[] { BuildConstInt32(f.Offset.AsInt) });
-                    uint index = LLVMSharpInterop.ElementAtOffset(_compilation.TargetData, llvmValue.TypeOf, (ulong)f.Offset.AsInt);
+                    uint index = (uint)_compilation.TargetData.ElementAtOffset(llvmValue.TypeOf, (ulong)f.Offset.AsInt);
                     LLVMValueRef fieldValue = _builder.BuildExtractValue(llvmValue, index);
                     //recurse into struct
                     StoreStruct(targetAddress, fieldValue, f.FieldType, CastToPointerToTypeDesc(targetAddress, f.FieldType), true);
@@ -1174,7 +1138,7 @@ namespace Internal.IL
                     LLVMValueRef fieldValue;
                     if (llvmValue.TypeOf.IsPackedStruct)
                     {
-                        uint index = LLVMSharpInterop.ElementAtOffset(_compilation.TargetData, llvmValue.TypeOf, (ulong) f.Offset.AsInt);
+                        uint index = (uint)_compilation.TargetData.ElementAtOffset(llvmValue.TypeOf, (ulong) f.Offset.AsInt);
                         fieldValue = _builder.BuildExtractValue(llvmValue, index);
                         Debug.Assert(fieldValue.TypeOf.Kind == LLVMTypeKind.LLVMPointerTypeKind, "expected an LLVM pointer type");
                     }
@@ -1281,8 +1245,6 @@ namespace Internal.IL
             switch (type.Category)
             {
                 case TypeFlags.Boolean:
-                    return LLVMTypeRef.Int1;
-
                 case TypeFlags.SByte:
                 case TypeFlags.Byte:
                     return LLVMTypeRef.Int8;
@@ -1580,7 +1542,7 @@ namespace Internal.IL
         /// Returns true if the type can be stored on the local stack
         /// instead of the shadow stack in this method.
         /// </summary>
-        private static bool CanStoreTypeOnStack(TypeDesc type)
+        internal static bool CanStoreTypeOnStack(TypeDesc type)
         {
             if (type is DefType defType)
             {
@@ -1595,15 +1557,6 @@ namespace Internal.IL
             }
 
             return false;
-        }
-
-        /// <summary>
-        /// Returns true if the method returns a type that must be kept
-        /// on the shadow stack
-        /// </summary>
-        private static bool NeedsReturnStackSlot(MethodSignature signature)
-        {
-            return !signature.ReturnType.IsVoid && !CanStoreTypeOnStack(signature.ReturnType);
         }
 
         private int GetTotalParameterOffset()
@@ -1733,20 +1686,6 @@ namespace Internal.IL
             return offset;
         }
 
-        public int PadNextOffset(TypeDesc type, int atOffset)
-        {
-            var size = type is DefType && type.IsValueType ? ((DefType)type).InstanceFieldSize : type.Context.Target.LayoutPointerSize;
-            return PadOffset(type, atOffset) + size.AsInt;
-        }
-
-        public int PadOffset(TypeDesc type, int atOffset)
-        {
-            var fieldAlignment = type is DefType && type.IsValueType ? ((DefType)type).InstanceFieldAlignment : type.Context.Target.LayoutPointerSize;
-            var alignment = LayoutInt.Min(fieldAlignment, new LayoutInt(ComputePackingSize(type))).AsInt;
-            var padding = (atOffset + (alignment - 1)) & ~(alignment - 1);
-            return padding;
-        }
-
         private static int ComputePackingSize(TypeDesc type)
         {
             if (type is MetadataType)
@@ -1849,7 +1788,7 @@ namespace Internal.IL
             LLVMTypeRef valueType = GetLLVMTypeForTypeDesc(_signature.ReturnType);
             LLVMValueRef castValue = retVal.ValueAsType(valueType, _builder);
 
-            if (NeedsReturnStackSlot(_signature))
+            if (LLVMCodegenCompilation.NeedsReturnStackSlot(_signature))
             {
                 var retParam = _llvmFunction.GetParam(1);
                 ImportStoreHelper(castValue, valueType, retParam, 0);
@@ -2204,7 +2143,7 @@ namespace Internal.IL
 
             LLVMValueRef slot = GetOrCreateMethodSlot(runtimeDeterminedMethod, callee);
 
-            LLVMTypeRef llvmSignature = GetLLVMSignatureForMethod(runtimeDeterminedMethod.Signature, false);
+            LLVMTypeRef llvmSignature = LLVMCodegenCompilation.GetLLVMSignatureForMethod(runtimeDeterminedMethod.Signature, false);
             LLVMValueRef functionPtr;
             ThrowIfNull(thisPointer);
             if (runtimeDeterminedMethod.OwningType.IsInterface)
@@ -2314,49 +2253,8 @@ namespace Internal.IL
                 new LLVMBasicBlockRef[] { fatBranch, notFatBranch }, 2);
 
             // dont know the type for sure, but will generate for no hidden dict param and change if necessary before calling.
-            var asFunc = CastIfNecessary(_builder, loadPtr, LLVMTypeRef.CreatePointer(GetLLVMSignatureForMethod(runtimeDeterminedMethod.Signature, false), 0) , "castToFunc");
+            var asFunc = CastIfNecessary(_builder, loadPtr, LLVMTypeRef.CreatePointer(LLVMCodegenCompilation.GetLLVMSignatureForMethod(runtimeDeterminedMethod.Signature, false), 0) , "castToFunc");
             return asFunc;
-        }
-
-        private LLVMTypeRef GetLLVMSignatureForMethod(MethodSignature signature, bool hasHiddenParam)
-        {
-            TypeDesc returnType = signature.ReturnType;
-            LLVMTypeRef llvmReturnType;
-            bool returnOnStack = false;
-            if (!NeedsReturnStackSlot(signature))
-            {
-                returnOnStack = true;
-                llvmReturnType = GetLLVMTypeForTypeDesc(returnType);
-            }
-            else
-            {
-                llvmReturnType = LLVMTypeRef.Void;
-            }
-
-            List<LLVMTypeRef> signatureTypes = new List<LLVMTypeRef>();
-            signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)); // Shadow stack pointer
-
-            if (!returnOnStack && returnType != GetWellKnownType(WellKnownType.Void))
-            {
-                signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
-            }
-
-            if (hasHiddenParam)
-            {
-                signatureTypes.Add(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)); // *EEType
-            }
-
-            // Intentionally skipping the 'this' pointer since it could always be a GC reference
-            // and thus must be on the shadow stack
-            foreach (TypeDesc type in signature)
-            {
-                if (CanStoreTypeOnStack(type))
-                {
-                    signatureTypes.Add(GetLLVMTypeForTypeDesc(type));
-                }
-            }
-
-            return LLVMTypeRef.CreateFunction(llvmReturnType, signatureTypes.ToArray(), false);
         }
 
         private ExpressionEntry AllocateObject(StackEntry eeType, TypeDesc forcedReturnType = null)
@@ -2565,6 +2463,25 @@ namespace Internal.IL
                         return true;
                     }
                     break;
+                case "EETypePtrOf":
+                    if (metadataType.Namespace == "System" && metadataType.Name == "EETypePtr" && method.Instantiation.Length == 1)
+                    {
+                        LLVMValueRef eeTypePtrRef;
+                        if (runtimeDeterminedMethod.IsRuntimeDeterminedExactMethod)
+                        {
+                            eeTypePtrRef = CallGenericHelper(ReadyToRunHelperId.TypeHandle, runtimeDeterminedMethod.Instantiation[0]);
+                        }
+                        else
+                        {
+                            var constructedTypeSymbol = _compilation.NodeFactory.ConstructedTypeSymbol(method.Instantiation[0]);
+                            _dependencies.Add(constructedTypeSymbol, "EETypePtrOf");
+                            eeTypePtrRef = LoadAddressOfSymbolNode(constructedTypeSymbol);
+                        }
+                        PushExpression(StackValueKind.Int32, "eeTypePtr", eeTypePtrRef, GetWellKnownType(WellKnownType.IntPtr));
+
+                        return true;
+                    }
+                    break;
             }
 
             return false;
@@ -2679,7 +2596,7 @@ namespace Internal.IL
 
             TypeDesc returnType = signature.ReturnType;
 
-            bool needsReturnSlot = NeedsReturnStackSlot(signature);
+            bool needsReturnSlot = LLVMCodegenCompilation.NeedsReturnStackSlot(signature);
             SpilledExpressionEntry returnSlot = null;
             var actualReturnType = forcedReturnType ?? returnType;
             if (needsReturnSlot)
@@ -2739,7 +2656,7 @@ namespace Internal.IL
                     {
                         if (_isUnboxingThunk && _method.RequiresInstArg())
                         {
-                            hiddenParam = _currentFunclet.GetParam((uint)(1 + (NeedsReturnStackSlot(_signature) ? 1 : 0)));
+                            hiddenParam = _currentFunclet.GetParam((uint)(1 + (LLVMCodegenCompilation.NeedsReturnStackSlot(_signature) ? 1 : 0)));
                         }
                         else if (canonMethod.RequiresInstMethodDescArg())
                         {
@@ -2829,7 +2746,7 @@ namespace Internal.IL
 
                 // else
                 builder.PositionAtEnd(fatBranch);
-                var fnWithDict = builder.BuildCast(LLVMOpcode.LLVMBitCast, fn, LLVMTypeRef.CreatePointer(GetLLVMSignatureForMethod(runtimeDeterminedMethod.Signature, true), 0), "fnWithDict");
+                var fnWithDict = builder.BuildCast(LLVMOpcode.LLVMBitCast, fn, LLVMTypeRef.CreatePointer(LLVMCodegenCompilation.GetLLVMSignatureForMethod(runtimeDeterminedMethod.Signature, true), 0), "fnWithDict");
                 var dictDereffed = builder.BuildLoad(builder.BuildLoad( dict, "l1"), "l2");
                 llvmArgs.Insert(needsReturnSlot ? 2 : 1, dictDereffed);
                 LLVMValueRef fatReturn = CallOrInvoke(fromLandingPad, builder, currentTryRegion, fnWithDict, llvmArgs.ToArray(), ref nextInstrBlock);
@@ -3217,7 +3134,12 @@ namespace Internal.IL
                 return null;
         }
 
-        private LLVMValueRef MakeExternFunction(MethodDesc method, string realMethodName, LLVMValueRef realFunction = default(LLVMValueRef))
+        static LLVMAttributeRef CreateImportAttr(LLVMContextRef context, string name, string value)
+        {
+            return LLVMSharpInterop.CreateAttribute(context, name, value);
+        }
+
+        private unsafe LLVMValueRef MakeExternFunction(MethodDesc method, string realMethodName, LLVMValueRef realFunction = default(LLVMValueRef))
         {
             LLVMValueRef nativeFunc;
             LLVMTypeRef[] paramTypes = new LLVMTypeRef[method.Signature.Length];
@@ -3233,6 +3155,13 @@ namespace Internal.IL
             {
                 nativeFunc = Module.AddFunction(realMethodName, nativeFuncType);
                 nativeFunc.Linkage = LLVMLinkage.LLVMDLLImportLinkage;
+                if (realMethodName == "reverse")
+                {
+                    var att = CreateImportAttr(Context, "wasm-import-module", "hellowasi");
+                    var att2 = CreateImportAttr(Context, "wasm-import-name", realMethodName);
+                    LLVM.AddAttributeAtIndex(nativeFunc, ~0u, att);
+                    LLVM.AddAttributeAtIndex(nativeFunc, ~0u, att2);
+                }
             }
             else
             {
@@ -3241,140 +3170,12 @@ namespace Internal.IL
             return nativeFunc;
         }
 
-        static LLVMValueRef s_shadowStackTop = default(LLVMValueRef);
-
-        LLVMValueRef ShadowStackTop
-        {
-            get
-            {
-                if (s_shadowStackTop.Handle.Equals(IntPtr.Zero))
-                {
-                    s_shadowStackTop = Module.AddGlobal(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), "t_pShadowStackTop");
-                    s_shadowStackTop.Linkage = LLVMLinkage.LLVMExternalLinkage;
-                    s_shadowStackTop.Initializer = LLVMValueRef.CreateConstPointerNull(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
-                    s_shadowStackTop.ThreadLocalMode = LLVMThreadLocalMode.LLVMLocalDynamicTLSModel;
-                }
-                return s_shadowStackTop;
-            }
-        }
-
-        private void EmitNativeToManagedThunk(LLVMCodegenCompilation compilation, MethodDesc method, string nativeName, LLVMValueRef managedFunction)
-        {
-            if (_pinvokeMap.TryGetValue(nativeName, out MethodDesc existing))
-            {
-                if (existing != method)
-                    throw new InvalidProgramException("export and import function were mismatched");
-            }
-            else
-            {
-                _pinvokeMap.Add(nativeName, method);
-            }
-
-            LLVMTypeRef[] llvmParams = new LLVMTypeRef[method.Signature.Length];
-            for (int i = 0; i < llvmParams.Length; i++)
-            {
-                llvmParams[i] = GetLLVMTypeForTypeDesc(method.Signature[i]);
-            }
-
-            LLVMTypeRef thunkSig = LLVMTypeRef.CreateFunction(GetLLVMTypeForTypeDesc(method.Signature.ReturnType), llvmParams, false);
-            LLVMValueRef thunkFunc = GetOrCreateLLVMFunction(nativeName, thunkSig);
-
-            LLVMBasicBlockRef shadowStackSetupBlock = thunkFunc.AppendBasicBlock("ShadowStackSetupBlock");
-            LLVMBasicBlockRef allocateShadowStackBlock = thunkFunc.AppendBasicBlock("allocateShadowStackBlock");
-            LLVMBasicBlockRef managedCallBlock = thunkFunc.AppendBasicBlock("ManagedCallBlock");
-
-            LLVMBuilderRef builder = Context.CreateBuilder();
-            builder.PositionAtEnd(shadowStackSetupBlock);
-
-            // Allocate shadow stack if it's null
-            LLVMValueRef shadowStackPtr = builder.BuildAlloca(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), "ShadowStackPtr");
-            LLVMValueRef savedShadowStack = builder.BuildLoad(ShadowStackTop, "SavedShadowStack");
-            builder.BuildStore(savedShadowStack, shadowStackPtr);
-            LLVMValueRef shadowStackNull = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, savedShadowStack, LLVMValueRef.CreateConstPointerNull(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)), "ShadowStackNull");
-            builder.BuildCondBr(shadowStackNull, allocateShadowStackBlock, managedCallBlock);
-
-            builder.PositionAtEnd(allocateShadowStackBlock);
-
-            LLVMValueRef newShadowStack = builder.BuildArrayMalloc(LLVMTypeRef.Int8, BuildConstInt32(1000000), "NewShadowStack");
-            builder.BuildStore(newShadowStack, shadowStackPtr);
-            builder.BuildBr(managedCallBlock);
-
-            builder.PositionAtEnd(managedCallBlock);
-            LLVMTypeRef reversePInvokeFrameType = LLVMTypeRef.CreateStruct(new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }, false);
-            LLVMValueRef reversePInvokeFrame = default(LLVMValueRef);
-            LLVMTypeRef reversePInvokeFunctionType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(reversePInvokeFrameType, 0) }, false);
-            if (method.IsUnmanagedCallersOnly)
-            {
-                reversePInvokeFrame = builder.BuildAlloca(reversePInvokeFrameType, "ReversePInvokeFrame");
-                LLVMValueRef RhpReversePInvoke2 = GetOrCreateLLVMFunction("RhpReversePInvoke2", reversePInvokeFunctionType);
-                builder.BuildCall(RhpReversePInvoke2, new LLVMValueRef[] { reversePInvokeFrame }, "");
-            }
-
-            LLVMValueRef shadowStack = builder.BuildLoad(shadowStackPtr, "ShadowStack");
-            int curOffset = 0;
-            curOffset = PadNextOffset(method.Signature.ReturnType, curOffset);
-            ImportCallMemset(shadowStack, 0, curOffset, builder); // clear any uncovered object references for GC.Collect
-            LLVMValueRef calleeFrame = builder.BuildGEP(shadowStack, new LLVMValueRef[] { BuildConstInt32(curOffset) }, "calleeFrame");
-
-            List<LLVMValueRef> llvmArgs = new List<LLVMValueRef>();
-            llvmArgs.Add(calleeFrame);
-
-            bool needsReturnSlot = NeedsReturnStackSlot(method.Signature);
-
-            if (needsReturnSlot)
-            {
-                // Slot for return value if necessary
-                llvmArgs.Add(shadowStack);
-            }
-
-            for (int i = 0; i < llvmParams.Length; i++)
-            {
-                LLVMValueRef argValue = thunkFunc.GetParam((uint)i);
-
-                if (CanStoreTypeOnStack(method.Signature[i]))
-                {
-                    llvmArgs.Add(argValue);
-                }
-                else
-                {
-                    curOffset = PadOffset(method.Signature[i], curOffset);
-                    LLVMValueRef argAddr = builder.BuildGEP(shadowStack, new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, (ulong)curOffset, false) }, "arg" + i);
-                    builder.BuildStore(argValue, CastIfNecessary(builder, argAddr, LLVMTypeRef.CreatePointer(llvmParams[i], 0), $"parameter{i}_"));
-                    curOffset = PadNextOffset(method.Signature[i], curOffset);
-                }
-            }
-
-            LLVMValueRef llvmReturnValue = builder.BuildCall(managedFunction, llvmArgs.ToArray(), "");
-
-            if (method.IsUnmanagedCallersOnly)
-            {
-                LLVMValueRef RhpReversePInvokeReturn2 = GetOrCreateLLVMFunction("RhpReversePInvokeReturn2", reversePInvokeFunctionType);
-                builder.BuildCall(RhpReversePInvokeReturn2, new LLVMValueRef[] { reversePInvokeFrame }, "");
-            }
-
-            if (!method.Signature.ReturnType.IsVoid)
-            {
-                if (needsReturnSlot)
-                {
-                    builder.BuildRet(builder.BuildLoad(CastIfNecessary(builder, shadowStack, LLVMTypeRef.CreatePointer(GetLLVMTypeForTypeDesc(method.Signature.ReturnType), 0)), "returnValue"));
-                }
-                else
-                {
-                    builder.BuildRet(llvmReturnValue);
-                }
-            }
-            else
-            {
-                builder.BuildRetVoid();
-            }
-        }
-
         private void ImportCalli(int token)
         {
             MethodSignature methodSignature = (MethodSignature)_canonMethodIL.GetObject(token);
 
-            var noHiddenParamSig = GetLLVMSignatureForMethod(methodSignature, false);
-            var hddenParamSig = GetLLVMSignatureForMethod(methodSignature, true);
+            var noHiddenParamSig = LLVMCodegenCompilation.GetLLVMSignatureForMethod(methodSignature, false);
+            var hddenParamSig = LLVMCodegenCompilation.GetLLVMSignatureForMethod(methodSignature, true);
             var target = ((ExpressionEntry)_stack.Pop()).ValueAsType(LLVMTypeRef.CreatePointer(noHiddenParamSig, 0), _builder);
 
             var functionPtrAsInt = _builder.BuildPtrToInt(target, LLVMTypeRef.Int32, "ptrToInt");
@@ -4466,7 +4267,7 @@ namespace Internal.IL
             allocatedMemory.Alignment = (uint)_pointerSize;
             if (_methodIL.IsInitLocals)
             {
-                ImportCallMemset(allocatedMemory, 0, allocSize);
+                ImportCallMemset(allocatedMemory, 0, allocSize, _builder);
             }
 
             PushExpression(StackValueKind.NativeInt, "localloc" + _currentOffset, allocatedMemory, _compilation.TypeSystemContext.GetPointerType(GetWellKnownType(WellKnownType.Void)));
@@ -5160,7 +4961,7 @@ namespace Internal.IL
 
         uint GetHiddenContextParamNo()
         {
-            return 1 + (NeedsReturnStackSlot(_method.Signature) ? (uint)1 : 0);
+            return 1 + (LLVMCodegenCompilation.NeedsReturnStackSlot(_method.Signature) ? (uint)1 : 0);
         }
 
         bool FuncletsRequireHiddenContext()
@@ -5386,7 +5187,7 @@ namespace Internal.IL
 
         private TypeDesc GetWellKnownType(WellKnownType wellKnownType)
         {
-            return _compilation.TypeSystemContext.GetWellKnownType(wellKnownType);
+            return _compilation.GetWellKnownType(wellKnownType);
         }
 
         private void ReportInvalidBranchTarget(int targetOffset)

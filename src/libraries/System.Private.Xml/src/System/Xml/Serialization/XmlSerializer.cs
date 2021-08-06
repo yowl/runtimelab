@@ -1,24 +1,25 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
+using System.IO;
+using System.Reflection;
+using System.Runtime.Versioning;
+using System.Security;
+using System.Text;
+using System.Threading;
+using System.Xml;
+using System.Xml.Schema;
+using System.Xml.Serialization;
+using System.Xml.Serialization.Configuration;
+
 namespace System.Xml.Serialization
 {
-    using System.Reflection;
-    using System.Collections;
-    using System.IO;
-    using System.Xml.Schema;
-    using System;
-    using System.Text;
-    using System.Threading;
-    using System.Globalization;
-    using System.Security;
-    using System.Xml.Serialization.Configuration;
-    using System.Diagnostics;
-    using System.Collections.Generic;
-    using System.Runtime.Versioning;
-    using System.Xml;
-    using System.Xml.Serialization;
-
     public struct XmlDeserializationEvents
     {
         private XmlNodeEventHandler? _onUnknownNode;
@@ -177,7 +178,10 @@ namespace System.Xml.Serialization
             if (xmlTypeMapping == null)
                 throw new ArgumentNullException(nameof(xmlTypeMapping));
 
-            _tempAssembly = GenerateTempAssembly(xmlTypeMapping);
+            if (Mode != SerializationMode.ReflectionOnly)
+            {
+                _tempAssembly = GenerateTempAssembly(xmlTypeMapping);
+            }
             _mapping = xmlTypeMapping;
         }
 
@@ -199,6 +203,12 @@ namespace System.Xml.Serialization
                 _primitiveType = type;
                 return;
             }
+
+            if (Mode == SerializationMode.ReflectionOnly)
+            {
+                return;
+            }
+
             _tempAssembly = s_cache[defaultNamespace, type];
             if (_tempAssembly == null)
             {
@@ -250,7 +260,10 @@ namespace System.Xml.Serialization
             DefaultNamespace = defaultNamespace;
             _rootType = type;
             _mapping = GenerateXmlTypeMapping(type, overrides, extraTypes, root, defaultNamespace);
-            _tempAssembly = GenerateTempAssembly(_mapping, type, defaultNamespace, location);
+            if (Mode != SerializationMode.ReflectionOnly)
+            {
+                _tempAssembly = GenerateTempAssembly(_mapping, type, defaultNamespace, location);
+            }
         }
 
         private XmlTypeMapping GenerateXmlTypeMapping(Type type, XmlAttributeOverrides? overrides, Type[]? extraTypes, XmlRootAttribute? root, string? defaultNamespace)
@@ -951,7 +964,7 @@ namespace System.Xml.Serialization
                 this.Mapping = mapping;
             }
 
-            public override bool Equals(object? obj)
+            public override bool Equals([NotNullWhen(true)] object? obj)
             {
                 XmlSerializerMappingKey? other = obj as XmlSerializerMappingKey;
                 if (other == null)

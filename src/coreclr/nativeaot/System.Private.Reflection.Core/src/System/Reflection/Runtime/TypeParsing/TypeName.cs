@@ -114,7 +114,7 @@ namespace System.Reflection.Runtime.TypeParsing
             return _declaringType + "+" + _nestedTypeName.EscapeTypeNameIdentifier();
         }
 
-        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2070:UnrecognizedReflectionPattern",
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2075:UnrecognizedReflectionPattern",
             Justification = "Reflection implementation")]
         public sealed override Type ResolveType(Assembly containingAssemblyIfAny, GetTypeOptions getTypeOptions)
         {
@@ -291,6 +291,10 @@ namespace System.Reflection.Runtime.TypeParsing
             return s;
         }
 
+        [UnconditionalSuppressMessage("ReflectionAnalysis", "IL2055:RequiresUnreferencedCode",
+            Justification = "Used to implement resolving types from strings.")]
+        [UnconditionalSuppressMessage("AotAnalysis", "IL9700:AotUnfriendlyApi",
+            Justification = "Used to implement resolving types from strings.")]
         public sealed override Type ResolveType(Assembly containingAssemblyIfAny, GetTypeOptions getTypeOptions)
         {
             Type genericTypeDefinition = _genericTypeDefinition.ResolveType(containingAssemblyIfAny, getTypeOptions);

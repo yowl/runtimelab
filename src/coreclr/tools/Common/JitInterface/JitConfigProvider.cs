@@ -44,7 +44,6 @@ namespace Internal.JitInterface
             NativeLibrary.SetDllImportResolver(typeof(CorInfoImpl).Assembly, (libName, assembly, searchPath) =>
             {
                 IntPtr libHandle = IntPtr.Zero;
-#if READYTORUN
                 if (libName == CorInfoImpl.JitLibrary)
                 {
                     if (!string.IsNullOrEmpty(jitPath))
@@ -56,9 +55,6 @@ namespace Internal.JitInterface
                         libHandle = NativeLibrary.Load("clrjit_" + GetTargetSpec(target), assembly, searchPath);
                     }
                 }
-#else
-                Debug.Assert(jitPath == null);
-#endif
                 if (libName == CorInfoImpl.JitSupportLibrary)
                 {
                     libHandle = NativeLibrary.Load("jitinterface_" + RuntimeInformation.ProcessArchitecture.ToString().ToLowerInvariant(), assembly, searchPath);
@@ -135,13 +131,15 @@ namespace Internal.JitInterface
 
         private static string GetTargetSpec(TargetDetails target)
         {
-            string targetOSComponent = (target.OperatingSystem == TargetOS.Windows ? "win" : "unix");
+            string targetOSComponent = (target.OperatingSystem == TargetOS.Windows ? "win" : (target.OperatingSystem == TargetOS.WebAssembly ? "browser" : "unix"));
             string targetArchComponent = target.Architecture switch
             {
                 TargetArchitecture.X86 => "x86",
                 TargetArchitecture.X64 => "x64",
                 TargetArchitecture.ARM => "arm",
                 TargetArchitecture.ARM64 => "arm64",
+                TargetArchitecture.Wasm32 => "wasm32",
+                TargetArchitecture.Wasm64 => "wasm64",
                 _ => throw new NotImplementedException(target.Architecture.ToString())
             };
 

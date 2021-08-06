@@ -8,6 +8,7 @@ set(COMMON_RUNTIME_SOURCES
     DebugEventSource.cpp
     DebugFuncEval.cpp
     DebuggerHook.cpp
+    DebugHeader.cpp
     eetype.cpp
     EHHelpers.cpp
     event.cpp
@@ -24,7 +25,6 @@ set(COMMON_RUNTIME_SOURCES
     MiscHelpers.cpp
     TypeManager.cpp
     ObjectLayout.cpp
-    OptionalFieldsRuntime.cpp
     portable.cpp
     profheapwalkhelper.cpp
     RestrictedCallouts.cpp
@@ -133,9 +133,11 @@ if(WIN32)
 
   set(ASM_SUFFIX asm)
 
-  list(APPEND RUNTIME_SOURCES_ARCH_ASM
-    ${ARCH_SOURCES_DIR}/GC.${ASM_SUFFIX}
-  )
+  if (CLR_CMAKE_TARGET_ARCH_I386 OR CLR_CMAKE_TARGET_ARCH_AMD64)
+    list(APPEND RUNTIME_SOURCES_ARCH_ASM
+      ${ARCH_SOURCES_DIR}/GC.${ASM_SUFFIX}
+    )
+  endif()
 
 else()
 

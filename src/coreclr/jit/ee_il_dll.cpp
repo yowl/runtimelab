@@ -39,7 +39,7 @@ bool           g_jitInitialized = false;
 
 /*****************************************************************************/
 
-extern "C" DLLEXPORT void __stdcall jitStartup(ICorJitHost* jitHost)
+extern "C" DLLEXPORT void jitStartup(ICorJitHost* jitHost)
 {
     if (g_jitInitialized)
     {
@@ -123,6 +123,9 @@ extern "C" DLLEXPORT void __stdcall jitStartup(ICorJitHost* jitHost)
     g_jitInitialized = true;
 }
 
+#if TARGET_WASM
+extern "C" DLLEXPORT
+#endif
 void jitShutdown(bool processIsTerminating)
 {
     if (!g_jitInitialized)
@@ -164,7 +167,7 @@ void* __cdecl operator new(size_t, const CILJitSingletonAllocator&)
     return CILJitBuff;
 }
 
-DLLEXPORT ICorJitCompiler* __stdcall getJit()
+DLLEXPORT ICorJitCompiler* getJit()
 {
     if (!g_jitInitialized)
     {
@@ -251,8 +254,11 @@ void JitTls::SetCompiler(Compiler* compiler)
 // interface. Things really don't get going inside the JIT until the code:Compiler::compCompile#Phases
 // method.  Usually that is where you want to go.
 
-CorJitResult CILJit::compileMethod(
-    ICorJitInfo* compHnd, CORINFO_METHOD_INFO* methodInfo, unsigned flags, BYTE** entryAddress, ULONG* nativeSizeOfCode)
+CorJitResult CILJit::compileMethod(ICorJitInfo*         compHnd,
+                                   CORINFO_METHOD_INFO* methodInfo,
+                                   unsigned             flags,
+                                   uint8_t**            entryAddress,
+                                   uint32_t*            nativeSizeOfCode)
 {
     JitFlags jitFlags;
 
@@ -537,7 +543,7 @@ unsigned Compiler::eeGetMDArrayDataOffset(var_types type, unsigned rank)
 void Compiler::eeGetStmtOffsets()
 {
     ULONG32                      offsetsCount;
-    DWORD*                       offsets;
+    uint32_t*                    offsets;
     ICorDebugInfo::BoundaryTypes offsetsImplicit;
 
     info.compCompHnd->getBoundaries(info.compMethodHnd, &offsetsCount, &offsets, &offsetsImplicit);
@@ -571,6 +577,7 @@ void Compiler::eeGetStmtOffsets()
     info.compCompHnd->freeArray(offsets);
 }
 
+#ifndef TARGET_WASM
 /*****************************************************************************
  *
  *                  Debugging support - Local var info
@@ -632,6 +639,7 @@ void Compiler::eeSetLVdone()
 
     eeVars = nullptr; // We give up ownership after setVars()
 }
+#endif // !TARGET_WASM
 
 void Compiler::eeGetVars()
 {
@@ -760,6 +768,7 @@ void Compiler::eeGetVars()
 }
 
 #ifdef DEBUG
+#ifndef TARGET_WASM
 void Compiler::eeDispVar(ICorDebugInfo::NativeVarInfo* var)
 {
     const char* name = nullptr;
@@ -875,6 +884,7 @@ void Compiler::eeDispVars(CORINFO_METHOD_HANDLE ftn, ULONG32 cVars, ICorDebugInf
         eeDispVar(&vars[i]);
     }
 }
+#endif // !TARGET_WASM
 #endif // DEBUG
 
 /*****************************************************************************
@@ -1108,6 +1118,7 @@ WORD Compiler::eeGetRelocTypeHint(void* target)
     }
 }
 
+#ifndef TARGET_WASM
 CORINFO_FIELD_HANDLE Compiler::eeFindJitDataOffs(unsigned dataOffs)
 {
     // Data offsets are marked by the fact that the low two bits are 0b01 0x1
@@ -1145,6 +1156,7 @@ int Compiler::eeGetJitDataOffs(CORINFO_FIELD_HANDLE field)
         return -1;
     }
 }
+#endif // !TARGET_WASM
 
 /*****************************************************************************
  *

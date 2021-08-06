@@ -17,6 +17,7 @@
 // accessed from members of Compiler.
 //
 
+#ifndef TARGET_WASM
 #ifndef _CODEGEN_INTERFACE_H_
 #define _CODEGEN_INTERFACE_H_
 
@@ -63,7 +64,7 @@ class CodeGenInterface
 
 public:
     CodeGenInterface(Compiler* theCompiler);
-    virtual void genGenerateCode(void** codePtr, ULONG* nativeSizeOfCode) = 0;
+    virtual void genGenerateCode(void** codePtr, uint32_t* nativeSizeOfCode) = 0;
 
     Compiler* GetCompiler() const
     {
@@ -775,3 +776,4 @@ public:
 };
 
 #endif // _CODEGEN_INTERFACE_H_
+#endif // TARGET_WASM

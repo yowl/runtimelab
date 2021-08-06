@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Reflection.Runtime.General;
@@ -104,7 +105,7 @@ namespace System.Reflection.Runtime.TypeInfos
                     // unless that other generic parameter has a "class" constraint.
                     GenericParameterAttributes genericParameterAttributes = baseType.GenericParameterAttributes;
                     if (0 == (genericParameterAttributes & GenericParameterAttributes.ReferenceTypeConstraint))
-                        baseType = CommonRuntimeTypes.Object;
+                        baseType = typeof(object);
                 }
                 return baseType;
             }
@@ -185,6 +186,13 @@ namespace System.Reflection.Runtime.TypeInfos
             }
         }
 
+        [DynamicallyAccessedMembers(
+                DynamicallyAccessedMemberTypes.PublicFields
+                | DynamicallyAccessedMemberTypes.PublicMethods
+                | DynamicallyAccessedMemberTypes.PublicEvents
+                | DynamicallyAccessedMemberTypes.PublicProperties
+                | DynamicallyAccessedMemberTypes.PublicConstructors
+                | DynamicallyAccessedMemberTypes.PublicNestedTypes)]
         public sealed override MemberInfo[] GetDefaultMembers()
         {
             string defaultMemberName = GetDefaultMemberName();
@@ -869,14 +877,14 @@ namespace System.Reflection.Runtime.TypeInfos
                     Type baseType = this.BaseType;
                     if (baseType != null)
                     {
-                        Type enumType = CommonRuntimeTypes.Enum;
-                        Type valueType = CommonRuntimeTypes.ValueType;
+                        Type enumType = typeof(Enum);
+                        Type valueType = typeof(ValueType);
 
-                        if (baseType.Equals(enumType))
+                        if (baseType == enumType)
                             classification |= TypeClassification.IsEnum | TypeClassification.IsValueType;
-                        if (baseType.Equals(CommonRuntimeTypes.MulticastDelegate))
+                        if (baseType == typeof(MulticastDelegate))
                             classification |= TypeClassification.IsDelegate;
-                        if (baseType.Equals(valueType) && !(this.Equals(enumType)))
+                        if (baseType == valueType && this != enumType)
                         {
                             classification |= TypeClassification.IsValueType;
                             foreach (Type primitiveType in ReflectionCoreExecution.ExecutionDomain.PrimitiveTypes)

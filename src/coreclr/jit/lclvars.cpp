@@ -235,7 +235,29 @@ void Compiler::lvaInitTypeRef()
     //-------------------------------------------------------------------------
 
     InitVarDscInfo varDscInfo;
-    varDscInfo.Init(lvaTable, hasRetBuffArg);
+#ifdef TARGET_X86
+    // x86 unmanaged calling conventions limit the number of registers supported
+    // for accepting arguments. As a result, we need to modify the number of registers
+    // when we emit a method with an unmanaged calling convention.
+    switch (info.compCallConv)
+    {
+        case CorInfoCallConvExtension::Thiscall:
+            // In thiscall the this parameter goes into a register.
+            varDscInfo.Init(lvaTable, hasRetBuffArg, 1, 0);
+            break;
+        case CorInfoCallConvExtension::C:
+        case CorInfoCallConvExtension::Stdcall:
+            varDscInfo.Init(lvaTable, hasRetBuffArg, 0, 0);
+            break;
+        case CorInfoCallConvExtension::Managed:
+        case CorInfoCallConvExtension::Fastcall:
+        default:
+            varDscInfo.Init(lvaTable, hasRetBuffArg, MAX_REG_ARG, MAX_FLOAT_REG_ARG);
+            break;
+    }
+#else
+    varDscInfo.Init(lvaTable, hasRetBuffArg, MAX_REG_ARG, MAX_FLOAT_REG_ARG);
+#endif
 
     lvaInitArgs(&varDscInfo);
 
@@ -322,12 +344,14 @@ void Compiler::lvaInitTypeRef()
     // emitter when the varNum is greater that 32767 (see emitLclVarAddr::initLclVarAddr)
     lvaAllocOutgoingArgSpaceVar();
 
+#ifndef TARGET_WASM
 #ifdef DEBUG
     if (verbose)
     {
         lvaTableDump(INITIAL_FRAME_LAYOUT);
     }
 #endif
+#endif //!TARGET_WASM
 }
 
 /*****************************************************************************/
@@ -401,8 +425,10 @@ void Compiler::lvaInitArgs(InitVarDscInfo* varDscInfo)
     noway_assert(varDscInfo->varNum == info.compArgsCount);
     assert(varDscInfo->intRegArgNum <= MAX_REG_ARG);
 
+#ifndef TARGET_WASM
     codeGen->intRegState.rsCalleeRegArgCount   = varDscInfo->intRegArgNum;
     codeGen->floatRegState.rsCalleeRegArgCount = varDscInfo->floatRegArgNum;
+#endif // !TARGET_WASM
 
 #if FEATURE_FASTTAILCALL
     // Save the stack usage information
@@ -513,14 +539,16 @@ void Compiler::lvaInitRetBuffArg(InitVarDscInfo* varDscInfo, bool useFixedRetBuf
         info.compRetBuffArg = varDscInfo->varNum;
         varDsc->lvType      = TYP_BYREF;
         varDsc->lvIsParam   = 1;
-        varDsc->lvIsRegArg  = 1;
+        varDsc->lvIsRegArg  = 0;
 
         if (useFixedRetBufReg && hasFixedRetBuffReg())
         {
+            varDsc->lvIsRegArg = 1;
             varDsc->SetArgReg(theFixedRetBuffReg());
         }
-        else
+        else if (varDscInfo->canEnreg(TYP_INT))
         {
+            varDsc->lvIsRegArg     = 1;
             unsigned retBuffArgNum = varDscInfo->allocRegArg(TYP_INT);
             varDsc->SetArgReg(genMapIntRegArgNumToRegNum(retBuffArgNum));
         }
@@ -557,10 +585,10 @@ void Compiler::lvaInitRetBuffArg(InitVarDscInfo* varDscInfo, bool useFixedRetBuf
         }
 #endif // FEATURE_SIMD
 
-        assert(isValidIntArgReg(varDsc->GetArgReg()));
+        assert(!varDsc->lvIsRegArg || isValidIntArgReg(varDsc->GetArgReg()));
 
 #ifdef DEBUG
-        if (verbose)
+        if (varDsc->lvIsRegArg && verbose)
         {
             printf("'__retBuf'  passed in register %s\n", getRegName(varDsc->GetArgReg()));
         }
@@ -591,7 +619,10 @@ void Compiler::lvaInitUserArgs(InitVarDscInfo* varDscInfo, unsigned skipArgs, un
 
 #if defined(TARGET_X86)
     // Only (some of) the implicit args are enregistered for varargs
-    varDscInfo->maxIntRegArgNum = info.compIsVarArgs ? varDscInfo->intRegArgNum : MAX_REG_ARG;
+    if (info.compIsVarArgs)
+    {
+        varDscInfo->maxIntRegArgNum = varDscInfo->intRegArgNum;
+    }
 #elif defined(TARGET_AMD64) && !defined(UNIX_AMD64_ABI)
     // On System V type environment the float registers are not indexed together with the int ones.
     varDscInfo->floatRegArgNum = varDscInfo->intRegArgNum;
@@ -2497,6 +2528,7 @@ void Compiler::lvaPromoteLongVars()
         }
     }
 
+#ifndef TARGET_WASM
 #ifdef DEBUG
     if (verbose)
     {
@@ -2504,6 +2536,7 @@ void Compiler::lvaPromoteLongVars()
         lvaTableDump();
     }
 #endif // DEBUG
+#endif //!TARGET_WASM
 }
 #endif // !defined(TARGET_64BIT)
 
@@ -2862,6 +2895,13 @@ void Compiler::makeExtraStructQueries(CORINFO_CLASS_HANDLE structHandle, int lev
     }
     assert(structHandle != NO_CLASS_HANDLE);
     (void)typGetObjLayout(structHandle);
+    DWORD typeFlags = info.compCompHnd->getClassAttribs(structHandle);
+    if (StructHasNoPromotionFlagSet(typeFlags))
+    {
+        // In AOT ReadyToRun compilation, don't query fields of types
+        // outside of the current version bubble.
+        return;
+    }
     unsigned fieldCnt = info.compCompHnd->getClassNumInstanceFields(structHandle);
     impNormStructType(structHandle);
 #ifdef TARGET_ARMARCH
@@ -3314,7 +3354,7 @@ public:
         {
             if (dsc1->lvIsRegArg)
             {
-                weight2 += 2 * BB_UNITY_WEIGHT_UNSIGNED;
+                weight1 += 2 * BB_UNITY_WEIGHT_UNSIGNED;
             }
 
             if (varTypeIsGC(dsc1->TypeGet()))
@@ -3554,10 +3594,8 @@ void Compiler::lvaSortByRefCount()
 
             switch (type)
             {
-#if CPU_HAS_FP_SUPPORT
                 case TYP_FLOAT:
                 case TYP_DOUBLE:
-#endif
                 case TYP_INT:
                 case TYP_LONG:
                 case TYP_REF:
@@ -4555,6 +4593,7 @@ inline void Compiler::lvaIncrementFrameSize(unsigned size)
     compLclFrameSize += size;
 }
 
+#ifndef TARGET_WASM
 /****************************************************************************
 *
 *  Return true if absolute offsets of temps are larger than vars, or in other
@@ -5345,7 +5384,7 @@ void Compiler::lvaAssignVirtualFrameOffsetsToArgs()
         This is all relative to our Virtual '0'
      */
 
-    if (Target::g_tgtArgOrder == Target::ARG_ORDER_L2R)
+    if (info.compArgOrder == Target::ARG_ORDER_L2R)
     {
         argOffs = compArgSize;
     }
@@ -5357,9 +5396,10 @@ void Compiler::lvaAssignVirtualFrameOffsetsToArgs()
     noway_assert(compArgSize >= codeGen->intRegState.rsCalleeRegArgCount * REGSIZE_BYTES);
 #endif
 
-#ifdef TARGET_X86
-    argOffs -= codeGen->intRegState.rsCalleeRegArgCount * REGSIZE_BYTES;
-#endif
+    if (info.compArgOrder == Target::ARG_ORDER_L2R)
+    {
+        argOffs -= codeGen->intRegState.rsCalleeRegArgCount * REGSIZE_BYTES;
+    }
 
     // Update the arg initial register locations.
     lvaUpdateArgsWithInitialReg();
@@ -5398,11 +5438,8 @@ void Compiler::lvaAssignVirtualFrameOffsetsToArgs()
     if (info.compRetBuffArg != BAD_VAR_NUM)
     {
         noway_assert(lclNum == info.compRetBuffArg);
-        noway_assert(lvaTable[lclNum].lvIsRegArg);
-#ifndef TARGET_X86
         argOffs =
             lvaAssignVirtualFrameOffsetToArg(lclNum, REGSIZE_BYTES, argOffs UNIX_AMD64_ABI_ONLY_ARG(&callerArgOffset));
-#endif // TARGET_X86
         lclNum++;
     }
 
@@ -5553,7 +5590,7 @@ int Compiler::lvaAssignVirtualFrameOffsetToArg(unsigned lclNum,
     noway_assert(lclNum < info.compArgsCount);
     noway_assert(argSize);
 
-    if (Target::g_tgtArgOrder == Target::ARG_ORDER_L2R)
+    if (info.compArgOrder == Target::ARG_ORDER_L2R)
     {
         argOffs -= argSize;
     }
@@ -5621,7 +5658,7 @@ int Compiler::lvaAssignVirtualFrameOffsetToArg(unsigned lclNum,
         }
     }
 
-    if (Target::g_tgtArgOrder == Target::ARG_ORDER_R2L && !varDsc->lvIsRegArg)
+    if (info.compArgOrder == Target::ARG_ORDER_R2L && !varDsc->lvIsRegArg)
     {
         argOffs += argSize;
     }
@@ -5646,7 +5683,7 @@ int Compiler::lvaAssignVirtualFrameOffsetToArg(unsigned lclNum,
     noway_assert(lclNum < info.compArgsCount);
     noway_assert(argSize);
 
-    if (Target::g_tgtArgOrder == Target::ARG_ORDER_L2R)
+    if (info.compArgOrder == Target::ARG_ORDER_L2R)
     {
         argOffs -= argSize;
     }
@@ -5675,7 +5712,7 @@ int Compiler::lvaAssignVirtualFrameOffsetToArg(unsigned lclNum,
 
 #if defined(TARGET_X86)
         argOffs += TARGET_POINTER_SIZE;
-#elif defined(TARGET_AMD64)
+#elif defined(TARGET_AMD64) || defined(TARGET_WASM) // TODO Wasm
         // Register arguments on AMD64 also takes stack space. (in the backing store)
         varDsc->SetStackOffset(argOffs);
         argOffs += TARGET_POINTER_SIZE;
@@ -5925,7 +5962,7 @@ int Compiler::lvaAssignVirtualFrameOffsetToArg(unsigned lclNum,
         }
     }
 
-    if (Target::g_tgtArgOrder == Target::ARG_ORDER_R2L && !varDsc->lvIsRegArg)
+    if (info.compArgOrder == Target::ARG_ORDER_R2L && !varDsc->lvIsRegArg)
     {
         argOffs += argSize;
     }
@@ -7688,6 +7725,7 @@ int Compiler::lvaGetInitialSPRelativeOffset(unsigned varNum)
 
     return lvaToInitialSPRelativeOffset(varDsc->GetStackOffset(), varDsc->lvFramePointerBased);
 }
+#endif // !TARGET_WASM
 
 // Given a local variable offset, and whether that offset is frame-pointer based, return its offset from Initial-SP.
 // This is used, for example, to figure out the offset of the frame pointer from Initial-SP.

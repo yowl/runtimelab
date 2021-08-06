@@ -2,6 +2,20 @@
 #include <stdlib.h>
 #include <string.h>
 
+// copied from exports.c in rust witx-bindgen crates
+static size_t ALLOCATED_BYTES = 0;
+
+void *canonical_abi_realloc( void *ptr, size_t orig_size, size_t orig_align, size_t new_size) {
+  void *ret = realloc(ptr, new_size);
+  if (!ret)
+    abort();
+  ALLOCATED_BYTES -= orig_size;
+  ALLOCATED_BYTES += new_size;
+  return ret;
+}
+
+// end copied from exports.c in rust witx-bindgen crates
+
 int *__cxa_thread_atexit(void (*func)(), void *obj,
                                    void *dso_symbol)
 {

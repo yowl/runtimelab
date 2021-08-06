@@ -193,6 +193,7 @@ void CodeGen::instGen(instruction ins)
     GetEmitter()->emitIns(ins);
 
 #ifdef TARGET_XARCH
+#ifdef PSEUDORANDOM_NOP_INSERTION
     // A workaround necessitated by limitations of emitter
     // if we are scheduled to insert a nop here, we have to delay it
     // hopefully we have not missed any other prefix instructions or places
@@ -201,6 +202,7 @@ void CodeGen::instGen(instruction ins)
     {
         GetEmitter()->emitNextNop = 1;
     }
+#endif // PSEUDORANDOM_NOP_INSERTION
 #endif
 }
 
@@ -1808,6 +1810,20 @@ instruction CodeGen::ins_Copy(var_types dstType)
     {
         return INS_mov;
     }
+#elif defined(TARGET_WASM)
+    if (varTypeIsSIMD(dstType))
+    {
+        return INS_movaps;
+    }
+    else if (varTypeIsFloating(dstType))
+    {
+        // Both float and double copy can use movaps
+        return INS_movaps;
+    }
+    else
+    {
+        return INS_mov;
+    }
 #else // TARGET_*
 #error "Unknown TARGET_"
 #endif
@@ -1834,14 +1850,7 @@ instruction CodeGen::ins_Copy(regNumber srcReg, var_types dstType)
         return ins_Copy(dstType);
     }
 #if defined(TARGET_XARCH)
-    if (dstIsFloatReg)
-    {
-        return INS_mov_i2xmm;
-    }
-    else
-    {
-        return INS_mov_xmm2i;
-    }
+    return INS_movd;
 #elif defined(TARGET_ARM64)
     if (dstIsFloatReg)
     {
@@ -1988,7 +1997,7 @@ instruction CodeGenInterface::ins_StoreFromSrc(regNumber srcReg, var_types dstTy
     return ins;
 }
 
-#if defined(TARGET_XARCH)
+#if defined(TARGET_XARCH) || defined(TARGET_WASM)
 
 bool CodeGen::isMoveIns(instruction ins)
 {
@@ -2017,32 +2026,6 @@ instruction CodeGen::ins_FloatCopy(var_types type)
 instruction CodeGen::ins_FloatCompare(var_types type)
 {
     return (type == TYP_FLOAT) ? INS_ucomiss : INS_ucomisd;
-}
-
-instruction CodeGen::ins_CopyIntToFloat(var_types srcType, var_types dstType)
-{
-    // On SSE2/AVX - the same instruction is used for moving double/quad word to XMM/YMM register.
-    assert((srcType == TYP_INT) || (srcType == TYP_UINT) || (srcType == TYP_LONG) || (srcType == TYP_ULONG));
-
-#if !defined(TARGET_64BIT)
-    // No 64-bit registers on x86.
-    assert((srcType != TYP_LONG) && (srcType != TYP_ULONG));
-#endif // !defined(TARGET_64BIT)
-
-    return INS_mov_i2xmm;
-}
-
-instruction CodeGen::ins_CopyFloatToInt(var_types srcType, var_types dstType)
-{
-    // On SSE2/AVX - the same instruction is used for moving double/quad word of XMM/YMM to an integer register.
-    assert((dstType == TYP_INT) || (dstType == TYP_UINT) || (dstType == TYP_LONG) || (dstType == TYP_ULONG));
-
-#if !defined(TARGET_64BIT)
-    // No 64-bit registers on x86.
-    assert((dstType != TYP_LONG) && (dstType != TYP_ULONG));
-#endif // !defined(TARGET_64BIT)
-
-    return INS_mov_xmm2i;
 }
 
 instruction CodeGen::ins_MathOp(genTreeOps oper, var_types type)
@@ -2164,36 +2147,6 @@ instruction CodeGen::ins_FloatCopy(var_types type)
     return INS_vmov;
 }
 
-instruction CodeGen::ins_CopyIntToFloat(var_types srcType, var_types dstType)
-{
-    assert((dstType == TYP_FLOAT) || (dstType == TYP_DOUBLE));
-    assert((srcType == TYP_INT) || (srcType == TYP_UINT) || (srcType == TYP_LONG) || (srcType == TYP_ULONG));
-
-    if ((srcType == TYP_LONG) || (srcType == TYP_ULONG))
-    {
-        return INS_vmov_i2d;
-    }
-    else
-    {
-        return INS_vmov_i2f;
-    }
-}
-
-instruction CodeGen::ins_CopyFloatToInt(var_types srcType, var_types dstType)
-{
-    assert((srcType == TYP_FLOAT) || (srcType == TYP_DOUBLE));
-    assert((dstType == TYP_INT) || (dstType == TYP_UINT) || (dstType == TYP_LONG) || (dstType == TYP_ULONG));
-
-    if ((dstType == TYP_LONG) || (dstType == TYP_ULONG))
-    {
-        return INS_vmov_d2i;
-    }
-    else
-    {
-        return INS_vmov_f2i;
-    }
-}
-
 instruction CodeGen::ins_FloatCompare(var_types type)
 {
     // Not used and not implemented
@@ -2306,24 +2259,7 @@ instruction CodeGen::ins_FloatConv(var_types to, var_types from)
     unreached();
 }
 
-#elif defined(TARGET_ARM64)
-instruction CodeGen::ins_CopyIntToFloat(var_types srcType, var_types dstType)
-{
-    assert((dstType == TYP_FLOAT) || (dstType == TYP_DOUBLE));
-    assert((srcType == TYP_INT) || (srcType == TYP_UINT) || (srcType == TYP_LONG) || (srcType == TYP_ULONG));
-
-    return INS_mov;
-}
-
-instruction CodeGen::ins_CopyFloatToInt(var_types srcType, var_types dstType)
-{
-    assert((srcType == TYP_FLOAT) || (srcType == TYP_DOUBLE));
-    assert((dstType == TYP_INT) || (dstType == TYP_UINT) || (dstType == TYP_LONG) || (dstType == TYP_ULONG));
-
-    return INS_mov;
-}
-
-#endif // TARGET_ARM64
+#endif // TARGET_ARM
 
 /*****************************************************************************
  *
@@ -2401,6 +2337,8 @@ void CodeGen::instGen_Set_Reg_To_Zero(emitAttr size, regNumber reg, insFlags fla
     GetEmitter()->emitIns_R_R(INS_xor, size, reg, reg);
 #elif defined(TARGET_ARMARCH)
     GetEmitter()->emitIns_R_I(INS_mov, size, reg, 0 ARM_ARG(flags));
+#elif defined(TARGET_WASM)
+    GetEmitter()->emitIns_R_R(INS_xor, size, reg, reg);
 #else
 #error "Unknown TARGET"
 #endif
@@ -2418,6 +2356,8 @@ void CodeGen::instGen_Compare_Reg_To_Zero(emitAttr size, regNumber reg)
     GetEmitter()->emitIns_R_R(INS_test, size, reg, reg);
 #elif defined(TARGET_ARMARCH)
     GetEmitter()->emitIns_R_I(INS_cmp, size, reg, 0);
+#elif defined(TARGET_WASM)
+    GetEmitter()->emitIns_R_R(INS_test, size, reg, reg);
 #else
 #error "Unknown TARGET"
 #endif

@@ -71,11 +71,13 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
  */
 
 struct InfoHdr;            // defined in GCInfo.h
-struct escapeMapping_t;    // defined in flowgraph.cpp
+struct escapeMapping_t;    // defined in fgdiagnostic.cpp
 class emitter;             // defined in emit.h
 struct ShadowParamVarInfo; // defined in GSChecks.cpp
 struct InitVarDscInfo;     // defined in register_arg_convention.h
-class FgStack;             // defined in flowgraph.cpp
+class FgStack;             // defined in fgbasic.cpp
+class Instrumentor;        // defined in fgprofile.cpp
+class SpanningTreeVisitor; // defined in fgprofile.cpp
 #if FEATURE_ANYCSE
 class CSE_DataFlow; // defined in OptCSE.cpp
 #endif
@@ -1815,7 +1817,7 @@ public:
         unsigned roundedByteSize = roundUp(byteSize, TARGET_POINTER_SIZE);
 #endif // OSX_ARM64_ABI
 
-#if !defined(TARGET_ARM)
+#if !defined(TARGET_ARM) && !defined(TARGET_WASM32)
         // Arm32 could have a struct with 8 byte alignment
         // which rounded size % 8 is not 0.
         assert(m_byteAlignment != 0);
@@ -2117,6 +2119,10 @@ public:
         }
         noway_assert(!"GetArgEntry: argNum not found");
         return nullptr;
+    }
+    void SetNeedsTemps()
+    {
+        needsTemps = true;
     }
 
     // Get the node for the arg at position argIndex.
@@ -2564,7 +2570,9 @@ public:
     }
 
     void* ehEmitCookie(BasicBlock* block);
+#ifndef TARGET_WASM
     UNATIVE_OFFSET ehCodeOffset(BasicBlock* block);
+#endif // !TARGET_WASM
 
     EHblkDsc* ehInitHndRange(BasicBlock* src, IL_OFFSET* hndBeg, IL_OFFSET* hndEnd, bool* inFilter);
 
@@ -3416,8 +3424,10 @@ public:
     void lvaDumpRegLocation(unsigned lclNum);
     void lvaDumpFrameLocation(unsigned lclNum);
     void lvaDumpEntry(unsigned lclNum, FrameLayoutState curState, size_t refCntWtdWidth = 6);
+#ifndef TARGET_WASM
     void lvaTableDump(FrameLayoutState curState = NO_FRAME_LAYOUT); // NO_FRAME_LAYOUT means use the current frame
                                                                     // layout state defined by lvaDoneFrameLayout
+#endif //!TARGET_WASM
 #endif
 
 // Limit frames size to 1GB. The maximum is 2GB in theory - make it intentionally smaller
@@ -4733,7 +4743,9 @@ public:
 
     bool fgMorphBlockStmt(BasicBlock* block, Statement* stmt DEBUGARG(const char* msg));
 
+#ifndef TARGET_WASM
     void fgSetOptions();
+#endif // !TARGET_WASM
 
 #ifdef DEBUG
     static fgWalkPreFn fgAssertNoQmark;
@@ -5045,6 +5057,10 @@ public:
 
     // Convert a BYTE which represents the VM's CorInfoGCtype to the JIT's var_types
     var_types getJitGCType(BYTE gcType);
+
+    // Returns true if the provided type should be treated as a primitive type
+    // for the unmanaged calling conventions.
+    bool isNativePrimitiveStructType(CORINFO_CLASS_HANDLE clsHnd);
 
     enum structPassingKind
     {
@@ -5373,7 +5389,7 @@ public:
     void fgComputeCalledCount(BasicBlock::weight_t returnWeight);
     void fgComputeEdgeWeights();
 
-    void fgReorderBlocks();
+    bool fgReorderBlocks();
 
     void fgDetermineFirstColdBlock();
 
@@ -5435,13 +5451,19 @@ public:
     void fgDebugCheckStmtsList(BasicBlock* block, bool morphTrees);
     void fgDebugCheckNodeLinks(BasicBlock* block, Statement* stmt);
     void fgDebugCheckNodesUniqueness();
+    void fgDebugCheckLoopTable();
 
     void fgDebugCheckFlags(GenTree* tree);
     void fgDebugCheckDispFlags(GenTree* tree, unsigned dispFlags, unsigned debugFlags);
     void fgDebugCheckFlagsHelper(GenTree* tree, unsigned treeFlags, unsigned chkFlags);
     void fgDebugCheckTryFinallyExits();
     void fgDebugCheckProfileData();
+    bool fgDebugCheckIncomingProfileData(BasicBlock* block);
+    bool fgDebugCheckOutgoingProfileData(BasicBlock* block);
 #endif
+
+    bool fgProfileWeightsEqual(BasicBlock::weight_t weight1, BasicBlock::weight_t weight2);
+    bool fgProfileWeightsConsistent(BasicBlock::weight_t weight1, BasicBlock::weight_t weight2);
 
     static GenTree* fgGetFirstNode(GenTree* tree);
 
@@ -5531,11 +5553,6 @@ protected:
 
     void fgAdjustForAddressExposedOrWrittenThis();
 
-    bool                      fgProfileData_ILSizeMismatch;
-    ICorJitInfo::BlockCounts* fgBlockCounts;
-    UINT32                    fgBlockCountsCount;
-    UINT32                    fgNumProfileRuns;
-
     unsigned fgStressBBProf()
     {
 #ifdef DEBUG
@@ -5554,11 +5571,32 @@ protected:
     }
 
     bool fgHaveProfileData();
-    void fgComputeProfileScale();
     bool fgGetProfileWeightForBasicBlock(IL_OFFSET offset, BasicBlock::weight_t* weight);
-    void fgInstrumentMethod();
+
+    Instrumentor* fgCountInstrumentor;
+    Instrumentor* fgClassInstrumentor;
+
+    PhaseStatus fgPrepareToInstrumentMethod();
+    PhaseStatus fgInstrumentMethod();
+    PhaseStatus fgIncorporateProfileData();
+    void        fgIncorporateBlockCounts();
+    void        fgIncorporateEdgeCounts();
 
 public:
+    bool                                   fgProfileData_ILSizeMismatch;
+    ICorJitInfo::PgoInstrumentationSchema* fgPgoSchema;
+    BYTE*                                  fgPgoData;
+    UINT32                                 fgPgoSchemaCount;
+    HRESULT                                fgPgoQueryResult;
+    UINT32                                 fgNumProfileRuns;
+    UINT32                                 fgPgoBlockCounts;
+    UINT32                                 fgPgoEdgeCounts;
+    UINT32                                 fgPgoClassProfiles;
+
+    void WalkSpanningTree(SpanningTreeVisitor* visitor);
+    void fgSetProfileWeight(BasicBlock* block, BasicBlock::weight_t weight);
+    void fgComputeProfileScale();
+
     // fgIsUsingProfileWeights - returns true if we have real profile data for this method
     //                           or if we have some fake profile data for the stress mode
     bool fgIsUsingProfileWeights()
@@ -5581,6 +5619,7 @@ public:
 #endif
 
 public:
+    Statement* fgNewStmtAtBeg(BasicBlock* block, GenTree* tree);
     void fgInsertStmtAtEnd(BasicBlock* block, Statement* stmt);
     Statement* fgNewStmtAtEnd(BasicBlock* block, GenTree* tree);
     Statement* fgNewStmtNearEnd(BasicBlock* block, GenTree* tree);
@@ -5588,8 +5627,6 @@ public:
 private:
     void fgInsertStmtNearEnd(BasicBlock* block, Statement* stmt);
     void fgInsertStmtAtBeg(BasicBlock* block, Statement* stmt);
-    Statement* fgNewStmtAtBeg(BasicBlock* block, GenTree* tree);
-
     void fgInsertStmtAfter(BasicBlock* block, Statement* insertionPoint, Statement* stmt);
 
 public:
@@ -5744,7 +5781,9 @@ private:
     bool     fgCheckStmtAfterTailCall();
     GenTree* fgMorphTailCallViaHelpers(GenTreeCall* call, CORINFO_TAILCALL_HELPERS& help);
     bool fgCanTailCallViaJitHelper();
+#ifdef TARGET_X86
     void fgMorphTailCallViaJitHelper(GenTreeCall* call);
+#endif
     GenTree* fgCreateCallDispatcherAndGetResult(GenTreeCall*          origCall,
                                                 CORINFO_METHOD_HANDLE callTargetStubHnd,
                                                 CORINFO_METHOD_HANDLE dispatcherHnd);
@@ -5771,6 +5810,7 @@ private:
                                                      Statement*     paramAssignmentInsertionPoint);
     static int fgEstimateCallStackSize(GenTreeCall* call);
     GenTree* fgMorphCall(GenTreeCall* call);
+    GenTree* fgExpandVirtualVtableCallTarget(GenTreeCall* call);
     void fgMorphCallInline(GenTreeCall* call, InlineResult* result);
     void fgMorphCallInlineHelper(GenTreeCall* call, InlineResult* result);
 #if DEBUG
@@ -5794,8 +5834,6 @@ private:
     GenTree* fgMorphRetInd(GenTreeUnOp* tree);
     GenTree* fgMorphModToSubMulDiv(GenTreeOp* tree);
     GenTree* fgMorphSmpOpOptional(GenTreeOp* tree);
-
-    GenTree* fgMorphToEmulatedFP(GenTree* tree);
     GenTree* fgMorphConst(GenTree* tree);
 
     GenTreeLclVar* fgMorphTryFoldObjAsLclVar(GenTreeObj* obj);
@@ -6093,11 +6131,9 @@ private:
     void optOptimizeBoolsGcStress(BasicBlock* condBlock);
 #endif
 public:
-    void optOptimizeLayout(); // Optimize the BasicBlock layout of the method
-
-    void optOptimizeLoops(); // for "while-do" loops duplicates simple loop conditions and transforms
-                             // the loop into a "do-while" loop
-                             // Also finds all natural loops and records them in the loop table
+    PhaseStatus optInvertLoops();    // Invert loops so they're entered at top and tested at bottom.
+    PhaseStatus optOptimizeLayout(); // Optimize the BasicBlock layout of the method
+    PhaseStatus optFindLoops();      // Finds loops and records them in the loop table
 
     // Optionally clone loops in the loop table.
     void optCloneLoops();
@@ -6367,6 +6403,8 @@ protected:
 
     void optFindNaturalLoops();
 
+    void optIdentifyLoopsForAlignment();
+
     // Ensures that all the loops in the loop nest rooted at "loopInd" (an index into the loop table) are 'canonical' --
     // each loop has a unique "top."  Returns "true" iff the flowgraph has been modified.
     bool optCanonicalizeLoopNest(unsigned char loopInd);
@@ -6421,7 +6459,7 @@ protected:
         }
     }
 
-    void fgOptWhileLoop(BasicBlock* block);
+    void optInvertWhileLoop(BasicBlock* block);
 
     bool optComputeLoopRep(int        constInit,
                            int        constLimit,
@@ -6862,6 +6900,8 @@ public:
     //
     PhaseStatus optRedundantBranches();
     bool optRedundantBranch(BasicBlock* const block);
+    bool optJumpThread(BasicBlock* const block, BasicBlock* const domBlock);
+    bool optReachable(BasicBlock* const fromBlock, BasicBlock* const toBlock);
 
 #if ASSERTION_PROP
     /**************************************************************************
@@ -7316,8 +7356,9 @@ protected:
     */
 
 public:
+#ifndef TARGET_WASM
     regNumber raUpdateRegStateForArg(RegState* regState, LclVarDsc* argDsc);
-
+#endif
     void raMarkStkVars();
 
 protected:
@@ -7521,6 +7562,17 @@ public:
 #elif defined(TARGET_ARM64)
             reg     = REG_R11;
             regMask = RBM_R11;
+#elif defined(TARGET_WASM)  //TODO: empty better?
+            if (isCoreRTABI)
+            {
+                reg = REG_R10;
+                regMask = RBM_R10;
+            }
+            else
+            {
+                reg = REG_R11;
+                regMask = RBM_R11;
+            }
 #else
 #error Unsupported or unset target architecture
 #endif
@@ -7585,6 +7637,7 @@ public:
 
     unsigned eeVarsCount;
 
+#ifndef TARGET_WASM
     struct VarResultInfo
     {
         UNATIVE_OFFSET             startOffset;
@@ -7604,6 +7657,7 @@ public:
     void eeDispVar(ICorDebugInfo::NativeVarInfo* var);
     void eeDispVars(CORINFO_METHOD_HANDLE ftn, ULONG32 cVars, ICorDebugInfo::NativeVarInfo* vars);
 #endif // DEBUG
+#endif
 
     // ICorJitInfo wrappers
 
@@ -7685,7 +7739,7 @@ public:
     CodeGenInterface* codeGen;
 
     //  The following holds information about instr offsets in terms of generated code.
-
+#ifndef TARGET_WASM
     struct IPmappingDsc
     {
         IPmappingDsc* ipmdNext;      // next line# record
@@ -7693,11 +7747,11 @@ public:
         IL_OFFSETX    ipmdILoffsx;   // the instr offset
         bool          ipmdIsLabel;   // Can this code be a branch label?
     };
-
     // Record the instr offset mapping to the generated code
 
     IPmappingDsc* genIPmappingList;
     IPmappingDsc* genIPmappingLast;
+#endif
 
     // Managed RetVal - A side hash table meant to record the mapping from a
     // GT_CALL node to its IL offset.  This info is used to emit sequence points
@@ -7720,6 +7774,7 @@ public:
     // convenience and backward compatibility, but the properties can only be set by invoking
     // the setter on CodeGenContext directly.
 
+#ifndef TARGET_WASM
     emitter* GetEmitter() const
     {
         return codeGen->GetEmitter();
@@ -7729,14 +7784,21 @@ public:
     {
         return codeGen->isFramePointerUsed();
     }
-
+#endif
     bool GetInterruptible()
     {
+#ifdef TARGET_WASM
+        return false;
+#else
         return codeGen->GetInterruptible();
+#endif
     }
     void SetInterruptible(bool value)
     {
+#ifndef TARGET_WASM
         codeGen->SetInterruptible(value);
+#else
+#endif // !TARGET_WASM
     }
 
 #ifdef TARGET_ARMARCH
@@ -7766,11 +7828,18 @@ public:
 
     bool IsFullPtrRegMapRequired()
     {
+#ifndef TARGET_WASM
         return codeGen->IsFullPtrRegMapRequired();
+#else
+        return false; // For GCInfo TODO: sensible default?
+#endif // TARGET_WASM
     }
     void SetFullPtrRegMapRequired(bool value)
     {
+#ifndef TARGET_WASM
         codeGen->SetFullPtrRegMapRequired(value);
+#else
+#endif // TARGET_WASM
     }
 
 // Things that MAY belong either in CodeGen or CodeGenContext
@@ -7968,7 +8037,7 @@ private:
 
     UNATIVE_OFFSET unwindGetCurrentOffset(FuncInfoDsc* func);
 
-#if defined(TARGET_AMD64)
+#if defined(TARGET_AMD64) || defined(TARGET_WASM) // TODO: delete?
 
     void unwindBegPrologWindows();
     void unwindPushWindows(regNumber reg);
@@ -8038,11 +8107,29 @@ private:
 
         // min bar is SSE2
         return SIMD_SSE2_Supported;
+#elif defined(TARGET_WASM)
+        assert(!"WASM supports SIMD so what to do here?");
+        return SIMD_Not_Supported;
 #else
         assert(!"Available instruction set(s) for SIMD codegen is not defined for target arch");
         unreached();
         return SIMD_Not_Supported;
 #endif
+    }
+
+    bool isIntrinsicType(CORINFO_CLASS_HANDLE clsHnd)
+    {
+        return info.compCompHnd->isIntrinsicType(clsHnd);
+    }
+
+    const char* getClassNameFromMetadata(CORINFO_CLASS_HANDLE cls, const char** namespaceName)
+    {
+        return info.compCompHnd->getClassNameFromMetadata(cls, namespaceName);
+    }
+
+    CORINFO_CLASS_HANDLE getTypeInstantiationArgument(CORINFO_CLASS_HANDLE cls, unsigned index)
+    {
+        return info.compCompHnd->getTypeInstantiationArgument(cls, index);
     }
 
 #ifdef FEATURE_SIMD
@@ -8261,21 +8348,6 @@ private:
             return strcmp(namespaceName, "System.Numerics") == 0;
         }
         return false;
-    }
-
-    bool isIntrinsicType(CORINFO_CLASS_HANDLE clsHnd)
-    {
-        return info.compCompHnd->isIntrinsicType(clsHnd);
-    }
-
-    const char* getClassNameFromMetadata(CORINFO_CLASS_HANDLE cls, const char** namespaceName)
-    {
-        return info.compCompHnd->getClassNameFromMetadata(cls, namespaceName);
-    }
-
-    CORINFO_CLASS_HANDLE getTypeInstantiationArgument(CORINFO_CLASS_HANDLE cls, unsigned index)
-    {
-        return info.compCompHnd->getTypeInstantiationArgument(cls, index);
     }
 
     bool isSIMDClass(typeInfo* pTypeInfo)
@@ -9036,6 +9108,45 @@ public:
         bool dspGCtbls;       // Display the GC tables
 #endif
 
+        bool compExpandCallsEarly; // True if we should expand virtual call targets early for this method
+
+// Default numbers used to perform loop alignment. All the numbers are choosen
+// based on experimenting with various benchmarks.
+
+// Default minimum loop block weight required to enable loop alignment.
+#define DEFAULT_ALIGN_LOOP_MIN_BLOCK_WEIGHT 4
+
+// By default a loop will be aligned at 32B address boundary to get better
+// performance as per architecture manuals.
+#define DEFAULT_ALIGN_LOOP_BOUNDARY 0x20
+
+// For non-adaptive loop alignment, by default, only align a loop whose size is
+// at most 3 times the alignment block size. If the loop is bigger than that, it is most
+// likely complicated enough that loop alignment will not impact performance.
+#define DEFAULT_MAX_LOOPSIZE_FOR_ALIGN DEFAULT_ALIGN_LOOP_BOUNDARY * 3
+
+#ifdef DEBUG
+        // Loop alignment variables
+
+        // If set, for non-adaptive alignment, ensure loop jmps are not on or cross alignment boundary.
+        bool compJitAlignLoopForJcc;
+#endif
+        // For non-adaptive alignment, minimum loop size (in bytes) for which alignment will be done.
+        unsigned short compJitAlignLoopMaxCodeSize;
+
+        // Minimum weight needed for the first block of a loop to make it a candidate for alignment.
+        unsigned short compJitAlignLoopMinBlockWeight;
+
+        // For non-adaptive alignment, address boundary (power of 2) at which loop alignment should
+        // be done. By default, 32B.
+        unsigned short compJitAlignLoopBoundary;
+
+        // Padding limit to align a loop.
+        unsigned short compJitAlignPaddingLimit;
+
+        // If set, perform adaptive loop alignment that limits number of padding based on loop size.
+        bool compJitAlignLoopAdaptive;
+
 #ifdef LATE_DISASM
         bool doLateDisasm; // Run the late disassembler
 #endif                     // LATE_DISASM
@@ -9333,6 +9444,8 @@ public:
                                       // current number of EH clauses (after additions like synchronized
         // methods and funclets, and removals like unreachable code deletion).
 
+        Target::ArgOrder compArgOrder;
+
         bool compMatchedVM; // true if the VM is "matched": either the JIT is a cross-compiler
                             // and the VM expects that, or the JIT is a "self-host" compiler
                             // (e.g., x86 hosted targeting x86) and the VM expects that.
@@ -9412,6 +9525,14 @@ public:
             return (info.compRetBuffArg != BAD_VAR_NUM);
         }
 #endif // TARGET_WINDOWS && TARGET_ARM64
+        // 4. x86 unmanaged calling conventions require the address of RetBuff to be returned in eax.
+        CLANG_FORMAT_COMMENT_ANCHOR;
+#if defined(TARGET_X86)
+        if (info.compCallConv != CorInfoCallConvExtension::Managed)
+        {
+            return (info.compRetBuffArg != BAD_VAR_NUM);
+        }
+#endif
 
         return false;
 #endif // TARGET_AMD64
@@ -9570,7 +9691,7 @@ public:
     // In case of Amd64 this doesn't include float regs saved on stack.
     unsigned compCalleeRegsPushed;
 
-#if defined(TARGET_XARCH)
+#if defined(TARGET_XARCH) || defined(TARGET_WASM) // TODO Wasm
     // Mask of callee saved float regs on stack.
     regMaskTP compCalleeFPRegsSavedMask;
 #endif
@@ -9625,14 +9746,14 @@ public:
 
     int compCompile(CORINFO_MODULE_HANDLE classPtr,
                     void**                methodCodePtr,
-                    ULONG*                methodCodeSize,
+                    uint32_t*             methodCodeSize,
                     JitFlags*             compileFlags);
     void compCompileFinish();
     int compCompileHelper(CORINFO_MODULE_HANDLE classPtr,
                           COMP_HANDLE           compHnd,
                           CORINFO_METHOD_INFO*  methodInfo,
                           void**                methodCodePtr,
-                          ULONG*                methodCodeSize,
+                          uint32_t*             methodCodeSize,
                           JitFlags*             compileFlag);
 
     ArenaAllocator* compGetArenaAllocator();
@@ -9783,7 +9904,7 @@ protected:
 #ifdef TARGET_ARMARCH
     bool compRsvdRegCheck(FrameLayoutState curState);
 #endif
-    void compCompile(void** methodCodePtr, ULONG* methodCodeSize, JitFlags* compileFlags);
+    void compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFlags* compileFlags);
 
     // Clear annotations produced during optimizations; to be used between iterations when repeating opts.
     void ResetOptAnnotations();

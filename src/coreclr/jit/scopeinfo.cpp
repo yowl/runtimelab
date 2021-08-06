@@ -48,6 +48,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
  *
  ******************************************************************************
  */
+#ifndef TARGET_WASM
 
 #include "jitpch.h"
 #ifdef _MSC_VER
@@ -377,9 +378,6 @@ void CodeGenInterface::siVarLoc::siFillRegisterVarLoc(
 
 #ifndef TARGET_64BIT
         case TYP_LONG:
-#if !CPU_HAS_FP_SUPPORT
-        case TYP_DOUBLE:
-#endif
             if (varDsc->GetOtherReg() != REG_STK)
             {
                 this->vlType            = VLT_REG_REG;
@@ -411,7 +409,6 @@ void CodeGenInterface::siVarLoc::siFillRegisterVarLoc(
 
 #else // !TARGET_64BIT
 
-#if CPU_HAS_FP_SUPPORT
         case TYP_FLOAT:
         case TYP_DOUBLE:
             if (isFloatRegType(type))
@@ -420,7 +417,6 @@ void CodeGenInterface::siVarLoc::siFillRegisterVarLoc(
                 this->vlFPstk.vlfReg = varDsc->GetRegNum();
             }
             break;
-#endif // CPU_HAS_FP_SUPPORT
 
 #endif // !TARGET_64BIT
 
@@ -1881,3 +1877,4 @@ void CodeGen::psiMoveToStack(unsigned varNum)
 #endif // ACCURATE_PROLOG_DEBUG_INFO
 }
 #endif // USING_SCOPE_INFO
+#endif // !TARGET_WASM

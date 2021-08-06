@@ -8,6 +8,17 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
 add_definitions(-DFEATURE_RX_THUNKS)
 
+if (CLR_CMAKE_TARGET_WIN32)
+  if (CLR_CMAKE_HOST_ARCH_ARM OR CLR_CMAKE_HOST_ARCH_ARM64)
+    # Needed to include AsmOffsets.inc
+    include_directories(BEFORE ${CMAKE_CURRENT_BINARY_DIR})
+    preprocess_files(RUNTIME_SOURCES_ARCH_ASM ${RUNTIME_SOURCES_ARCH_ASM})
+    if (CMAKE_GENERATOR MATCHES "Visual Studio")
+      compile_asm(TARGET Runtime ASM_FILES ${RUNTIME_SOURCES_ARCH_ASM} OUTPUT_OBJECTS RUNTIME_SOURCES_ARCH_ASM)
+    endif()
+  endif()
+endif (CLR_CMAKE_TARGET_WIN32)
+
 add_library(Runtime STATIC ${COMMON_RUNTIME_SOURCES} ${FULL_RUNTIME_SOURCES} ${RUNTIME_SOURCES_ARCH_ASM})
 
 add_library(Runtime.ServerGC STATIC ${COMMON_RUNTIME_SOURCES} ${FULL_RUNTIME_SOURCES} ${RUNTIME_SOURCES_ARCH_ASM} ${SERVER_GC_SOURCES})
@@ -76,9 +87,5 @@ foreach(CONFIG IN LISTS CMAKE_CONFIGURATION_TYPES)
     set_property(SOURCE ${RUNTIME_SOURCES_ARCH_ASM} PROPERTY COMPILE_DEFINITIONS_${CONFIG} ${ASM_DEFINITIONS_${CONFIG}})
 endforeach()
 
-# Install the static Runtime library
-install (TARGETS Runtime Runtime.ServerGC DESTINATION aotsdk)
-if(WIN32)
-    install (FILES ${CMAKE_CURRENT_BINARY_DIR}/Runtime.dir/$<CONFIG>/Runtime.pdb DESTINATION aotsdk)
-    install (FILES ${CMAKE_CURRENT_BINARY_DIR}/Runtime.ServerGC.dir/$<CONFIG>/Runtime.ServerGC.pdb DESTINATION aotsdk)
-endif()
+install_static_library(Runtime aotsdk)
+install_static_library(Runtime.ServerGC aotsdk)

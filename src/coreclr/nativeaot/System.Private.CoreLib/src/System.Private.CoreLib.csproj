@@ -1,4 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+  </PropertyGroup>
+
   <ItemGroup>
     <ILLinkSubstitutionsXmls Include="ILLink\ILLink.Substitutions.xml" />
   </ItemGroup>
@@ -6,7 +10,7 @@
     <ILLinkSubstitutionsXmls Include="ILLink\ILLink.Substitutions.Unix.xml" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetsBrowser)'=='true'">
-    <ILLinkSubstitutionsXmls Include="ILLink\ILLink.Substitutions.llvm.xml" />
+    <ILLinkSubstitutionsXmls Include="ILLink\ILLink.Substitutions.Browser.xml" />
   </ItemGroup>
 
   <PropertyGroup>
@@ -19,13 +23,6 @@
 
   <PropertyGroup>
     <DefineConstants Condition="'$(UseSyncTable)' == 'true'">FEATURE_SYNCTABLE;$(DefineConstants)</DefineConstants>
-  </PropertyGroup>
-  <PropertyGroup>
-    <FeatureCominterop>false</FeatureCominterop>
-    <FeatureCominterop Condition="'$(TargetsWindows)' == 'true'">true</FeatureCominterop>
-  </PropertyGroup>
-  <PropertyGroup>
-    <DefineConstants Condition="'$(FeatureCominterop)' == 'true'">FEATURE_COMINTEROP;$(DefineConstants)</DefineConstants>
   </PropertyGroup>
   <PropertyGroup>
     <FeaturePortableThreadPool Condition="'$(FeaturePortableThreadPool)' == ''">false</FeaturePortableThreadPool>
@@ -332,21 +329,12 @@
     </Compile>
   </ItemGroup>
   <ItemGroup Condition="'$(TargetsUnix)'=='true' or '$(TargetsBrowser)'=='true'">
-    <Compile Include="Microsoft\Win32\SafeHandles\SafeWaitHandle.Unix.cs" />
     <Compile Include="System\Environment.CoreRT.Unix.cs" />
     <Compile Include="System\Runtime\InteropServices\PInvokeMarshal.Unix.cs" />
-    <Compile Include="System\Threading\EventWaitHandle.Unix.cs" />
     <Compile Include="System\Threading\LowLevelLifoSemaphore.Unix.cs" />
-    <Compile Include="System\Threading\Mutex.Unix.cs" />
     <Compile Include="System\Threading\PreAllocatedOverlapped.PlatformNotSupported.cs" />
-    <Compile Include="System\Threading\Semaphore.Unix.cs" />
     <Compile Include="System\Threading\Thread.CoreRT.Unix.cs" />
     <Compile Include="System\Threading\Thread.CoreRT.Wasm.cs" Condition="'$(TargetsBrowser)'=='true'"/>
-    <Compile Include="System\Threading\WaitHandle.Unix.cs" />
-    <Compile Include="System\Threading\WaitSubsystem.HandleManager.Unix.cs" />
-    <Compile Include="System\Threading\WaitSubsystem.ThreadWaitInfo.Unix.cs" />
-    <Compile Include="System\Threading\WaitSubsystem.Unix.cs" />
-    <Compile Include="System\Threading\WaitSubsystem.WaitableObject.Unix.cs" />
     <Compile Include="$(CommonPath)\Interop\Unix\System.Native\Interop.Abort.cs">
       <Link>Interop\Unix\System.Native\Interop.Abort.cs</Link>
     </Compile>
@@ -402,12 +390,6 @@
     </Compile>
     <Compile Include="$(AotCommonPath)\System\Runtime\CompilerServices\__BlockReflectionAttribute.cs">
       <Link>System\Runtime\CompilerServices\__BlockReflectionAttribute.cs</Link>
-    </Compile>
-    <Compile Include="$(CommonPath)\System\NotImplemented.cs">
-      <Link>System\NotImplemented.cs</Link>
-    </Compile>
-    <Compile Include="$(AotCommonPath)\System\CommonRuntimeTypes.cs">
-      <Link>System\CommonRuntimeTypes.cs</Link>
     </Compile>
     <Compile Include="$(CompilerCommonPath)\Internal\NativeFormat\NativeFormatReader.Primitives.cs">
       <Link>Internal\NativeFormat\NativeFormatReader.Primitives.cs</Link>
@@ -491,6 +473,10 @@
   </ItemGroup>
 
   <Import Project="$(LibrariesProjectRoot)\System.Private.CoreLib\src\System.Private.CoreLib.Shared.projitems" Label="Shared" />
+
+  <ItemGroup>
+    <ProjectReference Include="$(LibrariesProjectRoot)\System.Private.CoreLib\generators\System.Private.CoreLib.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- This is the T4 template service and is added by VS anytime you modify a T4 template. Required for .tt files. -->

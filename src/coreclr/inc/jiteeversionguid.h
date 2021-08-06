@@ -12,7 +12,7 @@
 // be changed. This is the identifier verified by ICorJitCompiler::getVersionIdentifier().
 //
 // You can use "uuidgen.exe -s" to generate this value.
-// 
+//
 // Note that this file is parsed by some tools, namely superpmi.py, so make sure the first line is exactly
 // of the form:
 //
@@ -30,12 +30,24 @@
 // NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE NOTE
 //
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
 
-constexpr GUID JITEEVersionIdentifier = { /* 8e32c24d-62fe-4d78-ae73-eedddb928ee2 */
-    0x8e32c24d,
-    0x62fe,
-    0x4d78,
-    {0xae, 0x73, 0xee, 0xdd, 0xdb, 0x92, 0x8e, 0xe2}
+#ifndef GUID_DEFINED
+typedef struct _GUID {
+    uint32_t   Data1;    // NOTE: diff from Win32, for LP64
+    uint16_t   Data2;
+    uint16_t   Data3;
+    uint8_t    Data4[ 8 ];
+} GUID;
+typedef const GUID *LPCGUID;
+#define GUID_DEFINED
+#endif // !GUID_DEFINED
+
+constexpr GUID JITEEVersionIdentifier = { /* ba99f659-11ae-4c05-bdad-650cb5104f26 */
+    0xba99f659,
+    0x11ae,
+    0x4c05,
+    {0xbd, 0xad, 0x65, 0x0c, 0xb5, 0x10, 0x4f, 0x26}
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////

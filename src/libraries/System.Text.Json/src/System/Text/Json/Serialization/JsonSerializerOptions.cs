@@ -4,6 +4,7 @@
 using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 using System.Text.Encodings.Web;
 
@@ -89,6 +90,7 @@ namespace System.Text.Json
 
             Converters = new ConverterList(this, (ConverterList)options.Converters);
             EffectiveMaxDepth = options.EffectiveMaxDepth;
+            ReferenceHandlingStrategy = options.ReferenceHandlingStrategy;
 
             // _classes is not copied as sharing the JsonClassInfo and JsonPropertyInfo caches can result in
             // unnecessary references to type metadata, potentially hindering garbage collection on the source options.
@@ -487,8 +489,12 @@ namespace System.Text.Json
             {
                 VerifyMutable();
                 _referenceHandler = value;
+                ReferenceHandlingStrategy = value?.HandlingStrategy ?? ReferenceHandlingStrategy.None;
             }
         }
+
+        // The cached value used to determine if ReferenceHandler should use Preserve or IgnoreCycles semanitcs or None of them.
+        internal ReferenceHandlingStrategy ReferenceHandlingStrategy = ReferenceHandlingStrategy.None;
 
         internal MemberAccessor MemberAccessorStrategy
         {
@@ -496,8 +502,12 @@ namespace System.Text.Json
             {
                 if (_memberAccessorStrategy == null)
                 {
-#if NETFRAMEWORK || NETCOREAPP
+#if NETFRAMEWORK
                     _memberAccessorStrategy = new ReflectionEmitMemberAccessor();
+#elif NETCOREAPP
+                    _memberAccessorStrategy = RuntimeFeature.IsDynamicCodeSupported
+                        ? new ReflectionEmitMemberAccessor()
+                        : new ReflectionMemberAccessor();
 #else
                     _memberAccessorStrategy = new ReflectionMemberAccessor();
 #endif

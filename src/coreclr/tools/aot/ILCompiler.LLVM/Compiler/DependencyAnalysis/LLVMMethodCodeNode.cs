@@ -10,8 +10,10 @@ using Internal.TypeSystem;
 
 namespace ILCompiler.DependencyAnalysis
 {
-    internal abstract class LLVMMethodCodeNode : DependencyNodeCore<NodeFactory>
+    internal abstract class LLVMMethodCodeNode : DependencyNodeCore<NodeFactory>, IMethodCodeNode
     {
+        private bool _isStateMachineMoveNextMethod;
+
         protected readonly MethodDesc _method;
         protected DependencyList _dependencies;
 
@@ -52,6 +54,62 @@ namespace ILCompiler.DependencyAnalysis
 
         public override IEnumerable<CombinedDependencyListEntry> GetConditionalStaticDependencies(NodeFactory factory) => null;
         public override IEnumerable<CombinedDependencyListEntry> SearchDynamicDependencies(List<DependencyNodeCore<NodeFactory>> markedNodes, int firstNode, NodeFactory factory) => null;
+        public int ClassCode { get; }
+
+        public int CompareToImpl(ISortableNode other, CompilerComparer comparer)
+        {
+            return comparer.Compare(_method, ((LLVMMethodCodeNode)other)._method);
+        }
+
+        public void SetCode(ObjectNode.ObjectData data, bool isFoldable)
+        {
+            DependencyListEntry[] entries = new DependencyListEntry[data.Relocs.Length];
+            for (int i = 0; i < data.Relocs.Length; i++)
+            {
+                entries[i] = new DependencyListEntry(data.Relocs[i].Target, "ObjectData Reloc");
+            }
+
+            _dependencies = new DependencyList(entries);
+        }
+
+        public void InitializeFrameInfos(FrameInfo[] frameInfos)
+        {
+        }
+
+        public void InitializeDebugEHClauseInfos(DebugEHClauseInfo[] debugEhClauseInfos)
+        {
+        }
+
+        public void InitializeGCInfo(byte[] gcInfo)
+        {
+        }
+
+        public void InitializeEHInfo(ObjectNode.ObjectData ehInfo)
+        {
+        }
+
+        public void InitializeDebugLocInfos(DebugLocInfo[] debugLocInfos)
+        {
+        }
+
+        public void InitializeDebugVarInfos(DebugVarInfo[] debugVarInfos)
+        {
+        }
+
+        public void InitializeNonRelocationDependencies(DependencyList additionalDependencies)
+        {
+            if (additionalDependencies == null) return;
+
+            for (int i = 0; i < additionalDependencies.Count; i++)
+            {
+                _dependencies.Add(additionalDependencies[i]);
+            }
+        }
+
+        public void InitializeIsStateMachineMoveNextMethod(bool value)
+        {
+            _isStateMachineMoveNextMethod = value;
+        }
     }
 
     internal class LlvmMethodBodyNode : LLVMMethodCodeNode, IMethodBodyNode

@@ -1,7 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 /*****************************************************************************/
-
+#ifndef TARGET_WASM
 #ifndef _LSRA_H_
 #define _LSRA_H_
 
@@ -968,6 +968,7 @@ private:
     bool isSecondHalfReg(RegRecord* regRec, Interval* interval);
     RegRecord* getSecondHalfRegRec(RegRecord* regRec);
     RegRecord* findAnotherHalfRegRec(RegRecord* regRec);
+    regNumber findAnotherHalfRegNum(regNumber regNum);
     bool canSpillDoubleReg(RegRecord* physRegRecord, LsraLocation refLocation);
     void unassignDoublePhysReg(RegRecord* doubleRegRecord);
 #endif
@@ -2374,3 +2375,4 @@ void dumpRegMask(regMaskTP regs);
 /*****************************************************************************/
 #endif //_LSRA_H_
 /*****************************************************************************/
+#endif // TARGET_WASM

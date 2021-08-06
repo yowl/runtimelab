@@ -16,7 +16,7 @@ using Internal.JitInterface;
 
 namespace ILCompiler
 {
-    public sealed class RyuJitCompilation : Compilation
+    public class RyuJitCompilation : Compilation
     {
         private readonly ConditionalWeakTable<Thread, CorInfoImpl> _corinfos = new ConditionalWeakTable<Thread, CorInfoImpl>();
         internal readonly RyuJitCompilationOptions _compilationOptions;
@@ -26,7 +26,7 @@ namespace ILCompiler
 
         public InstructionSetSupport InstructionSetSupport { get; }
 
-        internal RyuJitCompilation(
+        public RyuJitCompilation(
             DependencyAnalyzerBase<NodeFactory> dependencyGraph,
             NodeFactory nodeFactory,
             IEnumerable<ICompilationRootProvider> roots,
@@ -34,9 +34,10 @@ namespace ILCompiler
             DebugInformationProvider debugInformationProvider,
             Logger logger,
             DevirtualizationManager devirtualizationManager,
+            IInliningPolicy inliningPolicy,
             InstructionSetSupport instructionSetSupport,
             RyuJitCompilationOptions options)
-            : base(dependencyGraph, nodeFactory, roots, ilProvider, debugInformationProvider, devirtualizationManager, logger)
+            : base(dependencyGraph, nodeFactory, roots, ilProvider, debugInformationProvider, devirtualizationManager, inliningPolicy, logger)
         {
             _compilationOptions = options;
             _hardwareIntrinsicFlags = new ExternSymbolMappedField(nodeFactory.TypeSystemContext.GetWellKnownType(WellKnownType.Int32), "g_cpuFeatures");
@@ -188,6 +189,11 @@ namespace ILCompiler
             }
 
             return base.GetMethodIL(method);
+        }
+
+        public virtual void AddOrReturnGlobalSymbol(ISortableSymbolNode gcStaticSymbol, NameMangler nameMangler)
+        {
+            throw new NotImplementedException("only called from clrjit for LLVM, what is a better way to do this?");
         }
     }
 
