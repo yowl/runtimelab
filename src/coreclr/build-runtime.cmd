@@ -203,6 +203,7 @@ if %__BuildArchArm64%==1 (
     if /i not "%__ProcessorArch%"=="ARM64" set __CrossArch=x64
 )
 if %__BuildArchWasm%==1 (
+    echo __BuildArchWasm is 1
     set __TargetOS=browser
     set __BuildArch=wasm
     set __BuildJit=0
@@ -654,6 +655,7 @@ echo after checking __ConfigureOnly
     if %__Ninja% EQU 1 (
         set __CmakeBuildToolArgs=
     ) else (
+echo not Ninja
         REM We pass the /m flag directly to MSBuild so that we can get both MSBuild and CL parallelism, which is fastest for our builds.
         REM wasm uses nmake which does not support /m
         if not "%__BuildArch%" == "wasm" (
