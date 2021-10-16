@@ -50,7 +50,8 @@ struct DebugMetadata
 // TODO: might need the LLVM Value* in here for exception funclets.
 struct SpilledExpressionEntry
 {
-    CorInfoType m_CorInfoType;
+    CorInfoType          corInfoType;
+    CORINFO_CLASS_HANDLE classHandle;
 };
 
 enum class ValueLocation
@@ -114,6 +115,7 @@ static const char* (*_getDocumentFileName)(void*);
 static const uint32_t (*_firstSequencePointLineNumber)(void*);
 static const uint32_t (*_getOffsetLineNumber)(void*, unsigned int ilOffset);
 static const uint32_t(*_structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType);
+static const uint32_t(*_padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned atOffset);
 
 static char*                              _outputFileName;
 static Function*                          _doNothingFunction;
@@ -154,7 +156,8 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
                                                 const char* (*getDocumentFileName)(void*),
                                                 const uint32_t (*firstSequencePointLineNumber)(void*),
                                                 const uint32_t (*getOffsetLineNumber)(void*, unsigned int),
-                                                const uint32_t(*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType))
+                                                const uint32_t(*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType),
+                                                const uint32_t(*padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned atOffset))
 {
     _thisPtr = thisPtr;
     _getMangledMethodName         = getMangledMethodNamePtr;
@@ -165,6 +168,7 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
     _firstSequencePointLineNumber = firstSequencePointLineNumber;
     _getOffsetLineNumber          = getOffsetLineNumber;
     _structIsWrappedPrimitive     = structIsWrappedPrimitive;
+    _padOffset                    = padOffset;
 
     if (_module == nullptr) // registerLlvmCallbacks is called for each method to compile, but must only created the module once.  Better perhaps to split this into 2 calls.
     {
@@ -534,7 +538,7 @@ CorInfoType toCorInfoType(var_types varType)
 }
 
 
-unsigned int padOffset(CorInfoType corInfoType, unsigned int atOffset)
+unsigned int padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset)
 {
     unsigned int alignment;
     if (corInfoType == CorInfoType::CORINFO_TYPE_BYREF || corInfoType == CorInfoType::CORINFO_TYPE_CLASS ||
@@ -545,17 +549,21 @@ unsigned int padOffset(CorInfoType corInfoType, unsigned int atOffset)
     }
     else
     {
-        // TODO: value type field alignment - this is the ILToLLVMImporter logic:
-        //var fieldAlignment = type is DefType && type.IsValueType ? ((DefType)type).InstanceFieldAlignment
-        //                                                         : type.Context.Target.LayoutPointerSize;
-        //var alignment      = LayoutInt.Min(fieldAlignment, new LayoutInt(ComputePackingSize(type))).AsInt;
-        //var padding        = (atOffset + (alignment - 1)) & ~(alignment - 1);
+        if (corInfoType == CorInfoType::CORINFO_TYPE_VALUECLASS)
+        {
+            // TODO: value type field alignment - this is the ILToLLVMImporter logic:
+            //var fieldAlignment = type is DefType && type.IsValueType ? ((DefType)type).InstanceFieldAlignment
+            //                                                         : type.Context.Target.LayoutPointerSize;
+            //var alignment      = LayoutInt.Min(fieldAlignment, new LayoutInt(ComputePackingSize(type))).AsInt;
+            //var padding        = (atOffset + (alignment - 1)) & ~(alignment - 1);
+            return _padOffset(_thisPtr, classHandle, atOffset);
+        }
         failFunctionCompilation();
     }
     return roundUp(atOffset, alignment);
 }
 
-unsigned int padNextOffset(CorInfoType corInfoType, unsigned int atOffset)
+unsigned int padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset)
 {
     unsigned int size;
     if (corInfoType == CorInfoType::CORINFO_TYPE_BYREF || corInfoType == CorInfoType::CORINFO_TYPE_CLASS ||
@@ -565,12 +573,17 @@ unsigned int padNextOffset(CorInfoType corInfoType, unsigned int atOffset)
     }
     else
     {
-        // TODO: value type field size - this is the ILToLLVMImporter logic:
-        // var size = type is DefType && type.IsValueType ? ((DefType)type).InstanceFieldSize
-        //                                               : type.Context.Target.LayoutPointerSize;
-        failFunctionCompilation(); // TODO value type sizes and alignment
+        // LLVM-TODO: LCLBLK size
+        if (corInfoType == CorInfoType::CORINFO_TYPE_VALUECLASS)
+        {
+            size = getElementSize(classHandle, corInfoType);
+        }
+        else
+        {
+            size = TARGET_POINTER_SIZE;
+        }
     }
-    return padOffset(corInfoType, atOffset) + size;
+    return padOffset(corInfoType, classHandle, atOffset) + size;
 }
 
 /// <summary>
@@ -902,7 +915,7 @@ int getTotalParameterOffset(CORINFO_SIG_INFO& sigInfo)
         CorInfoType corInfoType = getCorInfoTypeForArg(sigInfo, sigArgs, &clsHnd);
         if (!canStoreArgOnLlvmStack(corInfoType, clsHnd))
         {
-            offset = padNextOffset(corInfoType, offset);
+            offset = padNextOffset(corInfoType, clsHnd, offset);
         }
     }
 
@@ -919,10 +932,11 @@ unsigned int getTotalRealLocalOffset()
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
         if (!varDsc->lvIsParam)
         {
-            CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
             if (!canStoreLocalOnLlvmStack(varDsc))
             {
-                offset = padNextOffset(corInfoType, offset);
+                CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
+
+                offset = padNextOffset(corInfoType, varDsc->lvClassHnd, offset);
             }
         }
     }
@@ -935,7 +949,7 @@ unsigned int getTotalLocalOffset()
     unsigned int offset = getTotalRealLocalOffset();
     for (unsigned int i = 0; i < _spilledExpressions.size(); i++)
     {
-        offset = padNextOffset(_spilledExpressions[i].m_CorInfoType, offset);
+        offset = padNextOffset(_spilledExpressions[i].corInfoType, _spilledExpressions[i].classHandle, offset);
     }
     return AlignUp(offset, TARGET_POINTER_SIZE);
 }
@@ -946,9 +960,9 @@ unsigned int getSpillOffsetAtIndex(unsigned int index, unsigned int offset)
 
     for (unsigned int i = 0; i < index; i++)
     {
-        offset = padNextOffset(_spilledExpressions[i].m_CorInfoType, offset);
+        offset = padNextOffset(_spilledExpressions[i].corInfoType, spill.classHandle, offset);
     }
-    offset = padOffset(spill.m_CorInfoType, offset);
+    offset = padOffset(spill.corInfoType, spill.classHandle, offset);
     return offset;
 }
 
@@ -1469,11 +1483,11 @@ int getLocalOffsetAtIndex(GenTreeLclVar* lclVar)
                 CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
                 if (!canStoreLocalOnLlvmStack(varDsc))
                 {
-                    offset = padNextOffset(corInfoType, offset);
+                    offset = padNextOffset(corInfoType, varDsc->lvClassHnd, offset);
                 }
             }
         }
-        offset = padOffset(toCorInfoType(lclVar->TypeGet()), offset);
+        offset = padOffset(toCorInfoType(lclVar->TypeGet()), varDsc->lvClassHnd, offset);
     }
     return offset;
 }

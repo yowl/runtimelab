@@ -31,7 +31,8 @@ extern "C" void registerLlvmCallbacks(void*       thisPtr,
                                       const char* (*getDocumentFileName)(void*),
                                       const uint32_t (*firstSequencePointLineNumber)(void*),
                                       const uint32_t (*getOffsetLineNumber)(void*, unsigned int),
-                                      const uint32_t (*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType));
+                                      const uint32_t (*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType),
+                                      const uint32_t(*padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned atOffset));
 
 class Llvm
 {
