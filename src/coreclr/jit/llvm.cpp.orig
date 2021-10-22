@@ -500,6 +500,11 @@ unsigned int padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle
     {
         if (corInfoType == CorInfoType::CORINFO_TYPE_VALUECLASS)
         {
+            // TODO: value type field alignment - this is the ILToLLVMImporter logic:
+            //var fieldAlignment = type is DefType && type.IsValueType ? ((DefType)type).InstanceFieldAlignment
+            //                                                         : type.Context.Target.LayoutPointerSize;
+            //var alignment      = LayoutInt.Min(fieldAlignment, new LayoutInt(ComputePackingSize(type))).AsInt;
+            //var padding        = (atOffset + (alignment - 1)) & ~(alignment - 1);
             return _padOffset(_thisPtr, classHandle, atOffset);
         }
         failFunctionCompilation();
@@ -857,7 +862,27 @@ int getTotalParameterOffset(CORINFO_SIG_INFO& sigInfo)
 
 unsigned int getTotalRealLocalOffset()
 {
+<<<<<<< HEAD
+    unsigned int offset = 0;
+
+    for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
+    {
+        LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
+        if (!varDsc->lvIsParam)
+        {
+            if (!canStoreLocalOnLlvmStack(varDsc))
+            {
+                CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
+
+                offset = padNextOffset(corInfoType, varDsc->lvClassHnd, offset);
+            }
+        }
+    }
+
+    return AlignUp(offset, TARGET_POINTER_SIZE);
+=======
     return _shadowStackLocalsSize;
+>>>>>>> ss-locals-bash
 }
 
 unsigned int getTotalLocalOffset()
@@ -1759,11 +1784,6 @@ void Llvm::ConvertShadowStackLocals()
                     genTreeOps oper = lclVar->TypeGet() == var_types::TYP_STRUCT ? GT_OBJ : GT_IND;
 
                     node->ChangeOper(oper);
-                    if (oper == GT_OBJ)
-                    {
-                        node->AsBlk()->SetLayout(varDsc->GetLayout());
-                    }
-
                     node->AsOp()->gtOp1 = addNode;
 
                     insertAddWithOperands(lirRange, node, addNode, offset, shadowStackVar);
@@ -1812,10 +1832,9 @@ void Llvm::PlaceAndConvertShadowStackLocals()
     {
         LclVarDsc* varDsc = locals.at(i);
         CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
-        CORINFO_CLASS_HANDLE classHandle = corInfoType == CORINFO_TYPE_VALUECLASS ? varDsc->GetStructHnd() : varDsc->lvClassHnd;
-        offset = padOffset(corInfoType, classHandle, offset);
+        offset = padOffset(corInfoType, offset);
         varDsc->SetStackOffset(offset);
-        offset = padNextOffset(corInfoType, classHandle, offset);
+        offset = padNextOffset(corInfoType, offset);
     }
     _shadowStackLocalsSize = offset;
 
