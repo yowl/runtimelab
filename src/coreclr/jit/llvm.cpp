@@ -1596,8 +1596,11 @@ void Llvm::ConvertShadowStackLocals()
                     failFunctionCompilation();
                 }
 
-                assert(_retAddressLclNum == BAD_VAR_NUM);
-                _retAddressLclNum = _compiler->lvaGrabTemp(true DEBUGARG("shadowstack"));
+                // RETURN from multiple blocks is possible
+                if (_retAddressLclNum == BAD_VAR_NUM)
+                {
+                    _retAddressLclNum = _compiler->lvaGrabTemp(true DEBUGARG("shadowstack"));
+                }
                 LclVarDsc* retAddressVarDsc = _compiler->lvaGetDesc(_retAddressLclNum);
                 retAddressVarDsc->lvIsParam = 1;
                 retAddressVarDsc->lvType = TYP_I_IMPL;
