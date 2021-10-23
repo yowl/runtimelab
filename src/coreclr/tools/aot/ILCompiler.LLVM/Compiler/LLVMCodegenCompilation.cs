@@ -257,6 +257,11 @@ namespace ILCompiler
             return ILImporter.StructIsWrappedPrimitive(method, primitiveTypeDesc);
         }
 
+        public override bool StructIsWrappedPrimitive(TypeDesc method, TypeDesc primitiveTypeDesc)
+        {
+            return ILImporter.StructIsWrappedPrimitive(method, primitiveTypeDesc);
+        }
+
         public override int PadOffset(TypeDesc type, uint atOffset)
         {
             return ILImporter.PadOffset(type, (int)atOffset);
