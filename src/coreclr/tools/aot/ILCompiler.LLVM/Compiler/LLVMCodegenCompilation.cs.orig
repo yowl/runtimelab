@@ -143,7 +143,7 @@ namespace ILCompiler
 
                     ryuJitMethodCount++;
                 }
-                else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
+                    else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
             }
             catch (CodeGenerationFailedException)
             {
@@ -256,10 +256,13 @@ namespace ILCompiler
         {
             return ILImporter.StructIsWrappedPrimitive(method, primitiveTypeDesc);
         }
+<<<<<<< HEAD
 
         public override int PadOffset(TypeDesc type, uint atOffset)
         {
             return ILImporter.PadOffset(type, (int)atOffset);
         }
+=======
+>>>>>>> yowl/ss-locals-bash
     }
 }

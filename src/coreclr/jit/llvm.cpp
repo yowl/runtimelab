@@ -298,178 +298,6 @@ llvm::Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
     return _llvmStructs->at(structHandle);
 }
 
-// maintains compatiblity with the IL->LLVM generation.  TODO-LLVM, when IL generation is no more, see if we can remove this unwrapping
-bool structIsWrappedPrimitive(CORINFO_CLASS_HANDLE classHnd, CorInfoType primitiveType)
-{
-    return (*_structIsWrappedPrimitive)(_thisPtr, classHnd, primitiveType);
-}
-
-void addPaddingFields(unsigned paddingSize, std::vector<Type*> llvmFields)
-{
-    unsigned numInts = paddingSize / 4;
-    unsigned numBytes = paddingSize - numInts * 4;
-    for (unsigned i = 0; i < numInts; i++)
-    {
-        llvmFields.push_back(Type::getInt32Ty(_llvmContext));
-    }
-    for (unsigned i = 0; i < numBytes; i++)
-    {
-        llvmFields.push_back(Type::getInt8Ty(_llvmContext));
-    }
-}
-
-unsigned getWellKnownTypeSize(CorInfoType corInfoType)
-{
-    return genTypeSize(JITtype2varType(corInfoType));
-}
-
-unsigned getElementSize(CORINFO_CLASS_HANDLE fieldClassHandle, CorInfoType corInfoType)
-{
-    if (fieldClassHandle != NO_CLASS_HANDLE)
-    {
-        return _info.compCompHnd->getClassSize(fieldClassHandle);
-    }
-    return getWellKnownTypeSize(corInfoType);
-}
-
-llvm::Type* getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
-{
-    if (_llvmStructs->find(structHandle) == _llvmStructs->end())
-    {
-        llvm::Type* llvmType;
-
-        // LLVM thinks certain sizes of struct have a different calling convention than Clang does.
-        // Treating them as ints fixes that and is more efficient in general
-
-        unsigned structSize = _info.compCompHnd->getClassSize(structHandle);
-        unsigned structAlignment = _info.compCompHnd->getClassAlignmentRequirement(structHandle);
-        switch (structSize)
-        {
-            case 1:
-                llvmType = Type::getInt8Ty(_llvmContext);
-                break;
-            case 2:
-                if (structAlignment == 2)
-                {
-                    llvmType = Type::getInt16Ty(_llvmContext);
-                    break;
-                }
-            case 4:
-                if (structAlignment == 4)
-                {
-                    if (structIsWrappedPrimitive(structHandle, CORINFO_TYPE_FLOAT))
-                    {
-                        llvmType = Type::getFloatTy(_llvmContext);
-                    }
-                    else
-                    {
-                        llvmType = Type::getInt32Ty(_llvmContext);
-                    }
-                    break;
-                }
-            case 8:
-                if (structAlignment == 8)
-                {
-                    if (structIsWrappedPrimitive(structHandle, CORINFO_TYPE_DOUBLE))
-                    {
-                        llvmType = Type::getDoubleTy(_llvmContext);
-                    }
-                    else
-                    {
-                        llvmType = Type::getInt64Ty(_llvmContext);
-                    }
-                    break;
-                }
-
-            default:
-                // Forward-declare the struct in case there's a reference to it in the fields.
-                // This must be a named struct or LLVM hits a stack overflow
-                const char* name = _info.compCompHnd->getClassName(structHandle);
-                llvm::StructType* llvmStructType = llvm::StructType::create(_llvmContext, _info.compCompHnd->getClassName(structHandle));
-                llvmType = llvmStructType;
-                unsigned fieldCnt = _info.compCompHnd->getClassNumInstanceFields(structHandle);
-
-                std::vector<CORINFO_FIELD_HANDLE> sparseFields = std::vector<CORINFO_FIELD_HANDLE>(structSize);
-                std::vector<Type*> llvmFields = std::vector<Type*>();
-
-                for (unsigned i = 0; i < structSize; i++) sparseFields[i] = nullptr;
-
-                for (unsigned i = 0; i < fieldCnt; i++)
-                {
-                    CORINFO_FIELD_HANDLE fieldHandle = _info.compCompHnd->getFieldInClass(structHandle, i);
-                    unsigned fldOffset = _info.compCompHnd->getFieldOffset(fieldHandle);
-
-                    assert(fldOffset < structSize);
-
-                    // store the biggest field at the offset for unions
-                    if (sparseFields[fldOffset] == nullptr ||
-                        _info.compCompHnd->getClassSize(_info.compCompHnd->getFieldClass(fieldHandle)) > _info.compCompHnd->getClassSize(_info.compCompHnd->getFieldClass(sparseFields[fldOffset])))
-                    {
-                        sparseFields[fldOffset] = fieldHandle;
-                    }
-                }
-                unsigned lastOffset = -1;
-                CORINFO_CLASS_HANDLE prevClass = nullptr;
-                CorInfoType prevCorInfoType = CorInfoType::CORINFO_TYPE_UNDEF;
-                unsigned totalSize = 0;
-
-                for (unsigned curOffset = 0; curOffset < structSize;)
-                {
-                    CORINFO_FIELD_HANDLE fieldHandle = sparseFields[curOffset];
-                    if (fieldHandle == nullptr)
-                    {
-                        curOffset++;
-                        continue;
-                    }
-
-                    int prevElementSize;
-                    if (prevCorInfoType == CorInfoType::CORINFO_TYPE_UNDEF)
-                    {
-                        lastOffset = 0;
-                        prevElementSize = 0;
-                    }
-                    else
-                    {
-                        prevElementSize = getElementSize(prevClass, prevCorInfoType);
-                    }
-
-                    // Pad to this field if necessary
-                    unsigned paddingSize = curOffset - lastOffset - prevElementSize;
-                    if (paddingSize > 0)
-                    {
-                        addPaddingFields(paddingSize, llvmFields);
-                        totalSize += paddingSize;
-                    }
-
-                    CORINFO_CLASS_HANDLE fieldClassHandle = NO_CLASS_HANDLE;
-                    CorInfoType fieldCorType = _info.compCompHnd->getFieldType(fieldHandle, &fieldClassHandle);
-                    
-                    int fieldSize = getElementSize(fieldClassHandle, fieldCorType);
-
-                    llvmFields.push_back(getLlvmTypeForCorInfoType(fieldCorType, fieldClassHandle));
-
-                    totalSize += fieldSize;
-                    lastOffset = curOffset;
-                    prevClass = fieldClassHandle;
-                    prevCorInfoType = fieldCorType;
-
-                    curOffset += fieldSize;
-                }
-
-                // If explicit layout is greater than the sum of fields, add padding
-                if (totalSize < structSize)
-                {
-                    addPaddingFields(structSize - totalSize, llvmFields);
-                }
-
-                llvmStructType->setBody(llvmFields, true);
-                break;
-        }
-        _llvmStructs->insert({ structHandle, llvmType });
-    }
-    return _llvmStructs->at(structHandle);
-}
-
 // Copy of logic from ILImporter.GetLLVMTypeForTypeDesc
 llvm::Type* Llvm::getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd)
 {
@@ -1579,7 +1407,6 @@ void Llvm::startImportingNode()
     }
 }
 
-
 Llvm::Llvm(Compiler* pCompiler)
     : _compiler(pCompiler),
       _info(pCompiler->info),
@@ -1781,190 +1608,6 @@ void Llvm::ConvertShadowStackLocals()
     }
 }
 
-
-Llvm::Llvm(Compiler* pCompiler)
-{
-    _compiler = pCompiler;
-    _info = pCompiler->info;
-
-    _function = nullptr;
-    _requiresShadowStackAddSubsitution = false;
-    _sigInfoIsValid = false;
-}
-
-void Llvm::llvmShutdown()
-{
-    if (_diBuilder != nullptr)
-    {
-        emitDebugMetadata(_llvmContext);
-    }
-#if DEBUG
-    if (_outputFileName == nullptr) return; // nothing generated
-    std::error_code ec;
-    char* txtFileName = (char*)malloc(strlen(_outputFileName) + 2); // .txt is longer than .bc
-    strcpy(txtFileName, _outputFileName);
-    strcpy(txtFileName + strlen(_outputFileName) - 2, "txt");
-    llvm::raw_fd_ostream textOutputStream(txtFileName, ec);
-    _module->print(textOutputStream, (llvm::AssemblyAnnotationWriter*)NULL);
-    free(txtFileName);
-#endif //DEBUG
-    llvm::raw_fd_ostream OS(_outputFileName, ec);
-    llvm::WriteBitcodeToFile(*_module, OS);
-    delete _module;
-    //    Module.Verify(LLVMVerifierFailureAction.LLVMAbortProcessAction);
-}
-
-GenTree* createAddNodeForShadowStackLocal(LclVarDsc* varDsc, unsigned shadowStackLclNum, GenTreeIntCon*& offset, GenTreeLclVar*& shadowStackVar)
-{
-    // TODO-LLVM: if the offset == 0, just GT_STOREIND at the shadowStack
-    offset = _compiler->gtNewOneConNode(var_types::TYP_INT)->AsIntCon();
-    offset->SetIconValue(varDsc->GetStackOffset());
-    shadowStackVar = _compiler->gtNewLclvNode(shadowStackLclNum, var_types::TYP_REF);
-    return _compiler->gtNewOperNode(genTreeOps::GT_ADD, var_types::TYP_REF, shadowStackVar, offset);
-}
-
-void insertAddWithOperands(LIR::Range& lirRange, GenTree* node, GenTree* addNode, GenTreeIntCon* offset, GenTreeLclVar* shadowStackVar)
-{
-    lirRange.InsertBefore(node, offset);
-    lirRange.InsertAfter(offset, shadowStackVar);
-    lirRange.InsertAfter(shadowStackVar, addNode);
-}
-
-void Llvm::ConvertShadowStackLocals()
-{
-    unsigned shadowStackLclNum = _compiler->lvaGrabTemp(false, "shadowstack"); // TODO-LLVM: create a new local as a temp, is this right?  Copied from lower.cpp
-
-    GenTreeIntCon* shadowStackOffset = _compiler->gtNewOneConNode(var_types::TYP_UINT)->AsIntCon(); // LLVM-TODO: TYP_LONG for Wasm64?
-
-    _compiler->eeGetMethodSig(_compiler->info.compMethodHnd, &_sigInfo);
-    _sigInfoIsValid = true;
-
-    shadowStackOffset->SetIconValue(getTotalParameterOffset(_sigInfo));
-
-    // This is a placeholder that we'll replace at LLVM generation as there is no IR Node or Arg
-    GenTreeIntCon* shadowStackArg = _compiler->gtNewOneConNode(var_types::TYP_UINT)->AsIntCon();
-
-    // TODO-LLVM : is GT_ADD the right way to do pointer arithmetic?
-    GenTree* localShadowStack = _compiler->gtNewOperNode(genTreeOps::GT_ADD, var_types::TYP_REF, shadowStackArg, shadowStackOffset);
-
-    GenTreeLclVar* shadowStack = _compiler->gtNewStoreLclVar(shadowStackLclNum, localShadowStack);
-    LclVarDsc* shadowStackVarDsc = _compiler->lvaGetDesc(shadowStack->GetLclNum());
-    shadowStackVarDsc->lvIsParam = 1;
-    shadowStackVarDsc->lvType = var_types::TYP_REF;
-
-    // insert the local shadowstack offest at the beginning of the first block
-    // This position is well known and replaced at LLVM generation
-    // LLVM-TODO: This is maybe not the best strategy, how else could we identity these IR nodes - a new block?
-    BasicBlock* firstBlock = _compiler->fgFirstBB;
-    LIR::Range& firstRange = LIR::AsRange(firstBlock);
-    firstRange.InsertAtBeginning(shadowStackOffset);
-    firstRange.InsertAfter(shadowStackOffset, shadowStackArg);
-    firstRange.InsertAfter(shadowStackArg, localShadowStack);
-    firstRange.InsertAfter(localShadowStack, shadowStack);
-
-    for (BasicBlock* const block : _compiler->Blocks())
-    {
-        LIR::Range& lirRange = LIR::AsRange(block);
-        for (GenTree* node : LIR::AsRange(block))
-        {
-            genTreeOps oper = node->OperGet();
-            if (oper == GT_STORE_LCL_VAR)
-            {
-                GenTreeLclVarCommon* lclVar = node->AsLclVarCommon();
-                LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar->GetLclNum());
-                if (!varDsc->lvIsParam && !canStoreLocalOnLlvmStack(varDsc))
-                {
-                    GenTreeIntCon* offset;
-                    GenTreeLclVar* shadowStackVar;
-                    GenTree* addNode = createAddNodeForShadowStackLocal(varDsc, shadowStackLclNum, offset, shadowStackVar);
-
-                    genTreeOps oper = lclVar->TypeGet() == var_types::TYP_STRUCT ? GT_STORE_OBJ : GT_STOREIND;
-
-                    node->ChangeOper(oper);
-                    node->gtFlags |= GTF_IND_TGT_NOT_HEAP;
-                    GenTreeOp* opNode = node->AsOp();
-                    opNode->gtOp2 = opNode->gtGetOp1();
-                    opNode->gtOp1 = addNode;
-
-                    insertAddWithOperands(lirRange, node, addNode, offset, shadowStackVar);
-                }
-            }
-            else if (oper == GT_LCL_VAR)
-            {
-                GenTreeLclVarCommon* lclVar = node->AsLclVarCommon();
-                LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar->GetLclNum());
-                if (!varDsc->lvIsParam && !canStoreLocalOnLlvmStack(varDsc))
-                {
-                    GenTreeIntCon* offset;
-                    GenTreeLclVar* shadowStackVar;
-                    GenTree* addNode = createAddNodeForShadowStackLocal(varDsc, shadowStackLclNum, offset, shadowStackVar);
-
-                    genTreeOps oper = lclVar->TypeGet() == var_types::TYP_STRUCT ? GT_OBJ : GT_IND;
-
-                    node->ChangeOper(oper);
-                    if (oper == GT_OBJ)
-                    {
-                        node->AsBlk()->SetLayout(varDsc->GetLayout());
-                    }
-
-                    node->AsOp()->gtOp1 = addNode;
-
-                    insertAddWithOperands(lirRange, node, addNode, offset, shadowStackVar);
-                }
-            }
-        }
-    }
-
-    if (_compiler->verboseTrees)
-    {
-        _compiler->fgDispBasicBlocks(true);
-    }
-}
-
-//------------------------------------------------------------------------
-// Convert GT_STORE_LCL_VAR and GT_LCL_VAR to use the shadow stack when the local needs to be GC tracked
-//
-void Llvm::PlaceAndConvertShadowStackLocals()
-{
-    _shadowStackLocalsSize = 0;
-    if (_compiler->lvaCount == 0) return;
-
-    std::vector<LclVarDsc*> locals;
-
-    unsigned lclNum;
-    LclVarDsc* varDsc;
-    for (lclNum = 0, varDsc = _compiler->lvaTable; lclNum < _compiler->lvaCount; lclNum++, varDsc++)
-    {
-        if (!varDsc->lvIsParam && !canStoreLocalOnLlvmStack(varDsc))
-        {
-            locals.push_back(varDsc);
-        }
-    }
-
-    if (locals.size() == 0) return;
-
-    _requiresShadowStackAddSubsitution = true;
-    if (_compiler->opts.OptimizationEnabled())
-    {
-        auto cmpLambda = [](const LclVarDsc* lhs, const LclVarDsc* rhs) { return lhs->lvRefCntWtd() > rhs->lvRefCntWtd(); };
-        std::sort(locals.begin(), locals.end(), cmpLambda);
-    }
-
-    unsigned int offset = 0;
-    for (unsigned i = 0; i < locals.size(); i++)
-    {
-        LclVarDsc* varDsc = locals.at(i);
-        CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
-        CORINFO_CLASS_HANDLE classHandle = corInfoType == CORINFO_TYPE_VALUECLASS ? varDsc->GetStructHnd() : varDsc->lvClassHnd;
-        offset = padOffset(corInfoType, classHandle, offset);
-        varDsc->SetStackOffset(offset);
-        offset = padNextOffset(corInfoType, classHandle, offset);
-    }
-    _shadowStackLocalsSize = offset;
-
-    ConvertShadowStackLocals();
-}
-
 //------------------------------------------------------------------------
 // Convert GT_STORE_LCL_VAR and GT_LCL_VAR to use the shadow stack when the local needs to be GC tracked,
 // rewrite calls that returns GC types to do so via a store to a passed in address on the shadow stack.
@@ -1992,7 +1635,8 @@ void Llvm::PlaceAndConvertShadowStackLocals()
 
     if (_compiler->opts.OptimizationEnabled())
     {
-        std::sort(locals.begin() + localsParamCount, locals.end(), [](const LclVarDsc* lhs, const LclVarDsc* rhs) { return lhs->lvRefCntWtd() > rhs->lvRefCntWtd(); });
+        auto cmpLambda = [](const LclVarDsc* lhs, const LclVarDsc* rhs) { return lhs->lvRefCntWtd() > rhs->lvRefCntWtd(); };
+        std::sort(locals.begin(), locals.end(), cmpLambda);
     }
 
     unsigned int offset = 0;
@@ -2000,9 +1644,10 @@ void Llvm::PlaceAndConvertShadowStackLocals()
     {
         LclVarDsc* varDsc = locals.at(i);
         CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
-        offset = padOffset(corInfoType, offset);
+        CORINFO_CLASS_HANDLE classHandle = corInfoType == CORINFO_TYPE_VALUECLASS ? varDsc->GetStructHnd() : varDsc->lvClassHnd;
+        offset = padOffset(corInfoType, classHandle, offset);
         varDsc->SetStackOffset(offset);
-        offset = padNextOffset(corInfoType, offset);
+        offset = padNextOffset(corInfoType, classHandle, offset);
     }
     _shadowStackLocalsSize = offset;
 

@@ -50,8 +50,7 @@ struct DebugMetadata
 // TODO: might need the LLVM Value* in here for exception funclets.
 struct SpilledExpressionEntry
 {
-    CorInfoType corInfoType;
-    CORINFO_CLASS_HANDLE classHandle;
+    CorInfoType m_CorInfoType;
 };
 
 struct IncomingPhi
@@ -82,8 +81,12 @@ extern "C" void registerLlvmCallbacks(void*       thisPtr,
                                       const char* (*getDocumentFileName)(void*),
                                       const uint32_t (*firstSequencePointLineNumber)(void*),
                                       const uint32_t (*getOffsetLineNumber)(void*, unsigned int),
+<<<<<<< HEAD
                                       const uint32_t (*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType),
                                       const uint32_t(*padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned atOffset));
+=======
+                                      const uint32_t (*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType));
+
 struct PhiPair
 {
     GenTreePhi* irPhiNode;
@@ -91,10 +94,14 @@ struct PhiPair
 };
 
 typedef JitHashTable<BasicBlock*, JitPtrKeyFuncs<BasicBlock>, llvm::BasicBlock*> BlkToLlvmBlkVectorMap;
+>>>>>>> yowl/ss-locals-bash
 
 class Llvm
 {
 private:
+<<<<<<< HEAD
+    bool _sigInfoIsValid;
+=======
     Compiler* _compiler;
     Compiler::Info _info;
     llvm::Function* _function;
@@ -175,8 +182,8 @@ private:
     Value* localVar(GenTreeLclVar* lclVar);
     Value* mapGenTreeToValue(GenTree* genTree, Value* valueRef);
     bool needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
-    unsigned int padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
-    unsigned int padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHandle, unsigned int atOffset);
+    unsigned int padNextOffset(CorInfoType corInfoType, unsigned int atOffset);
+    unsigned int padOffset(CorInfoType corInfoType, unsigned int atOffset);
     void startImportingBasicBlock(BasicBlock* block);
     void startImportingNode();
     void storeOnShadowStack(GenTree* operand, Value* shadowStackForCallee, unsigned int offset);
@@ -184,13 +191,17 @@ private:
     CorInfoType toCorInfoType(var_types varType);
     void visitNode(GenTree* node);
     Value* Llvm::zextIntIfNecessary(Value* intValue);
+>>>>>>> yowl/ss-locals-bash
 
 public:
     Llvm(Compiler* pCompiler);
 
     static void llvmShutdown();
 
+<<<<<<< HEAD
+=======
 
+>>>>>>> yowl/ss-locals-bash
     void ConvertShadowStackLocals();
     void PlaceAndConvertShadowStackLocals();
     void Compile();
