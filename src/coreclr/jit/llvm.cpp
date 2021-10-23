@@ -1475,7 +1475,13 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
             node->gtFlags |= GTF_IND_TGT_NOT_HEAP;
             node->AsOp()->gtOp2 = storedValue;
         }
-
+        if (GenTree::OperIsBlk(indirOper))
+        {
+            GenTreeBlk* blk = node->AsBlk();
+            CORINFO_CLASS_HANDLE handle = varDsc->GetStructHnd(); // _compiler->gtGetStructHandleIfPresent(node);
+            blk->SetLayout(_compiler->typGetObjLayout(handle));
+            blk->gtBlkOpKind = GenTreeBlk::BlkOpKindHelper; // TODO-LLVM: dumping the tree requires a valid value, is this ok?
+        }
         CurrentRange().InsertBefore(node, offset, shadowStackVar, lclAddress);
     }
 }
@@ -1550,7 +1556,18 @@ void Llvm::ConvertShadowStackLocals()
                     _compiler->fgInitArgInfo(callNode);
 
                     GenTree* returnAddrLclAfterCall = _compiler->gtNewLclvNode(returnTempNum, TYP_I_IMPL);
-                    GenTree* indirNode = _compiler->gtNewOperNode(callReturnType == TYP_STRUCT ? GT_OBJ : GT_IND, callReturnType, returnAddrLclAfterCall);
+                    GenTree* indirNode;
+                    if (callReturnType == TYP_STRUCT)
+                    {
+                        indirNode = new (_compiler, GT_OBJ)
+                            GenTreeObj(callReturnType, returnAddrLclAfterCall, _compiler->typGetObjLayout(calleeSigInfo.retTypeClass));
+                        indirNode->AsBlk()->gtBlkOpKind = GenTreeBlk::BlkOpKindHelper;
+                    }
+                    else
+                    {
+                        indirNode = _compiler->gtNewOperNode(GT_IND, callReturnType, returnAddrLclAfterCall);
+                    }
+                    //GenTree* indirNode = _compiler->gtNewOperNode(callReturnType == TYP_STRUCT ? GT_OBJ : GT_IND, callReturnType, returnAddrLclAfterCall);
                     indirNode->gtFlags |= GTF_IND_TGT_NOT_HEAP; // No RhpAssignRef required
                     LIR::Use callUse;
                     if (CurrentRange().TryGetUse(callNode, &callUse))
@@ -1591,6 +1608,7 @@ void Llvm::ConvertShadowStackLocals()
                 {
                     storeNode = new (_compiler, GT_STORE_OBJ)
                         GenTreeObj(originalReturnType, retAddressLocal, node->AsOp()->gtGetOp1(), _compiler->typGetObjLayout(_sigInfo.retTypeClass));
+                    storeNode->AsBlk()->gtBlkOpKind = GenTreeBlk::BlkOpKindHelper;
                 }
                 else
                 {
