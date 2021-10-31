@@ -549,6 +549,7 @@ Type* Llvm::getLlvmTypeForVarType(var_types type)
             return Type::getFloatTy(_llvmContext);
         case var_types::TYP_DOUBLE:
             return Type::getDoubleTy(_llvmContext);
+        case TYP_BYREF:
         case TYP_REF:
             return Type::getInt8PtrTy(_llvmContext);
         default:
@@ -722,6 +723,19 @@ Value* Llvm::genTreeAsLlvmType(GenTree* tree, Type* type)
         }
         return _builder.getInt({(unsigned int)type->getPrimitiveSizeInBits().getFixedSize(), (uint64_t)tree->AsIntCon()->IconValue(), true});
     }
+    //// from i1 (e.g. from GT_EQ) to wider int
+    if (v->getType()->isIntegerTy() && type->isIntegerTy() &&
+        v->getType()->getPrimitiveSizeInBits().getFixedSize() < type->getPrimitiveSizeInBits().getFixedSize())
+    {
+        return _builder.CreateZExt(v, type);
+    }
+
+    // i32* e.g symbols, to i8*
+    if (v->getType()->isPointerTy() && type->isPointerTy())
+    {
+        return _builder.CreateBitCast(v, type);
+    }
+
     failFunctionCompilation();
 }
 
@@ -1000,9 +1014,10 @@ void Llvm::buildCast(GenTreeCast* cast)
     }
     else if ((castToType == TYP_LONG || castToType == TYP_ULONG) && cast->CastOp()->TypeIs(TYP_INT, TYP_UINT))
     {
+        // pointers can be cast to a TYP_LONG, so add a LLVM ptrtoint if necessary.
         mapGenTreeToValue(cast,
             cast->IsUnsigned()
-            ? _builder.CreateZExt(getGenTreeValue(cast->CastOp()), getLlvmTypeForVarType(cast->CastToType()))
+            ? _builder.CreateZExt(castIfNecessary(getGenTreeValue(cast->CastOp()), Type::getInt32Ty(_llvmContext)), getLlvmTypeForVarType(cast->CastToType()))
             : _builder.CreateSExt(getGenTreeValue(cast->CastOp()), getLlvmTypeForVarType(cast->CastToType())));
     }
     else if ((castToType == TYP_INT || castToType == TYP_LONG || castToType == TYP_UINT || castToType == TYP_ULONG) && cast->CastOp()->TypeIs(TYP_FLOAT, TYP_DOUBLE))
@@ -1147,7 +1162,21 @@ void Llvm::fillPhis()
             unsigned       lclNum = phiArg->GetLclNum();
             unsigned       ssaNum = phiArg->GetSsaNum();
 
-            Value* localPhiArg = _localsMap->at({ lclNum, ssaNum });
+            Value* localPhiArg = nullptr;
+            auto iter = _localsMap->find({ lclNum, ssaNum });
+            if (iter == _localsMap->end())
+            {
+                //// Function args can be used as phi args without having seen them, and added them to _localsMap via a local.
+                //// But only for non shadow stack args with u:1
+                assert(_compiler->lvaIsParameter(lclNum) && ssaNum == 1);
+                LlvmArgInfo  llvmArgInfo = getLlvmArgInfoForArgIx(_sigInfo, lclNum);
+                localPhiArg = _function->getArg(llvmArgInfo.m_argIx);
+            }
+            else
+            {
+                localPhiArg = iter->second;
+            }
+
             Value* phiRealArgValue;
             llvm::Instruction* castRequired = getCast(localPhiArg, llvmPhiNode->getType());
             if (castRequired != nullptr)
@@ -1170,6 +1199,83 @@ void Llvm::fillPhis()
             llvmPhiNode->addIncoming(phiRealArgValue, getLLVMBasicBlockForBlock(phiArg->gtPredBB));
         }
     }
+}
+
+void Llvm::buildUnaryOperation(genTreeOps oper, GenTree* node, Value* op1)
+{
+    Value* result;
+    switch (oper)
+    {
+        case GT_NEG:
+            if (op1->getType()->isFloatingPointTy())
+            {
+                result = _builder.CreateFNeg(op1, "fneg");
+            }
+            else
+            {
+                result = _builder.CreateNeg(op1, "neg");
+            }
+            break;
+        case GT_NOT:
+            result = _builder.CreateNot(op1, "not");
+            break;
+        default:
+            failFunctionCompilation();  // TODO-LLVM: other shift types
+    }
+    mapGenTreeToValue(node, result);
+}
+
+void Llvm::buildBinaryOperation(genTreeOps oper, GenTree* node, Value* op1, Value* op2)
+{
+    Value* result;
+    // widen short ints as required
+    op1 = zextIntIfNecessary(op1);
+    op2 = zextIntIfNecessary(op2);
+    switch (oper)
+    {
+        case GT_AND:
+            result = _builder.CreateAnd(op1, op2, "and");
+            break;
+        case GT_OR:
+            result = _builder.CreateOr(op1, op2, "or");
+            break;
+        case GT_XOR:
+            result = _builder.CreateXor(op1, op2, "xor");
+            break;
+        default:
+            failFunctionCompilation();  // TODO-LLVM: other shift types
+    }
+    mapGenTreeToValue(node, result);
+}
+
+void Llvm::buildShift(genTreeOps oper, GenTree* node, Value* op1, Value* op2)
+{
+    // while it seems excessive that the bits to shift should need to be 64 bits, the LLVM docs say that both operands must be the same type and a compilation failure results if this is not the case.
+    Value* numBitsToShift;
+    if (op2->getType() == op1->getType())
+    {
+        numBitsToShift = op2;
+    }
+    else
+    {
+        numBitsToShift = _builder.CreateZExt(op2, op1->getType());
+    }
+    Value* result;
+    switch (oper)
+    {
+        case GT_LSH:
+            result = _builder.CreateShl(op1, numBitsToShift, "lsh");
+            break;
+        case GT_RSH:
+            result = _builder.CreateAShr(op1, numBitsToShift, "rsh");
+            break;
+        case GT_RSZ:
+            result = _builder.CreateLShr(op1, numBitsToShift, "rsz");
+            break;
+        default:
+            failFunctionCompilation();  // TODO-LLVM: other shift types
+    }
+    mapGenTreeToValue(node, result);
 }
 
 void Llvm::buildReturn(GenTree* node)
@@ -1263,6 +1369,11 @@ Value* Llvm::localVar(GenTreeLclVar* lclVar)
     if (llvmRef->getType() == Type::getInt64Ty(_llvmContext) && getLlvmTypeForVarType(lclVar->TypeGet()) == Type::getInt32Ty(_llvmContext))
     {
         llvmRef = _builder.CreateTrunc(llvmRef, Type::getInt32Ty(_llvmContext));
+    }
+    // implicit casting from * to int
+    else if (llvmRef->getType()->isPointerTy() && getLlvmTypeForVarType(lclVar->TypeGet()) == Type::getInt32Ty(_llvmContext))
+    {
+        llvmRef = _builder.CreatePtrToInt(llvmRef, Type::getInt32Ty(_llvmContext));
     }
 
     mapGenTreeToValue(lclVar, llvmRef);
@@ -1387,6 +1498,11 @@ void Llvm::visitNode(GenTree* node)
         case GT_LCL_VAR:
             localVar(node->AsLclVar());
             break;
+        case GT_LSH:
+        case GT_RSH:
+        case GT_RSZ:
+            buildShift(oper, node, getGenTreeValue(node->AsOp()->gtOp1), getGenTreeValue(node->AsOp()->gtOp2));
+            break;
         case GT_EQ:
         case GT_NE:
         case GT_LE:
@@ -1394,6 +1510,10 @@ void Llvm::visitNode(GenTree* node)
         case GT_GE:
         case GT_GT:
             buildCmp(oper, node, getGenTreeValue(node->AsOp()->gtOp1), getGenTreeValue(node->AsOp()->gtOp2));
+            break;
+        case GT_NEG:
+        case GT_NOT:
+            buildUnaryOperation(oper, node, getGenTreeValue(node->AsOp()->gtOp1));
             break;
         case GT_NO_OP:
             emitDoNothingCall();
@@ -1411,6 +1531,11 @@ void Llvm::visitNode(GenTree* node)
             break;
         case GT_STOREIND:
             importStoreInd((GenTreeStoreInd*)node);
+            break;
+        case GT_AND:
+        case GT_OR:
+        case GT_XOR:
+            buildBinaryOperation(oper, node, getGenTreeValue(node->AsOp()->gtOp1), getGenTreeValue(node->AsOp()->gtOp2));
             break;
         default:
             failFunctionCompilation();
