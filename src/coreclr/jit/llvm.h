@@ -76,7 +76,7 @@ extern "C" void registerLlvmCallbacks(void*       thisPtr,
                                       const uint32_t (*firstSequencePointLineNumber)(void*),
                                       const uint32_t (*getOffsetLineNumber)(void*, unsigned int),
                                       const uint32_t(*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType),
-                                      const uint32_t(*padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned),
+                                      const uint32_t(*padOffset)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType, unsigned),
                                       const CorInfoTypeWithMod(*_getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*),
                                       const CorInfoTypeWithMod(*_getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*));
 
@@ -144,6 +144,7 @@ private:
     void endImportingBasicBlock(BasicBlock* block);
     void failFunctionCompilation();
     void fillPhis();
+    void findAddressOfLocals(std::vector<bool>& locals);
     llvm::Instruction* getCast(llvm::Value* source, Type* targetType);
     void generateProlog();
     CorInfoType getCorInfoTypeForArg(CORINFO_SIG_INFO& sigInfo, CORINFO_ARG_LIST_HANDLE& arg, CORINFO_CLASS_HANDLE* clsHnd);

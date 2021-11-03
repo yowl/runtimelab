@@ -35,7 +35,7 @@ static const char* (*_getDocumentFileName)(void*);
 static const uint32_t (*_firstSequencePointLineNumber)(void*);
 static const uint32_t (*_getOffsetLineNumber)(void*, unsigned int ilOffset);
 static const uint32_t(*_structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType);
-static const uint32_t(*_padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned);
+static const uint32_t(*_padOffset)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType, unsigned);
 static const CorInfoTypeWithMod(*_getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*);
 static const CorInfoTypeWithMod(*_getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*);
 
@@ -57,7 +57,7 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
                                                 const uint32_t (*firstSequencePointLineNumber)(void*),
                                                 const uint32_t (*getOffsetLineNumber)(void*, unsigned int),
                                                 const uint32_t(*structIsWrappedPrimitive)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType),
-                                                const uint32_t(*padOffset)(void*, CORINFO_CLASS_STRUCT_*, unsigned),
+                                                const uint32_t(*padOffset)(void*, CORINFO_CLASS_STRUCT_*, CorInfoType, unsigned),
                                                 const CorInfoTypeWithMod(*getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*),
                                                 const CorInfoTypeWithMod(*getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*))
 {
@@ -427,8 +427,7 @@ unsigned int Llvm::padOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE struc
     }
     else
     {
-        assert(corInfoType == CorInfoType::CORINFO_TYPE_VALUECLASS);
-        return _padOffset(_thisPtr, structClassHandle, atOffset);
+        return _padOffset(_thisPtr, structClassHandle, corInfoType, atOffset);
     }
     return roundUp(atOffset, alignment);
 }
@@ -443,7 +442,6 @@ unsigned int Llvm::padNextOffset(CorInfoType corInfoType, CORINFO_CLASS_HANDLE s
     }
     else
     {
-        assert(corInfoType == CorInfoType::CORINFO_TYPE_VALUECLASS);
         size = getElementSize(structClassHandle, corInfoType);
     }
     return padOffset(corInfoType, structClassHandle, atOffset) + size;
@@ -1295,6 +1293,9 @@ void Llvm::visitNode(GenTree* node)
         case GT_LCL_VAR:
             localVar(node->AsLclVar());
             break;
+        case GT_LCL_VAR_ADDR:
+
+            break;
         case GT_EQ:
         case GT_NE:
         case GT_LE:
@@ -1345,6 +1346,12 @@ void Llvm::endImportingBasicBlock(BasicBlock* block)
     //TODO: other jump kinds
 }
 
+
+bool isLocalOnShadowStack(LclVarDsc* varDsc)
+{
+    return varDsc->GetStackOffset() != BAD_STK_OFFS;
+}
+
 void Llvm::generateProlog()
 {
     // create a prolog block to store arguments passed on shadow stack, TODO: other things from ILToLLVMImporter to come
@@ -1353,6 +1360,21 @@ void Llvm::generateProlog()
 
     llvm::BasicBlock* block0 = getLLVMBasicBlockForBlock(_compiler->fgFirstBB);
     _prologBuilder.SetInsertPoint(_prologBuilder.CreateBr(block0)); // position _prologBuilder to add locals and arguments
+
+    // store locals on llvm stack in shadow stack when the address of the local is required
+    // TODO-LLVM: Exception funclets probably also require this
+    for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
+    {
+        LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
+        if (varDsc->lvIsParam && isLocalOnShadowStack(varDsc) && canStoreLocalOnLlvmStack(varDsc))
+        {
+            LlvmArgInfo argInfo = getLlvmArgInfoForArgIx(_sigInfo, lclNum);
+            assert(argInfo.m_argIx >= 0);
+            _prologBuilder.CreateStore(_function->getArg(argInfo.m_argIx),
+                                       _prologBuilder.CreateGEP(_function->getArg(0), _prologBuilder.getInt32(varDsc->GetStackOffset())));
+        }
+    }
+
     _builder.SetInsertPoint(block0);
 }
 
@@ -1469,11 +1491,12 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
     GenTreeLclVarCommon* lclVar = node->AsLclVarCommon();
     LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar->GetLclNum());
     genTreeOps oper = node->OperGet();
-    if (!canStoreLocalOnLlvmStack(varDsc))
+    if (isLocalOnShadowStack(varDsc))
     {
         // TODO-LLVM: if the offset == 0, just GT_STOREIND at the shadowStack
         GenTreeIntCon* offset = _compiler->gtNewIconNode(varDsc->GetStackOffset(), TYP_I_IMPL);
         GenTreeLclVar* shadowStackVar = _compiler->gtNewLclvNode(_shadowStackLclNum, TYP_I_IMPL);
+
         GenTree* lclAddress = _compiler->gtNewOperNode(GT_ADD, TYP_I_IMPL, shadowStackVar, offset);
 
         genTreeOps indirOper = GT_NONE;
@@ -1514,6 +1537,7 @@ void Llvm::ConvertShadowStackLocals()
     LclVarDsc* shadowStackVarDsc = _compiler->lvaGetDesc(_shadowStackLclNum);
     shadowStackVarDsc->lvIsParam = 1;
     shadowStackVarDsc->lvType = TYP_I_IMPL;
+    shadowStackVarDsc->SetStackOffset(BAD_STK_OFFS);
 
     for (BasicBlock* _currentBlock : _compiler->Blocks())
     {
@@ -1649,6 +1673,32 @@ void Llvm::ConvertShadowStackLocals()
     }
 }
 
+void Llvm::findAddressOfLocals(std::vector<bool>& locals)
+{
+    for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
+    {
+        locals[lclNum] = false;
+    }
+
+    for (BasicBlock* _currentBlock : _compiler->Blocks())
+    {
+        _currentRange = &LIR::AsRange(_currentBlock);
+        for (GenTree* node : CurrentRange())
+        {
+            switch (node->OperGet())
+            {
+                case GT_LCL_VAR_ADDR:
+                    GenTreeLclVarCommon* lclNode = node->AsLclVarCommon();
+                    if (lclNode->TypeGet() != TYP_LCLBLK)
+                    {
+                        locals[lclNode->GetLclNum()] = true;
+                    }
+                    break;
+            }
+        }
+    }
+}
+
 //------------------------------------------------------------------------
 // Convert GT_STORE_LCL_VAR and GT_LCL_VAR to use the shadow stack when the local needs to be GC tracked,
 // rewrite calls that returns GC types to do so via a store to a passed in address on the shadow stack.
@@ -1656,6 +1706,9 @@ void Llvm::ConvertShadowStackLocals()
 //
 void Llvm::PlaceAndConvertShadowStackLocals()
 {
+    std::vector<bool> localsWithAddressOf = std::vector<bool>(_compiler->lvaCount);
+    findAddressOfLocals(localsWithAddressOf);
+
     _shadowStackLocalsSize = 0;
 
     std::vector<LclVarDsc*> locals;
@@ -1664,7 +1717,7 @@ void Llvm::PlaceAndConvertShadowStackLocals()
     for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
     {
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
-        if (!canStoreLocalOnLlvmStack(varDsc))
+        if (!canStoreLocalOnLlvmStack(varDsc) || localsWithAddressOf[lclNum])
         {
             locals.push_back(varDsc);
             if (varDsc->lvIsParam)

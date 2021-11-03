@@ -168,26 +168,55 @@ namespace Internal.JitInterface
             TypeDesc typeDesc = _this.HandleToObject(structHnd);
 
             TypeDesc primitiveTypeDesc;
-             switch (corInfoPrimitiveType)
-             {
-                 case CorInfoType.CORINFO_TYPE_FLOAT:
-                     primitiveTypeDesc = _this._compilation.TypeSystemContext.GetWellKnownType(WellKnownType.Single);
-                     break;
-                 case CorInfoType.CORINFO_TYPE_DOUBLE:
-                     primitiveTypeDesc = _this._compilation.TypeSystemContext.GetWellKnownType(WellKnownType.Double);
-                     break;
-                 default:
-                     return 0u;
-             }
+            switch (corInfoPrimitiveType)
+            {
+                case CorInfoType.CORINFO_TYPE_FLOAT:
+                    primitiveTypeDesc = _this._compilation.TypeSystemContext.GetWellKnownType(WellKnownType.Single);
+                    break;
+                case CorInfoType.CORINFO_TYPE_DOUBLE:
+                    primitiveTypeDesc = _this._compilation.TypeSystemContext.GetWellKnownType(WellKnownType.Double);
+                    break;
+                default:
+                    return 0u;
+            }
             
             return _this._compilation.StructIsWrappedPrimitive(typeDesc, primitiveTypeDesc) ? 1u : 0u;
         }
 
+        private TypeDesc GetWellKnownPrimitiveType(CorInfoType corInfoPrimitiveType)
+        {
+            switch (corInfoPrimitiveType)
+            {
+                case CorInfoType.CORINFO_TYPE_CHAR:
+                    return _compilation.TypeSystemContext.GetWellKnownType(WellKnownType.Char);
+                case CorInfoType.CORINFO_TYPE_BYTE:
+                case CorInfoType.CORINFO_TYPE_UBYTE:
+                    return _compilation.TypeSystemContext.GetWellKnownType(WellKnownType.Byte);
+                case CorInfoType.CORINFO_TYPE_USHORT:
+                case CorInfoType.CORINFO_TYPE_SHORT:
+                    return _compilation.TypeSystemContext.GetWellKnownType(WellKnownType.Int16);
+                case CorInfoType.CORINFO_TYPE_UINT:
+                case CorInfoType.CORINFO_TYPE_INT:
+                    return _compilation.TypeSystemContext.GetWellKnownType(WellKnownType.Int32);
+                case CorInfoType.CORINFO_TYPE_ULONG:
+                case CorInfoType.CORINFO_TYPE_LONG:
+                    return _compilation.TypeSystemContext.GetWellKnownType(WellKnownType.Int64);
+                case CorInfoType.CORINFO_TYPE_PTR:
+                    return _compilation.TypeSystemContext.GetWellKnownType(WellKnownType.IntPtr);
+                case CorInfoType.CORINFO_TYPE_FLOAT:
+                    return _compilation.TypeSystemContext.GetWellKnownType(WellKnownType.Single);
+                case CorInfoType.CORINFO_TYPE_DOUBLE:
+                    return _compilation.TypeSystemContext.GetWellKnownType(WellKnownType.Double);
+                default:
+                    throw new InvalidProgramException("Unhandled primitive type " + corInfoPrimitiveType);
+            }
+
+        }
         [UnmanagedCallersOnly]
-        public static uint padOffset(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* structHnd, uint ilOffset)
+        public static uint padOffset(IntPtr thisHandle, CORINFO_CLASS_STRUCT_* structHnd, CorInfoType corInfoType, uint ilOffset)
         {
             var _this = GetThis(thisHandle);
-            TypeDesc typeDesc = _this.HandleToObject(structHnd);
+            TypeDesc typeDesc = structHnd == null ? _this.GetWellKnownPrimitiveType(corInfoType) : _this.HandleToObject(structHnd);
 
             return (uint)_this._compilation.PadOffset(typeDesc, ilOffset);
         }
@@ -253,7 +282,7 @@ namespace Internal.JitInterface
             delegate* unmanaged<IntPtr, uint> firstSequencePointLineNumber,
             delegate* unmanaged<IntPtr, uint, uint> getOffsetLineNumber,
             delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType, uint> structIsWrappedPrimitive,
-            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, uint, uint> padOffset,
+            delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CorInfoType, uint, uint> padOffset,
             delegate* unmanaged<IntPtr, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_STRUCT_*, CORINFO_CLASS_STRUCT_**, CorInfoTypeWithMod> getArgTypeIncludingParameterized,
             delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CORINFO_CLASS_STRUCT_**, CorInfoTypeWithMod> getParameterType
             );
