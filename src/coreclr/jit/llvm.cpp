@@ -1171,12 +1171,15 @@ void Llvm::buildCmp(GenTree* node, Value* op1, Value* op2)
     mapGenTreeToValue(node, _builder.CreateCmp(llvmPredicate, op1, op2));
 }
 
+Value* lastPhi = nullptr;
+
 // in case we haven't seen the phi args yet, create just the phi nodes and fill in the args at the end
 void Llvm::buildEmptyPhi(GenTreePhi* phi)
 {
     llvm::PHINode* llvmPhiNode = _builder.CreatePHI(getLlvmTypeForVarType(phi->TypeGet()), phi->NumChildren());
     _phiPairs.push_back({ phi, llvmPhiNode });
     mapGenTreeToValue(phi, llvmPhiNode);
+    lastPhi = llvmPhiNode;
 }
 
 void Llvm::fillPhis()
@@ -1457,11 +1460,25 @@ Value* Llvm::getLocalVarAddress(GenTreeLclVar* lclVar) {
     return _builder.CreateGEP(_function->getArg(0), _builder.getInt32(varOffset), "lclVar");
 }
 
+int  ix;
+
 void Llvm::storeLocalVar(GenTreeLclVar* lclVar)
 {
     if (lclVar->gtFlags & GTF_VAR_DEF)
     {
         Value* valueRef = getGenTreeValue(lclVar->gtGetOp1());
+        if (valueRef == lastPhi)
+        {
+            ix = 2;
+        }
+        for (unsigned i = 0; i < _function->arg_size(); i++)
+        {
+            Value* argValue = _function->getArg(i);
+            if (valueRef == argValue)
+            {
+                ix = i;
+            }
+        }
         assert(valueRef != nullptr);
         // This could be done in the NE operator, but sometimes that would be needless, e.g. when followed by JTRUE
         // TODO-LLVM: As this is a zero extend widening operation, this is only valid if the small int is unsigned.  We don't know that here, so likely it would be better to
@@ -1472,11 +1489,6 @@ void Llvm::storeLocalVar(GenTreeLclVar* lclVar)
         }
 
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar);
-
-        if (varDsc->lvIsParam)
-        {
-            failFunctionCompilation();
-        }
 
         SsaPair ssaPair = {lclVar->GetLclNum(), lclVar->GetSsaNum()};
         _localsMap->insert({ssaPair, valueRef });
