@@ -2074,6 +2074,11 @@ void Llvm::lowerToShadowStack()
                     continue;
                 }
 
+                if(callNode->gtCallType == CT_INDIRECT)
+                {
+                    failFunctionCompilation();
+                }
+
                 CORINFO_SIG_INFO calleeSigInfo;
                 _compiler->eeGetMethodSig(callNode->gtCallMethHnd, &calleeSigInfo);
 
