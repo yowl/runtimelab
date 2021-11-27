@@ -2074,6 +2074,7 @@ void Llvm::lowerToShadowStack()
                     continue;
                 }
 
+                // have to fail these before attempting eeGetMethodSig
                 if(callNode->gtCallType == CT_INDIRECT)
                 {
                     failFunctionCompilation();
