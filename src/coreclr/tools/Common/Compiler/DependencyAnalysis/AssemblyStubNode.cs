@@ -2,7 +2,6 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
-
 using Internal.TypeSystem;
 
 using Internal.Text;
@@ -70,7 +69,11 @@ namespace ILCompiler.DependencyAnalysis
 
                 case TargetArchitecture.Wasm32:
                 case TargetArchitecture.Wasm64:
-                    return new ObjectData(null, null, 0, null);
+                    Wasm.WasmEmitter wasmEmitter = new Wasm.WasmEmitter(factory, relocsOnly);
+
+                    EmitCode(factory, ref wasmEmitter, relocsOnly);
+
+                    return wasmEmitter.Builder.ToObjectData();
 
                 default:
                     throw new NotImplementedException();
@@ -81,5 +84,6 @@ namespace ILCompiler.DependencyAnalysis
         protected abstract void EmitCode(NodeFactory factory, ref X86.X86Emitter instructionEncoder, bool relocsOnly);
         protected abstract void EmitCode(NodeFactory factory, ref ARM.ARMEmitter instructionEncoder, bool relocsOnly);
         protected abstract void EmitCode(NodeFactory factory, ref ARM64.ARM64Emitter instructionEncoder, bool relocsOnly);
+        protected abstract void EmitCode(NodeFactory factory, ref Wasm.WasmEmitter instructionEncoder, bool relocsOnly);
     }
 }

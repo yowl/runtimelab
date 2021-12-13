@@ -43,10 +43,11 @@ namespace ILCompiler.DependencyAnalysis
         {
             DependencyList result = new DependencyList();
 
-            if (!factory.VTable(_targetMethod.OwningType).HasFixedSlots)
-            {
-                result.Add(factory.VirtualMethodUse(_targetMethod), "VTable method use");
-            }
+            // crashes so try not having it.
+            // if (!factory.VTable(_targetMethod.OwningType).HasFixedSlots)
+            // {
+                //result.Add(factory.VirtualMethodUse(_targetMethod), "VTable method use");
+            // }
 
             return result;
         }

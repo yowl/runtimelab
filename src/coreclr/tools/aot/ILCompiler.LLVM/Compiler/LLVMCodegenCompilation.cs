@@ -125,7 +125,7 @@ namespace ILCompiler
 
             try
             {
-                if (GetMethodIL(method).GetExceptionRegions().Length == 0)
+                if (GetMethodIL(method).GetExceptionRegions().Length == -1)
                 {
                     var sig = method.Signature;
                     // this could be inlined, by the local makes debugging easier

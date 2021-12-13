@@ -216,6 +216,10 @@ namespace ILCompiler.DependencyAnalysisFramework
 
         private void GetStaticDependencies(DependencyNodeCore<DependencyContextType> node)
         {
+            if (node.ToString().Contains("MemoryStream"))
+            {
+
+            }
             if (node.StaticDependenciesAreComputed)
             {
                 GetStaticDependenciesImpl(node);

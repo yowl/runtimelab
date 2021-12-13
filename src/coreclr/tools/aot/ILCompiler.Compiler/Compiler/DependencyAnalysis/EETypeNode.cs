@@ -65,6 +65,10 @@ namespace ILCompiler.DependencyAnalysis
 
         public EETypeNode(NodeFactory factory, TypeDesc type)
         {
+            if (type.ToString().Contains("OtherGeneric"))
+            {
+
+            }
             if (type.IsCanonicalDefinitionType(CanonicalFormKind.Any))
                 Debug.Assert(this is CanonicalDefinitionEETypeNode);
             else if (type.IsCanonicalSubtype(CanonicalFormKind.Any))
@@ -574,6 +578,10 @@ namespace ILCompiler.DependencyAnalysis
 
             objData.EmitInt(_type.GetHashCode());
 
+            if (_type.ToString().Contains("TestDelegateFatFunctionPointers"))
+            {
+
+            }
             if (EmitVirtualSlotsAndInterfaces)
             {
                 // Emit VTable
@@ -837,6 +845,10 @@ namespace ILCompiler.DependencyAnalysis
             // a dictionary slot, meaning we would have created a vtable layout that the runtime does not expect.
             //
 
+            if (declType.ToString().Contains("TestDelegateFatFunctionPointers"))
+            {
+
+            }
             // The generic dictionary pointer occupies the first slot of each type vtable slice
             if (declType.HasGenericDictionarySlot() || templateType.HasGenericDictionarySlot())
             {

@@ -26,6 +26,10 @@ namespace ILCompiler.DependencyAnalysis
         {
             Debug.Assert(!type.IsCanonicalSubtype(CanonicalFormKind.Specific));
             _type = type;
+            if (_type.ToString() == "[Generics]Program+TestFieldAccess+Foo`1<object>")
+            {
+
+            }
             _preinitializationManager = preinitializationManager;
         }
 

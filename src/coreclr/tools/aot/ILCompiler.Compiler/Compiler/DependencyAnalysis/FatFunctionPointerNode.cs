@@ -25,6 +25,10 @@ namespace ILCompiler.DependencyAnalysis
             Debug.Assert(methodRepresented.GetCanonMethodTarget(CanonicalFormKind.Specific) != methodRepresented);
 
             Method = methodRepresented;
+            if (methodRepresented.ToString().Contains("[Generics]Program+TestFieldAccess+Foo`1<object>..cctor()"))
+            {
+
+            }
             _isUnboxingStub = isUnboxingStub;
         }
 
@@ -58,6 +62,10 @@ namespace ILCompiler.DependencyAnalysis
 
         public override ObjectData GetData(NodeFactory factory, bool relocsOnly = false)
         {
+            if (Method.ToString().Contains("[Generics]Program+TestFieldAccess+Foo`1<object>..cctor()"))
+            {
+
+            }
             var builder = new ObjectDataBuilder(factory, relocsOnly);
 
             // These need to be aligned the same as methods because they show up in same contexts

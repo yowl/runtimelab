@@ -27,6 +27,10 @@ namespace ILCompiler.DependencyAnalysis
 
         public DictionaryLayoutNode(TypeSystemEntity owningMethodOrType)
         {
+            if (owningMethodOrType.ToString().Contains("TestDelegateFatFunctionPointers"))
+            {
+
+            }
             _owningMethodOrType = owningMethodOrType;
             Validate();
         }

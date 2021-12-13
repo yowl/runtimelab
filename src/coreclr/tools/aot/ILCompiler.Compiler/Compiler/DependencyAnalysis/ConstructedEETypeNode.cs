@@ -14,6 +14,15 @@ namespace ILCompiler.DependencyAnalysis
     {
         public ConstructedEETypeNode(NodeFactory factory, TypeDesc type) : base(factory, type)
         {
+            if (type.ToString() == "[S.P.CoreLib]System.IO.MemoryStream")
+            {
+
+            }
+
+            if (type.ToString() == "[S.P.TypeLoader]System.Collections.Generic.LowLevelDictionary`2+Entry<Internal.Runtime.TypeLoader.TypeLoaderEnvironment+LazyDictionaryContext,native int>")
+            {
+
+            }
             Debug.Assert(!type.IsCanonicalDefinitionType(CanonicalFormKind.Any));
             CheckCanGenerateConstructedEEType(factory, type);
         }
@@ -55,6 +64,10 @@ namespace ILCompiler.DependencyAnalysis
                 }
             }
 
+            if (_type.ToString() == "[S.P.CoreLib]System.IO.MemoryStream")
+            {
+
+            }
             dependencyList.Add(factory.VTable(closestDefType), "VTable");
 
             if (factory.TypeSystemContext.SupportsUniversalCanon)

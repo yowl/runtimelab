@@ -1736,12 +1736,21 @@ namespace Internal.IL
 
         LLVMValueRef CallGenericHelper(ReadyToRunHelperId helperId, object helperArg)
         {
-            _dependencies.Add(GetGenericLookupHelperAndAddReference(helperId, helperArg, out LLVMValueRef helper), "LLVM generic helper");
-            return _builder.BuildCall(helper, new LLVMValueRef[]
+            var helperSymbol = GetGenericLookupHelperAndAddReference(helperId, helperArg, out LLVMValueRef helper, out GenericDictionaryLookup lookup);
+            var genericContext = GetGenericContext();
+            if (helperSymbol != null)
             {
-                GetShadowStack(),
-                GetGenericContext()
-            }, "getHelper");
+                _dependencies.Add(helperSymbol,
+                    "LLVM generic helper");
+                return _builder.BuildCall(helper, new LLVMValueRef[] { GetShadowStack(), genericContext },
+                    "getHelper");
+            }
+
+            // lookup indicates no helper is required, use the offset
+            Debug.Assert(helperArg is TypeDesc);
+            Debug.Assert(!lookup.UseHelper);
+
+            return _builder.BuildGEP(genericContext, new[] { BuildConstInt32(lookup[0]) });
         }
 
         private void ImportLoadNull()
@@ -1887,7 +1896,13 @@ namespace Internal.IL
                         {
                             typeToAlloc = callee.OwningType;
                             MetadataType metadataType = (MetadataType)typeToAlloc;
-                            newObjResult = AllocateObject(new LoadExpressionEntry(StackValueKind.ValueType, "eeType", GetEETypePointerForTypeDesc(metadataType, true), GetWellKnownType(WellKnownType.IntPtr)), typeToAlloc);
+
+                            var helperId = _compilation.GetLdTokenHelperForType(metadataType);
+
+                            ISymbolNode node = _compilation.ComputeConstantLookup(helperId, metadataType);
+                            _dependencies.Add(node, "LLVM Type ptr");
+
+                            newObjResult = AllocateObject(new LoadExpressionEntry(StackValueKind.ValueType, "eeType", LLVMObjectWriter.GetSymbolValuePointer(Module, node, _compilation.NameMangler), GetWellKnownType(WellKnownType.IntPtr)), typeToAlloc);
                         }
 
                         //one for the real result and one to be consumed by ctor
@@ -1965,7 +1980,7 @@ namespace Internal.IL
                         }
                     }
 
-                    GetGenericLookupHelperAndAddReference(ReadyToRunHelperId.DelegateCtor, delegateInfo, out helper,
+                    GetGenericLookupHelperAndAddReference(ReadyToRunHelperId.DelegateCtor, delegateInfo, out helper, out GenericDictionaryLookup lookup,
                         additionalTypes);
                     _builder.BuildCall(helper, helperParams.ToArray(), string.Empty);
                     return;
@@ -2138,7 +2153,8 @@ namespace Internal.IL
                     eeTypeExpression = new LoadExpressionEntry(StackValueKind.ValueType, "eeType", thisPointer, GetWellKnownType(WellKnownType.IntPtr));
                 }
 
-                var targetEntry = CallRuntime(_compilation.TypeSystemContext, DispatchResolve, "FindInterfaceMethodImplementationTarget", new StackEntry[] { eeTypeExpression, interfaceEEType, new ExpressionEntry(StackValueKind.Int32, "slot", slot, GetWellKnownType(WellKnownType.UInt16)) });
+                var targetEntry = CallRuntime(_compilation.TypeSystemContext, DispatchResolve, "FindInterfaceMethodImplementationTarget",
+                    new StackEntry[] { eeTypeExpression, interfaceEEType, new ExpressionEntry(StackValueKind.Int32, "slot", slot, GetWellKnownType(WellKnownType.UInt16)) });
                 functionPtr = targetEntry.ValueAsType(LLVMTypeRef.CreatePointer(llvmSignature, 0), _builder);
             }
             else
@@ -2173,7 +2189,7 @@ namespace Internal.IL
             if (exactContextNeedsRuntimeLookup)
             {
                 LLVMValueRef helper;
-                var node = GetGenericLookupHelperAndAddReference(ReadyToRunHelperId.MethodHandle, runtimeDeterminedMethod, out helper);
+                var node = GetGenericLookupHelperAndAddReference(ReadyToRunHelperId.MethodHandle, runtimeDeterminedMethod, out helper, out GenericDictionaryLookup lookup);
                 _dependencies.Add(node, "LLVM GM helper");
                 runtimeMethodHandle = _builder.BuildCall(helper, new LLVMValueRef[]
                 {
@@ -2469,9 +2485,15 @@ namespace Internal.IL
                         }
                         else
                         {
-                            var constructedTypeSymbol = _compilation.NodeFactory.ConstructedTypeSymbol(method.Instantiation[0]);
-                            _dependencies.Add(constructedTypeSymbol, "EETypePtrOf");
-                            eeTypePtrRef = LoadAddressOfSymbolNode(constructedTypeSymbol);
+                            var helperId = _compilation.GetLdTokenHelperForType(method.Instantiation[0]);
+
+                            ISymbolNode node = _compilation.ComputeConstantLookup(helperId, method.Instantiation[0]);
+                            _dependencies.Add(node, "LLVM Type ptr");
+                            eeTypePtrRef = LoadAddressOfSymbolNode(node);
+
+                            // var constructedTypeSymbol = _compilation.NodeFactory.ConstructedTypeSymbol(method.Instantiation[0]);
+                            // _dependencies.Add(constructedTypeSymbol, "EETypePtrOf");
+                            // eeTypePtrRef = LoadAddressOfSymbolNode(constructedTypeSymbol);
                         }
                         PushExpression(StackValueKind.Int32, "eeTypePtr", eeTypePtrRef, GetWellKnownType(WellKnownType.IntPtr));
 
@@ -2535,7 +2557,12 @@ namespace Internal.IL
                         }
                         else
                         {
-                            eeTypeEntry = new LoadExpressionEntry(StackValueKind.ValueType, "eeType", GetEETypePointerForTypeDesc(constrainedType, true), GetWellKnownType(WellKnownType.IntPtr));
+                            var helperId = _compilation.GetLdTokenHelperForType(constrainedType);
+
+                            ISymbolNode node = _compilation.ComputeConstantLookup(helperId, constrainedType);
+                            _dependencies.Add(node, "LLVM Type ptr");
+
+                            eeTypeEntry = new LoadExpressionEntry(StackValueKind.ValueType, "eeType", LLVMObjectWriter.GetSymbolValuePointer(Module, node, _compilation.NameMangler), GetWellKnownType(WellKnownType.IntPtr));
                         }
 
                         argumentValues[0] = CallRuntime(_compilation.TypeSystemContext, RuntimeExport, "RhBox",
@@ -4231,12 +4258,17 @@ namespace Internal.IL
             {
                 TypeDesc runtimeTypeHandleTypeDesc = GetWellKnownType(WellKnownType.RuntimeTypeHandle);
                 var typeDesc = (TypeDesc)ldtokenValue;
-                MethodDesc helper = _compilation.TypeSystemContext.GetHelperEntryPoint("LdTokenHelpers", "GetRuntimeTypeHandle");
-                AddMethodReference(helper);
-                var fn = LLVMFunctionForMethod(helper, helper, null/* static method */, false /* not virt */, _constrainedType, helper, out bool hasHiddenParam, out LLVMValueRef dictPtrPtrStore, out LLVMValueRef fatFunctionPtr);
+                //MethodDesc helper = _compilation.TypeSystemContext.GetHelperEntryPoint("LdTokenHelpers", "GetRuntimeTypeHandle");
+                //AddMethodReference(helper);
+                //var fn = LLVMFunctionForMethod(helper, helper, null/* static method */, false /* not virt */, _constrainedType, helper, out bool hasHiddenParam, out LLVMValueRef dictPtrPtrStore, out LLVMValueRef fatFunctionPtr);
 
                 if (typeDesc.IsRuntimeDeterminedSubtype)
                 {
+                    MethodDesc helper = _compilation.TypeSystemContext.GetHelperEntryPoint("LdTokenHelpers", "GetRuntimeTypeHandle");
+                    AddMethodReference(helper);
+
+                    var fn = LLVMFunctionForMethod(helper, helper, null/* static method */, false /* not virt */, _constrainedType, helper, out bool hasHiddenParam, out LLVMValueRef dictPtrPtrStore, out LLVMValueRef fatFunctionPtr);
+
                     var hiddenParam = CallGenericHelper(ReadyToRunHelperId.TypeHandle, typeDesc);
                     var handleRef = _builder.BuildCall( fn, new LLVMValueRef[]
                     {
@@ -4247,10 +4279,13 @@ namespace Internal.IL
                 }
                 else
                 {
-                    PushLoadExpression(StackValueKind.ByRef, "ldtoken", GetEETypePointerForTypeDesc(typeDesc, true), GetWellKnownType(WellKnownType.IntPtr));
-                    HandleCall(helper, helper.Signature, helper);
-                    var callExp = _stack.Pop();
-                    _stack.Push(new LdTokenEntry<TypeDesc>(StackValueKind.ValueType, "ldtoken", typeDesc, callExp.ValueAsInt32(_builder, false), runtimeTypeHandleTypeDesc));
+                    var helperId = _compilation.GetLdTokenHelperForType(typeDesc);
+
+                    ISymbolNode node = _compilation.ComputeConstantLookup(helperId, typeDesc);
+                    _dependencies.Add(node, "LLVM Type ptr");
+                    LLVMValueRef eeTypePointer = LLVMObjectWriter.GetSymbolValuePointer(Module, node, _compilation.NameMangler, false);
+
+                    PushLoadExpression(StackValueKind.ByRef, "ldtoken", eeTypePointer, GetWellKnownType(WellKnownType.IntPtr));
                 }
             }
             else if (ldtokenValue is FieldDesc)
@@ -4651,10 +4686,16 @@ namespace Internal.IL
             }
         }
 
-        ISymbolNode GetGenericLookupHelperAndAddReference(ReadyToRunHelperId helperId, object helperArg, out LLVMValueRef helper, IEnumerable<LLVMTypeRef> additionalArgs = null)
+        ISymbolNode GetGenericLookupHelperAndAddReference(ReadyToRunHelperId helperId, object helperArg, out LLVMValueRef helper, out GenericDictionaryLookup lookup, IEnumerable<LLVMTypeRef> additionalArgs = null)
         {
             ISymbolNode node;
-            GenericDictionaryLookup lookup = _compilation.ComputeGenericLookup(_method, helperId, helperArg);
+            lookup = _compilation.ComputeGenericLookup(_method, helperId, helperArg);
+
+            if (!lookup.UseHelper)
+            {
+                helper = null;
+                return null;
+            }
 
             var retType = helperId == ReadyToRunHelperId.DelegateCtor
                 ? LLVMTypeRef.Void
@@ -4848,7 +4889,15 @@ namespace Internal.IL
             }
             else
             {
-                eeType = GetEETypePointerForTypeDesc(type, true);
+                var helperId = _compilation.GetLdTokenHelperForType(type);
+
+                ISymbolNode node = _compilation.ComputeConstantLookup(helperId, type);
+                _dependencies.Add(node, "LLVM Type ptr");
+                eeType = LLVMObjectWriter.GetSymbolValuePointer(Module, node, _compilation.NameMangler, false);
+
+                // PushLoadExpression(StackValueKind.ByRef, "ldtoken", eeTypePointer, GetWellKnownType(WellKnownType.IntPtr));
+                //
+                // eeType = GetEETypePointerForTypeDesc(type, true);
                 eeTypeEntry = new LoadExpressionEntry(StackValueKind.ValueType, "eeType", eeType, GetWellKnownType(WellKnownType.IntPtr).MakePointerType());
             }
             var toBoxValue = _stack.Pop();

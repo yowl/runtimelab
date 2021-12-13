@@ -132,7 +132,10 @@ namespace ILCompiler.DependencyAnalysis
                 case ReadyToRunHelperId.DelegateCtor:
                     {
                         DelegateCreationInfo target = (DelegateCreationInfo)Target;
+                        if (target.TargetMethod.ToString().Contains("BigStructGeneric"))
+                        {
 
+                        }
                         if (target.TargetNeedsVTableLookup)
                         {
                             Debug.Assert(!target.TargetMethod.CanMethodBeInSealedVTable());
@@ -150,7 +153,6 @@ namespace ILCompiler.DependencyAnalysis
                         }
                         else
                         {
-                            ISymbolNode targetMethodNode = target.GetTargetNode(factory);
                             encoder.EmitLEAQ(encoder.TargetRegister.Arg2, target.GetTargetNode(factory));
                         }
 

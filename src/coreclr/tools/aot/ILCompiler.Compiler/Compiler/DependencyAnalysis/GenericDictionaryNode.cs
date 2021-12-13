@@ -166,6 +166,10 @@ namespace ILCompiler.DependencyAnalysis
         public TypeGenericDictionaryNode(TypeDesc owningType, NodeFactory factory)
             : base(factory)
         {
+            if (owningType.ToString().Contains("TestDelegateFatFunctionPointers"))
+            {
+
+            }
             Debug.Assert(!owningType.IsCanonicalSubtype(CanonicalFormKind.Any));
             Debug.Assert(!owningType.IsRuntimeDeterminedSubtype);
             Debug.Assert(owningType.HasInstantiation);
@@ -202,6 +206,10 @@ namespace ILCompiler.DependencyAnalysis
             DependencyList dependencies = new DependencyList();
 
             MethodDesc canonicalTarget = _owningMethod.GetCanonMethodTarget(CanonicalFormKind.Specific);
+            if (canonicalTarget.ToString().Contains("BigStructGeneric"))
+            {
+
+            }
             if (factory.CompilationModuleGroup.ContainsMethodBody(canonicalTarget, false))
                 dependencies.Add(GetDictionaryLayout(factory), "Layout");
 
@@ -270,6 +278,10 @@ namespace ILCompiler.DependencyAnalysis
         public MethodGenericDictionaryNode(MethodDesc owningMethod, NodeFactory factory)
             : base(factory)
         {
+            if (owningMethod.ToString().Contains("BigStructGeneric"))
+            {
+
+            }
             Debug.Assert(!owningMethod.IsSharedByGenericInstantiations);
             Debug.Assert(owningMethod.HasInstantiation);
             Debug.Assert(owningMethod.GetCanonMethodTarget(CanonicalFormKind.Specific) != owningMethod);

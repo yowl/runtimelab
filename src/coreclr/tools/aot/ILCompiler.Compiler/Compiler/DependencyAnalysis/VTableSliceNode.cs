@@ -20,6 +20,10 @@ namespace ILCompiler.DependencyAnalysis
 
         public VTableSliceNode(TypeDesc type)
         {
+            if (type.ToString().Contains("[S.P.CoreLib]System.IO.MemoryStream"))
+            {
+
+            }
             Debug.Assert(!type.IsArray, "Wanted to call GetClosestDefType?");
             _type = type;
         }

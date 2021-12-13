@@ -354,6 +354,7 @@ namespace ILCompiler
                 lookupKind = ReadyToRunHelperId.TypeHandle;
             }
 
+#if false
             // Can we do a fixed lookup? Start by checking if we can get to the dictionary.
             // Context source having a vtable with fixed slots is a prerequisite.
             if (contextSource == GenericContextSource.MethodParameter
@@ -391,7 +392,7 @@ namespace ILCompiler
                     }
                 }
             }
-
+#endif
             // Fixed lookup not possible - use helper.
             return GenericDictionaryLookup.CreateHelperLookup(contextSource, lookupKind, targetOfLookup);
         }

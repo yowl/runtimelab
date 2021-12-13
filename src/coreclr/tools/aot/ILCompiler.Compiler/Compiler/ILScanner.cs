@@ -270,6 +270,10 @@ namespace ILCompiler
 
             internal override VTableSliceNode GetSlice(TypeDesc type)
             {
+                if (type.ToString().Contains("[S.P.CoreLib]System.IO.MemoryStream"))
+                {
+
+                }
                 // TODO: move ownership of compiler-generated entities to CompilerTypeSystemContext.
                 // https://github.com/dotnet/corert/issues/3873
                 if (type.GetTypeDefinition() is Internal.TypeSystem.Ecma.EcmaType)
@@ -315,7 +319,7 @@ namespace ILCompiler
             {
                 if (!_layouts.TryGetValue(methodOrType, out IEnumerable<GenericLookupResult> layout))
                 {
-                    // If we couln't find the dictionary layout information for this, it's because the scanner
+                    // If we couldn't find the dictionary layout information for this, it's because the scanner
                     // didn't correctly predict what will be needed.
                     // To troubleshoot, compare the dependency graph of the scanner and the compiler.
                     // Follow the path from the node that requested this node to the root.

@@ -724,6 +724,7 @@ namespace ILCompiler
                 .UsePreinitializationManager(preinitManager);
 
             ILScanResults scanResults = null;
+            useScanner = true;
             if (useScanner)
             {
                 ILScannerBuilder scannerBuilder = builder.GetILScannerBuilder()
