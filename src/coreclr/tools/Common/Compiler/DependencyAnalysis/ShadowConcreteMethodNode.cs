@@ -59,6 +59,11 @@ namespace ILCompiler.DependencyAnalysis
 
         public override IEnumerable<DependencyListEntry> GetStaticDependencies(NodeFactory factory)
         {
+            if (Method.ToString() ==
+                "[S.P.CoreLib]System.Array`1+ArrayEnumerator<System.Collections.Generic.LowLevelDictionary`2+Entry<Internal.Runtime.TypeLoader.TypeLoaderEnvironment+LazyDictionaryContext,native int>>.System.Collections.IEnumerator.get_Current()")
+            {
+
+            }
             DependencyList dependencies = new DependencyList();
 
             // Make sure the canonical body gets generated

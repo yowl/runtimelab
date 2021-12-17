@@ -4264,17 +4264,18 @@ namespace Internal.IL
 
                 if (typeDesc.IsRuntimeDeterminedSubtype)
                 {
-                    MethodDesc helper = _compilation.TypeSystemContext.GetHelperEntryPoint("LdTokenHelpers", "GetRuntimeTypeHandle");
-                    AddMethodReference(helper);
+                    var handleRef = CallGenericHelper(ReadyToRunHelperId.TypeHandle, typeDesc);
+                    //MethodDesc helper = _compilation.TypeSystemContext.GetHelperEntryPoint("LdTokenHelpers", "GetRuntimeTypeHandle");
+                    //AddMethodReference(helper);
 
-                    var fn = LLVMFunctionForMethod(helper, helper, null/* static method */, false /* not virt */, _constrainedType, helper, out bool hasHiddenParam, out LLVMValueRef dictPtrPtrStore, out LLVMValueRef fatFunctionPtr);
+                    //var fn = LLVMFunctionForMethod(helper, helper, null/* static method */, false /* not virt */, _constrainedType, helper, out bool hasHiddenParam, out LLVMValueRef dictPtrPtrStore, out LLVMValueRef fatFunctionPtr);
 
-                    var hiddenParam = CallGenericHelper(ReadyToRunHelperId.TypeHandle, typeDesc);
-                    var handleRef = _builder.BuildCall( fn, new LLVMValueRef[]
-                    {
-                        GetShadowStack(),
-                        hiddenParam
-                    }, "getHelper");
+                    //var hiddenParam = CallGenericHelper(ReadyToRunHelperId.TypeHandle, typeDesc);
+                    //var handleRef = _builder.BuildCall( fn, new LLVMValueRef[]
+                    //{
+                    //    GetShadowStack(),
+                    //    hiddenParam
+                    //}, "getHelper");
                     _stack.Push(new LdTokenEntry<TypeDesc>(StackValueKind.ValueType, "ldtoken", typeDesc, handleRef, runtimeTypeHandleTypeDesc));
                 }
                 else
