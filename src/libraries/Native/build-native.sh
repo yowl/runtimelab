@@ -48,11 +48,11 @@ source "$__RepoRootDir"/eng/native/build-commons.sh
 # Set cross build
 
 if [[ "$__BuildArch" == wasm ]]; then
-    if [[ -z "$EMSDK_PATH" ]]; then
-        echo "Error: You need to set the EMSDK_PATH environment variable pointing to the emscripten SDK root."
+    if [[ -z "$EMSDK" ]]; then
+        echo "Error: You need to set the EMSDK environment variable pointing to the emscripten SDK root."
         exit 1
     fi
-    source "$EMSDK_PATH"/emsdk_env.sh
+    source "$EMSDK"/emsdk_env.sh
 
     export CLR_CC=$(which emcc)
     export CLR_CXX=$(which em++)

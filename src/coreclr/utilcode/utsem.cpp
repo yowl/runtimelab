@@ -20,6 +20,11 @@ Revision History:
 #include <utsem.h>
 #include "contract.h"
 
+#if defined(PAL_STDCPP_COMPAT)
+#define max(a, b) (((a) > (b)) ? (a) : (b))
+#define min(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+
 // Consider replacing this with a #ifdef INTEROP_DEBUGGING
 #if !defined(SELF_NO_HOST) && defined(TARGET_X86) && !defined(TARGET_UNIX)
 // For Interop debugging, the UTSemReadWrite class must inform the debugger

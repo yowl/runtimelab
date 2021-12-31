@@ -73,7 +73,7 @@ public:
     }
 
     OutString& operator<<(const WCHAR* str) {
-        size_t len = wcslen(str);
+        size_t len = PAL_wcslen(str);
         if (cur+len > end)
             Realloc(len);
         while(str != 0)

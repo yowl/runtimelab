@@ -704,7 +704,7 @@ private:
 
     static size_t _strcmp(WCHAR const *left, WCHAR const *right)
     {
-        return ::wcscmp(left, right);
+        return PAL_wcscmp(left, right);
     }
 
     static size_t _hash(CHAR const *str)

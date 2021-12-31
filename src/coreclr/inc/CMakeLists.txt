@@ -40,6 +40,11 @@ if(CLR_CMAKE_HOST_WIN32)
 
 else(CLR_CMAKE_HOST_WIN32)
 
+    if (CLR_CMAKE_BUILD_LLVM_JIT)
+        add_definitions(-DPAL_STDCPP_COMPAT)
+        include_directories("../pal/src/include")
+    endif(CLR_CMAKE_BUILD_LLVM_JIT)
+
     #The MIDL tool exists for Windows only, so for other systems, we have the prebuilt xxx_i.cpp files checked in
 
     add_compile_options(-D_MIDL_USE_GUIDDEF_)

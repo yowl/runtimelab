@@ -161,6 +161,7 @@ function_name() to call the system's implementation
 #include "pal_perf.h"
 #endif
 
+#if !defined(PAL_STDCPP_COMPAT)
 /* C runtime functions needed to be renamed to avoid duplicate definition
    of those functions when including standard C header files */
 #if !defined(_DEBUG)
@@ -233,6 +234,7 @@ function_name() to call the system's implementation
 #define sqrtf DUMMY_sqrtf
 #define tanf DUMMY_tanf
 #define tanhf DUMMY_tanhf
+#endif // !PAL_STDCPP_COMPAT
 
 /* RAND_MAX needed to be renamed to avoid duplicate definition when including
    stdlib.h header files. PAL_RAND_MAX should have the same value as RAND_MAX

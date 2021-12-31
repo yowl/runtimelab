@@ -15,6 +15,10 @@
 #include "utilcode.h"
 #include "sstring.h"
 
+#ifdef PAL_STDCPP_COMPAT
+#define max(a, b) (((a) > (b)) ? (a) : (b))
+#define min(a, b) (((a) < (b)) ? (a) : (b))
+#endif
 
 /***
 *SplitPath() - split a path name into its individual components
@@ -75,7 +79,7 @@ void SplitPath(
 // A much more sensible version that just points to each section of the string.
 //*******************************************************************************
 void    SplitPathInterior(
-    __in      LPCWSTR wszPath,
+    __sal_in      LPCWSTR wszPath,
     __out_opt LPCWSTR *pwszDrive,    __out_opt size_t *pcchDrive,
     __out_opt LPCWSTR *pwszDir,      __out_opt size_t *pcchDir,
     __out_opt LPCWSTR *pwszFileName, __out_opt size_t *pcchFileName,
@@ -123,7 +127,7 @@ void    SplitPathInterior(
 
     /* extract drive letter and :, if any */
 
-    if ((wcslen(wszPath) > (_MAX_DRIVE - 2)) && (*(wszPath + _MAX_DRIVE - 2) == _T(':'))) {
+    if ((PAL_wcslen(wszPath) > (_MAX_DRIVE - 2)) && (*(wszPath + _MAX_DRIVE - 2) == _T(':'))) {
         if (pwszDrive && pcchDrive) {
             *pwszDrive = wszPath;
             *pcchDrive = _MAX_DRIVE - 1;
@@ -228,7 +232,7 @@ void    SplitPathInterior(
 *
 *******************************************************************************/
 
-void    SplitPath(__in SString const &path,
+void    SplitPath(__sal_in SString const &path,
                   __inout_opt SString *drive,
                   __inout_opt SString *dir,
                   __inout_opt SString *fname,

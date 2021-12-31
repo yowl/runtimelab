@@ -32,6 +32,7 @@
 
 #ifdef PAL_STDCPP_COMPAT
 #include <type_traits>
+#include <cwctype>
 #else
 #include "clr_std/type_traits"
 #endif
@@ -420,7 +421,7 @@ LPWSTR DuplicateString(
 
     if (wszString != NULL)
     {
-        return DuplicateString(wszString, wcslen(wszString));
+        return DuplicateString(wszString, PAL_wcslen(wszString));
     }
     else
     {
@@ -463,7 +464,7 @@ LPWSTR DuplicateStringThrowing(
     return wszDup;
 }
 
-
+#ifndef _NEW
 //*****************************************************************************
 // Placement new is used to new and object at an exact location.  The pointer
 // is simply returned to the caller without actually using the heap.  The
@@ -484,6 +485,7 @@ inline void *__cdecl operator new(size_t, void *_P)
     return (_P);
 }
 #endif // __PLACEMENT_NEW_INLINE
+#endif
 
 
 /********************************************************************************/
@@ -610,7 +612,7 @@ public:
         if (id == UICULTUREID_DONTCARE)
             return FALSE;
 
-        return wcscmp(id, m_LangId) == 0;
+        return PAL_wcscmp(id, m_LangId) == 0;
     }
 
     HRESOURCEDLL GetLibraryHandle()
@@ -984,18 +986,18 @@ void    SplitPath(const WCHAR *path,
 // A much more sensible version that just points to each section of the string.
 //*******************************************************************************
 void    SplitPathInterior(
-    __in      LPCWSTR wszPath,
+    __sal_in      LPCWSTR wszPath,
     __out_opt LPCWSTR *pwszDrive,    __out_opt size_t *pcchDrive,
     __out_opt LPCWSTR *pwszDir,      __out_opt size_t *pcchDir,
     __out_opt LPCWSTR *pwszFileName, __out_opt size_t *pcchFileName,
     __out_opt LPCWSTR *pwszExt,      __out_opt size_t *pcchExt);
 
 
-void    MakePath(__out CQuickWSTR &path,
-                 __in LPCWSTR drive,
-                 __in LPCWSTR dir,
-                 __in LPCWSTR fname,
-                 __in LPCWSTR ext);
+void    MakePath(__sal_out CQuickWSTR &path,
+                 __sal_in LPCWSTR drive,
+                 __sal_in LPCWSTR dir,
+                 __sal_in LPCWSTR fname,
+                 __sal_in LPCWSTR ext);
 
 WCHAR * FullPath(__out_ecount (maxlen) WCHAR *UserBuf, const WCHAR *path, size_t maxlen);
 
@@ -1004,7 +1006,7 @@ WCHAR * FullPath(__out_ecount (maxlen) WCHAR *UserBuf, const WCHAR *path, size_t
 // SString version of the path functions.
 //
 //*****************************************************************************
-void    SplitPath(__in SString const &path,
+void    SplitPath(__sal_in SString const &path,
                   __inout_opt SString *drive,
                   __inout_opt SString *dir,
                   __inout_opt SString *fname,
@@ -2701,7 +2703,7 @@ inline ULONG HashStringN(LPCWSTR szStr, SIZE_T cchStr)
     ULONG *ptr = (ULONG *)szStr;
 
     // we assume that szStr is null-terminated
-    _ASSERTE(cchStr <= wcslen(szStr));
+    _ASSERTE(cchStr <= PAL_wcslen(szStr));
     SIZE_T cDwordCount = (cchStr + 1) / 2;
 
     for (SIZE_T i = 0; i < cDwordCount; i++)
@@ -3477,7 +3479,7 @@ private:
 //*****************************************************************************
 // Checks if string length exceeds the specified limit
 //*****************************************************************************
-inline BOOL IsStrLongerThan(__in __in_z char* pstr, unsigned N)
+inline BOOL IsStrLongerThan(__sal_in __in_z char* pstr, unsigned N)
 {
     LIMITED_METHOD_CONTRACT;
     unsigned i = 0;
@@ -3513,7 +3515,7 @@ public:
         return m_pNames == 0;
     }
 
-    AssemblyNamesList(__in LPWSTR list);
+    AssemblyNamesList(__sal_in LPWSTR list);
     ~AssemblyNamesList();
 };
 
@@ -3544,7 +3546,7 @@ public:
         pNames = 0;
     }
 
-    void Init(__in __in_z LPWSTR list)
+    void Init(__sal_in __in_z LPWSTR list)
     {
         WRAPPER_NO_CONTRACT;
         pNames = 0;
@@ -3553,7 +3555,7 @@ public:
 
     void Destroy();
 
-    void Insert(__in __in_z LPWSTR list);
+    void Insert(__sal_in __in_z LPWSTR list);
 
     bool IsInList(LPCUTF8 methodName, LPCUTF8 className, PCCOR_SIGNATURE sig = NULL);
     bool IsInList(LPCUTF8 methodName, LPCUTF8 className, CORINFO_SIG_INFO* pSigInfo);
@@ -3573,7 +3575,7 @@ public:
         Init();
     }
 
-    MethodNamesList(__in LPWSTR list)
+    MethodNamesList(__sal_in LPWSTR list)
     {
         WRAPPER_NO_CONTRACT;
         Init(list);
@@ -4657,6 +4659,7 @@ inline T* InterlockedCompareExchangeT(
     return InterlockedCompareExchangeT(destination, nullptr, comparand);
 }
 
+#ifndef PAL_STDCPP_COMPAT // avoid ambiguous with nullptr
 template <typename T>
 inline T* InterlockedCompareExchangeT(
     T* volatile *   destination,
@@ -4666,6 +4669,7 @@ inline T* InterlockedCompareExchangeT(
     //STATIC_ASSERT(comparand == 0);
     return InterlockedCompareExchangeT(destination, exchange, nullptr);
 }
+#endif
 
 #undef InterlockedExchangePointer
 #define InterlockedExchangePointer Use_InterlockedExchangeT

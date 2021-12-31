@@ -48,6 +48,7 @@ Abstract:
 #include <ctype.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/param.h> // min/max
 #include <unistd.h>
 #endif
 

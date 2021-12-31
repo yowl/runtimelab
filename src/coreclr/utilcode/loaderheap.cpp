@@ -10,6 +10,11 @@
 
 #define LHF_EXECUTABLE  0x1
 
+#if defined(PAL_STDCPP_COMPAT)
+#define max(a, b) (((a) > (b)) ? (a) : (b))
+#define min(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+
 #ifndef DACCESS_COMPILE
 
 INDEBUG(DWORD UnlockedLoaderHeap::s_dwNumInstancesOfLoaderHeaps = 0;)
@@ -104,7 +109,7 @@ BOOL RangeList::AddRangeWorker(const BYTE *start, const BYTE *end, void *id)
     {
         while (r < rEnd)
         {
-            if (r->id == NULL)
+            if ((void*)(r->id) == NULL)
             {
                 r->start = (TADDR)start;
                 r->end = (TADDR)end;
@@ -179,7 +184,7 @@ void RangeList::RemoveRangesWorker(void *id, const BYTE* start, const BYTE* end)
 
         while (r < rEnd)
         {
-            if (r->id != NULL)
+            if ((void*)(r->id) != NULL)
             {
                 if (start != NULL)
                 {
@@ -251,7 +256,7 @@ BOOL RangeList::IsInRangeWorker(TADDR address, TADDR *pID /* = NULL */)
     {
         while (r < rEnd)
         {
-            if (r->id != NULL &&
+            if ((void*)(r->id) != NULL &&
                 address >= r->start
                 && address < r->end)
             {
@@ -502,9 +507,9 @@ class LoaderHeapSniffer
 
         static VOID RecordEvent(UnlockedLoaderHeap *pHeap,
                                 AllocationType allocationType,
-                                __in const char *szFile,
+                                __sal_in const char *szFile,
                                 int            lineNum,
-                                __in const char *szAllocFile,
+                                __sal_in const char *szAllocFile,
                                 int            allocLineNum,
                                 void          *pMem,
                                 size_t         dwRequestedSize,
@@ -1248,7 +1253,7 @@ BOOL UnlockedLoaderHeap::GetMoreCommittedPages(size_t dwMinSize)
 }
 
 void *UnlockedLoaderHeap::UnlockedAllocMem(size_t dwSize
-                                           COMMA_INDEBUG(__in const char *szFile)
+                                           COMMA_INDEBUG(__sal_in const char *szFile)
                                            COMMA_INDEBUG(int  lineNum))
 {
     CONTRACT(void*)
@@ -1300,7 +1305,7 @@ static DWORD ShouldInjectFault()
 #endif
 
 void *UnlockedLoaderHeap::UnlockedAllocMem_NoThrow(size_t dwSize
-                                                   COMMA_INDEBUG(__in const char *szFile)
+                                                   COMMA_INDEBUG(__sal_in const char *szFile)
                                                    COMMA_INDEBUG(int lineNum))
 {
     CONTRACT(void*)
@@ -1404,9 +1409,9 @@ again:
 
 void UnlockedLoaderHeap::UnlockedBackoutMem(void *pMem,
                                             size_t dwRequestedSize
-                                            COMMA_INDEBUG(__in const char *szFile)
+                                            COMMA_INDEBUG(__sal_in const char *szFile)
                                             COMMA_INDEBUG(int  lineNum)
-                                            COMMA_INDEBUG(__in const char *szAllocFile)
+                                            COMMA_INDEBUG(__sal_in const char *szAllocFile)
                                             COMMA_INDEBUG(int  allocLineNum))
 {
     CONTRACTL
@@ -1576,7 +1581,7 @@ void UnlockedLoaderHeap::UnlockedBackoutMem(void *pMem,
 void *UnlockedLoaderHeap::UnlockedAllocAlignedMem_NoThrow(size_t  dwRequestedSize,
                                                           size_t  alignment,
                                                           size_t *pdwExtra
-                                                          COMMA_INDEBUG(__in const char *szFile)
+                                                          COMMA_INDEBUG(__sal_in const char *szFile)
                                                           COMMA_INDEBUG(int  lineNum))
 {
     CONTRACT(void*)
@@ -1713,7 +1718,7 @@ void *UnlockedLoaderHeap::UnlockedAllocAlignedMem_NoThrow(size_t  dwRequestedSiz
 void *UnlockedLoaderHeap::UnlockedAllocAlignedMem(size_t  dwRequestedSize,
                                                   size_t  dwAlignment,
                                                   size_t *pdwExtra
-                                                  COMMA_INDEBUG(__in const char *szFile)
+                                                  COMMA_INDEBUG(__sal_in const char *szFile)
                                                   COMMA_INDEBUG(int  lineNum))
 {
     CONTRACTL
@@ -1869,7 +1874,8 @@ void UnlockedLoaderHeap::DumpFreeList()
                 }
             }
 
-            printf("Addr = %pxh, Size = %lxh", pBlock, ((ULONG)dwsize));
+	    // ULONG is unsigned int?
+            //printf("Addr = %pxh, Size = %lxh", pBlock, ((ULONG)dwsize));
             if (ccbad) printf(" *** ERROR: NOT CC'd ***");
             if (sizeunaligned) printf(" *** ERROR: size not a multiple of ALLOC_ALIGN_CONSTANT ***");
             printf("\n");
@@ -1908,9 +1914,9 @@ void UnlockedLoaderHeap::UnlockedPrintEvents()
 
 /*static*/ VOID LoaderHeapSniffer::RecordEvent(UnlockedLoaderHeap *pHeap,
                                                AllocationType allocationType,
-                                               __in const char *szFile,
+                                               __sal_in const char *szFile,
                                                int            lineNum,
-                                               __in const char *szAllocFile,
+                                               __sal_in const char *szAllocFile,
                                                int            allocLineNum,
                                                void          *pMem,
                                                size_t         dwRequestedSize,

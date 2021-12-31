@@ -23,7 +23,7 @@ namespace FString
 #define MAX_LENGTH 0x1fffff00
 
 
-HRESULT Unicode_Utf8_Length(__in_z LPCWSTR pString, __out bool * pAllAscii, __out DWORD * pLength)
+HRESULT Unicode_Utf8_Length(__in_z LPCWSTR pString, __sal_out bool * pAllAscii, __sal_out DWORD * pLength)
 {
     CONTRACTL
     {
@@ -143,7 +143,7 @@ HRESULT Unicode_Utf8(__in_z LPCWSTR pString, bool allAscii, __out_z LPSTR pBuffe
 }
 
 
-HRESULT Utf8_Unicode_Length(__in_z LPCSTR pString, __out bool * pAllAscii, __out DWORD * pLength)
+HRESULT Utf8_Unicode_Length(__in_z LPCSTR pString, __sal_out bool * pAllAscii, __sal_out DWORD * pLength)
 {
     CONTRACTL
     {

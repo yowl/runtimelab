@@ -497,7 +497,7 @@ UINT WINAPI GetTempFileNameWrapper(
             );
 
         lastError = GetLastError();
-        size = (COUNT_T)wcslen(buffer);
+        size = (COUNT_T)PAL_wcslen(buffer);
         lpTempFileName.CloseBuffer(size);
 
     }

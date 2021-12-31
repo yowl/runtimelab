@@ -114,6 +114,7 @@ fi
 pushd "$2"
 
 # Include CMAKE_USER_MAKE_RULES_OVERRIDE as uninitialized since it will hold its value in the CMake cache otherwise can cause issues when branch switching
+echo running cmake $cmake_command
 $cmake_command \
   --no-warn-unused-cli \
   -G "$generator" \

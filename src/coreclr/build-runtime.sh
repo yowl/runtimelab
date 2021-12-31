@@ -22,7 +22,7 @@ usage_list+=("-nopgooptimize: do not use profile guided optimizations.")
 usage_list+=("-pgoinstrument: generate instrumented code for profile guided optimization enabled binaries.")
 usage_list+=("-skipcrossarchnative: Skip building cross-architecture native binaries.")
 usage_list+=("-staticanalyzer: use scan_build static analyzer.")
-usage_list+=("-component: Build individual components instead of the full project. Available options are 'jit', 'runtime', 'paltests', 'alljits', 'iltools' and 'nativeaot'. Can be specified multiple times.")
+usage_list+=("-component: Build individual components instead of the full project. Available options are 'jit', 'wasmjit', 'runtime', 'paltests', 'alljits', 'iltools' and 'nativeaot'. Can be specified multiple times.")
 
 setup_dirs_local()
 {
@@ -233,6 +233,14 @@ if [[ -n "$__RequestedBuildComponents" ]]; then
     __CMakeTarget=" $__RequestedBuildComponents "
     __CMakeTarget="${__CMakeTarget// paltests / paltests_install }"
 fi
+if [[ "$__RequestedBuildComponents" =~ wasmjit ]]; then
+    __ExtraCmakeArgs="$__ExtraCmakeArgs -DCLR_CMAKE_BUILD_LLVM_JIT=1"
+
+    if [[ -z "$LLVM_CMAKE_CONFIG" ]]; then
+        echo "${__ErrMsgPrefix}The LLVM_CMAKE_CONFIG environment variable pointing to llvm-build-dir/lib/cmake/llvm must be set."
+        exit 1 
+    fi
+fi
 if [[ -z "$__CMakeTarget" ]]; then
     __CMakeTarget="install"
 fi
@@ -240,7 +248,7 @@ fi
 if [[ "$__SkipNative" == 1 ]]; then
     echo "Skipping CoreCLR component build."
 else
-    build_native "$__TargetOS" "$__BuildArch" "$__ProjectRoot" "$__IntermediatesDir" "$__CMakeTarget" "$__CMakeArgs" "CoreCLR component"
+    build_native "$__TargetOS" "$__BuildArch" "$__ProjectRoot" "$__IntermediatesDir" "$__CMakeTarget" "$__CMakeArgs $__ExtraCmakeArgs --trace" "CoreCLR component"
 
     # Build cross-architecture components
     if [[ "$__SkipCrossArchNative" != 1 ]]; then

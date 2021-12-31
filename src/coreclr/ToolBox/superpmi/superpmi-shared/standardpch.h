@@ -66,8 +66,13 @@
 
 // Getting STL to work with PAL is difficult, so reimplement STL functionality to not require it.
 #ifdef TARGET_UNIX
+#ifdef PAL_STDCPP_COMPAT
+#include <string>
+#include <algorithm>
+#else
 #include "clr_std/string"
 #include "clr_std/algorithm"
+#endif //PAL_STDCPP_COMPAT
 #else // !TARGET_UNIX
 #ifndef USE_STL
 #define USE_STL

@@ -20,6 +20,11 @@
 #include "volatile.h"
 #include "mdfileformat.h"
 
+#if defined(PAL_STDCPP_COMPAT)
+#define max(a, b) (((a) > (b)) ? (a) : (b))
+#define min(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+
 #ifndef DACCESS_COMPILE
 UINT32 g_nClrInstanceId = 0;
 #endif //!DACCESS_COMPILE
@@ -229,7 +234,7 @@ namespace
         if (phmodDll != nullptr)
             *phmodDll = nullptr;
 
-        bool fIsDllPathPrefix = (wszDllPath != nullptr) && (wcslen(wszDllPath) > 0) && (wszDllPath[wcslen(wszDllPath) - 1] == W('\\'));
+        bool fIsDllPathPrefix = (wszDllPath != nullptr) && (PAL_wcslen(wszDllPath) > 0) && (wszDllPath[PAL_wcslen(wszDllPath) - 1] == W('\\'));
 
         // - An empty string will be treated as NULL.
         // - A string ending will a backslash will be treated as a prefix for where to look for the DLL
@@ -1338,7 +1343,7 @@ void ConfigString::init(const CLRConfig::ConfigStringInfo & info)
 // MyAssembly;mscorlib;System
 // MyAssembly;mscorlib System
 
-AssemblyNamesList::AssemblyNamesList(__in LPWSTR list)
+AssemblyNamesList::AssemblyNamesList(__sal_in LPWSTR list)
 {
     CONTRACTL {
         THROWS;
@@ -2697,7 +2702,7 @@ LPWSTR *SegmentCommandLine(LPCWSTR lpCmdLine, DWORD *pNumArgs)
 
     *pNumArgs = 0;
 
-    int nch = (int)wcslen(lpCmdLine);
+    int nch = (int)PAL_wcslen(lpCmdLine);
 
     // Calculate the worstcase storage requirement. (One pointer for
     // each argument, plus storage for the arguments themselves.)

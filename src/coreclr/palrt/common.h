@@ -14,4 +14,9 @@
 #include <switches.h>
 #include <winwrap.h>
 #include "shlwapip.h"
+
+//#if defined(__cplusplus) && defined(PAL_STDCPP_COMPAT)
+//#include "pal/malloc.hpp" // for PAL_malloc
+//#endif
+
 #endif // _COMMON_H_

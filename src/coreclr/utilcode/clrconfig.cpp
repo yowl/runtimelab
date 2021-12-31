@@ -148,7 +148,7 @@ namespace
 
         WCHAR buff[64];
         const WCHAR* fallbackPrefix = NULL;
-        const size_t namelen = wcslen(name);
+        const size_t namelen = PAL_wcslen(name);
 
         bool noPrefix = CheckLookupOption(options, LookupOptions::DontPrependPrefix);
         if (noPrefix)
@@ -217,7 +217,7 @@ namespace
     HRESULT GetConfigDWORD(
         LPCWSTR name,
         DWORD defValue,
-        __out DWORD *result,
+        __sal_out DWORD *result,
         LookupOptions options)
     {
         CONTRACTL
@@ -242,7 +242,7 @@ namespace
         {
             errno = 0;
             LPWSTR endPtr;
-            DWORD configMaybe = wcstoul(val, &endPtr, radix);
+            DWORD configMaybe = PAL_wcstoul(val, &endPtr, radix);
             BOOL fSuccess = ((errno != ERANGE) && (endPtr != val));
             if (fSuccess)
             {
@@ -317,7 +317,7 @@ namespace
         *pwszTrimmed = NULL;
 
         // Get pointers into internal string that show where to do the trimming.
-        size_t cchOrig = wcslen(wszOrig);
+        size_t cchOrig = PAL_wcslen(wszOrig);
         if (!FitsIn<DWORD>(cchOrig))
             return COR_E_OVERFLOW;
         DWORD cchAfterTrim = (DWORD) cchOrig;

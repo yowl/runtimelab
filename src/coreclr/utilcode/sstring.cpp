@@ -244,7 +244,7 @@ void SString::Set(const WCHAR *string)
         Clear();
     else
     {
-        Resize((COUNT_T) wcslen(string), REPRESENTATION_UNICODE);
+        Resize((COUNT_T) PAL_wcslen(string), REPRESENTATION_UNICODE);
         wcscpy_s(GetRawUnicode(), GetBufferSizeInCharIncludeNullChar(), string);
     }
 
@@ -1043,7 +1043,7 @@ BOOL SString::Find(CIterator &i, const SString &s) const
             const WCHAR *end = GetUnicode() + GetRawCount() - count;
             while (start <= end)
             {
-                if (wcsncmp(start, source.GetRawUnicode(), count) == 0)
+                if (PAL_wcsncmp(start, source.GetRawUnicode(), count) == 0)
                 {
                     i.Resync(this, (BYTE*) start);
                     RETURN TRUE;
@@ -1184,7 +1184,7 @@ BOOL SString::FindBack(CIterator &i, const SString &s) const
 
             while (start >= end)
             {
-                if (wcsncmp(start, source.GetRawUnicode(), count) == 0)
+                if (PAL_wcsncmp(start, source.GetRawUnicode(), count) == 0)
                 {
                     i.Resync(this, (BYTE*) start);
                     RETURN TRUE;
@@ -1396,7 +1396,7 @@ int SString::Compare(const SString &s) const
     switch (GetRepresentation())
     {
     case REPRESENTATION_UNICODE:
-        result = wcsncmp(GetRawUnicode(), source.GetRawUnicode(), smaller);
+        result = PAL_wcsncmp(GetRawUnicode(), source.GetRawUnicode(), smaller);
         break;
 
     case REPRESENTATION_ASCII:
@@ -1512,7 +1512,7 @@ BOOL SString::Equals(const SString &s) const
     switch (GetRepresentation())
     {
     case REPRESENTATION_UNICODE:
-        RETURN (wcsncmp(GetRawUnicode(), source.GetRawUnicode(), count) == 0);
+        RETURN (PAL_wcsncmp(GetRawUnicode(), source.GetRawUnicode(), count) == 0);
 
     case REPRESENTATION_ASCII:
     case REPRESENTATION_ANSI:
@@ -1602,7 +1602,7 @@ BOOL SString::Match(const CIterator &i, const SString &s) const
     switch (GetRepresentation())
     {
     case REPRESENTATION_UNICODE:
-        RETURN (wcsncmp(i.GetUnicode(), source.GetRawUnicode(), count) == 0);
+        RETURN (PAL_wcsncmp(i.GetUnicode(), source.GetRawUnicode(), count) == 0);
 
     case REPRESENTATION_ASCII:
     case REPRESENTATION_ANSI:
@@ -2077,7 +2077,7 @@ void SString::VPrintf(const WCHAR *format, va_list args)
 
     // Make a guess how long the result will be (note this will be doubled)
 
-    COUNT_T guess = (COUNT_T) wcslen(format)+1;
+    COUNT_T guess = (COUNT_T) PAL_wcslen(format)+1;
     if (guess < GetRawCount())
         guess = GetRawCount();
     if (guess < MINIMUM_GUESS)
@@ -2155,7 +2155,7 @@ void SString::PVPrintf(const WCHAR *format, va_list args)
 
     // Make a guess how long the result will be (note this will be doubled)
 
-    COUNT_T guess = (COUNT_T) wcslen(format)+1;
+    COUNT_T guess = (COUNT_T) PAL_wcslen(format)+1;
     if (guess < GetRawCount())
         guess = GetRawCount();
     if (guess < MINIMUM_GUESS)

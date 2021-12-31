@@ -16,7 +16,9 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 #define _UTILS_H_
 
 #include "safemath.h"
+#ifndef PAL_STDCPP_COMPAT
 #include "clr_std/type_traits"
+#endif
 #include "iallocator.h"
 #include "hostallocator.h"
 #include "cycletimer.h"

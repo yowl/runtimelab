@@ -20,6 +20,10 @@
 
 #include "nsutilpriv.h"
 
+#ifdef PAL_STDCPP_COMPAT
+#define max(a, b) (((a) > (b)) ? (a) : (b))
+#define min(a, b) (((a) < (b)) ? (a) : (b))
+#endif
 
 //*****************************************************************************
 // Determine how many chars large a fully qualified name would be given the
@@ -36,9 +40,9 @@ int ns::GetFullLength(                  // Number of chars in full name.
 
     int iLen = 1;                       // Null terminator.
     if (szNameSpace)
-        iLen += (int)wcslen(szNameSpace);
+        iLen += (int)PAL_wcslen(szNameSpace);
     if (szName)
-        iLen += (int)wcslen(szName);
+        iLen += (int)PAL_wcslen(szName);
     if (szNameSpace && *szNameSpace && szName && *szName)
         ++iLen;
     return iLen;
@@ -81,7 +85,7 @@ WCHAR *ns::FindSep(                     // Pointer to separator or null.
     STATIC_CONTRACT_FORBID_FAULT;
 
     _ASSERTE(szPath);
-    WCHAR *ptr = (WCHAR*)wcsrchr(szPath, NAMESPACE_SEPARATOR_WCHAR);
+    WCHAR *ptr = (WCHAR*)PAL_wcsrchr(szPath, NAMESPACE_SEPARATOR_WCHAR);
     if((ptr == NULL) || (ptr == szPath)) return NULL;
     if(*(ptr - 1) == NAMESPACE_SEPARATOR_WCHAR) // here ptr is at least szPath+1
         --ptr;
@@ -229,7 +233,7 @@ int ns::SplitPath(                      // true ok, false trunction.
             ++ptr;
         else
             ptr = szPath;
-        iLen = (int)wcslen(ptr);
+        iLen = (int)PAL_wcslen(ptr);
         iCopyMax = min(iCopyMax, iLen);
         wcsncpy_s(szName, cchName, ptr, iCopyMax);
         szName[iCopyMax] = 0;
@@ -473,9 +477,9 @@ int ns::MakePath(                       // true ok, false out of memory
 
     int iLen = 2;
     if (szNameSpace)
-        iLen += (int)wcslen(szNameSpace);
+        iLen += (int)PAL_wcslen(szNameSpace);
     if (szName)
-        iLen += (int)wcslen(szName);
+        iLen += (int)PAL_wcslen(szName);
     WCHAR *szOut = (WCHAR *) qb.AllocNoThrow(iLen * sizeof(WCHAR));
     if (!szOut)
         return false;
@@ -586,9 +590,9 @@ bool ns::MakeAssemblyQualifiedName(                                        // tr
     int iTypeName = 0;
     int iAssemblyName = 0;
     if (szTypeName)
-        iTypeName = (int)wcslen(szTypeName);
+        iTypeName = (int)PAL_wcslen(szTypeName);
     if (szAssemblyName)
-        iAssemblyName = (int)wcslen(szAssemblyName);
+        iAssemblyName = (int)PAL_wcslen(szAssemblyName);
 
     int iLen = ASSEMBLY_SEPARATOR_LEN + iTypeName + iAssemblyName + 1; // Space for null terminator
     WCHAR *szOut = (WCHAR *) qb.AllocNoThrow(iLen * sizeof(WCHAR));

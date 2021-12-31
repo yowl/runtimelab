@@ -21,6 +21,11 @@
 
 #include "ex.h"
 
+#if defined(PAL_STDCPP_COMPAT)
+#define max(a, b) (((a) > (b)) ? (a) : (b))
+#define min(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+
 using namespace StreamUtil;
 
 #define MAX_CHAIN_LENGTH 20             // Max chain length before rehashing.

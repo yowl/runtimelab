@@ -10,6 +10,8 @@
 #include "errorhandling.h"
 #include <time.h>
 
+#include "pal/malloc.hpp" // PAL__strdup
+
 //
 // NOTE: Since the logging system is at the core of the error handling infrastructure, any errors
 // that occur while logging will print a message to the console. Fatal errors trigger a debugbreak.
@@ -62,7 +64,7 @@ void Logger::OpenLogFile(char* logFilePath)
         if (s_logFile != INVALID_HANDLE_VALUE)
         {
             // We may need the file path later in order to delete the log file
-            s_logFilePath = _strdup(logFilePath);
+            s_logFilePath = PAL__strdup(logFilePath);
         }
         else
         {

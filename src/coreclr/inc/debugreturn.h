@@ -98,7 +98,9 @@ typedef __SafeToReturn __ReturnOK;
 #ifdef _MSC_VER
 #define return if (0 && __ReturnOK::safe_to_return()) { } else return
 #else // _MSC_VER
+#ifndef PAL_STDCPP_COMPAT
 #define return for (;1;__ReturnOK::safe_to_return()) return
+#endif
 #endif // _MSC_VER
 
 #define DEBUG_ASSURE_NO_RETURN_BEGIN(arg) { typedef __YouCannotUseAReturnStatementHere __ReturnOK; if (0 && __ReturnOK::used()) { } else {

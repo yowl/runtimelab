@@ -140,7 +140,7 @@ HRESULT __cdecl FormatRuntimeErrorVa(
             hr = S_OK;
 
             // System messages contain a trailing \r\n, which we don't want normally.
-            size_t iLen = wcslen(rcMsg);
+            size_t iLen = PAL_wcslen(rcMsg);
             if (iLen > 3 && rcMsg[iLen - 2] == '\r' && rcMsg[iLen - 1] == '\n')
                 rcMsg[iLen - 2] = '\0';
         }

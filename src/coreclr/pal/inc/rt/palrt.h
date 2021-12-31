@@ -293,9 +293,9 @@ typedef union _ULARGE_INTEGER {
         DWORD HighPart;
 #endif
     }
-#ifndef PAL_STDCPP_COMPAT
+//#ifndef PAL_STDCPP_COMPAT
     u
-#endif // PAL_STDCPP_COMPAT
+//#endif // PAL_STDCPP_COMPAT
      ;
     ULONGLONG QuadPart;
 } ULARGE_INTEGER, *PULARGE_INTEGER;
@@ -847,10 +847,12 @@ typedef HANDLE HWND;
 #define IS_TEXT_UNICODE_SIGNATURE             0x0008
 #define IS_TEXT_UNICODE_UNICODE_MASK          0x000F
 
+//#if !defined(PAL_STDCPP_COMPAT) // defined in pal/src/include/pal/list.h
 typedef struct _LIST_ENTRY {
    struct _LIST_ENTRY *Flink;
    struct _LIST_ENTRY *Blink;
 } LIST_ENTRY, *PLIST_ENTRY;
+//#endif
 
 typedef VOID (NTAPI *WAITORTIMERCALLBACK)(PVOID, BOOLEAN);
 

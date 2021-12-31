@@ -8,6 +8,11 @@
 #include "host.h"
 #endif // defined(_HOST_H_)
 
+#if defined(PAL_STDCPP_COMPAT)
+#define max(a, b) (((a) > (b)) ? (a) : (b))
+#define min(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+
 // CompMemKind values are used to tag memory allocations performed via
 // the compiler's allocator so that the memory usage of various compiler
 // components can be tracked separately (when MEASURE_MEM_ALLOC is defined).

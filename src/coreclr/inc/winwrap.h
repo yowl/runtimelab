@@ -37,6 +37,10 @@
 #include "registrywrapper.h"
 #include "longfilepathwrappers.h"
 
+#if defined(PAL_STDCPP_COMPAT)
+//#include "pal/malloc.hpp"
+#endif
+
 #if defined(_PREFAST_) || defined(SOURCE_FORMATTING)
 //
 // For PREFAST we don't want the C_ASSERT to be expanded since it always
@@ -415,8 +419,8 @@ inline void DbgWPrintf(const LPCWSTR wszFormat, ...)
     }
     else
     {
-        fwprintf(stdout, W("%s"), wszBuffer);
-        fflush(stdout);
+        PAL_fwprintf(PAL_get_stdout(PAL_get_caller), W("%s"), wszBuffer);
+        PAL_fflush(PAL_get_stdout(PAL_get_caller));
     }
 }
 

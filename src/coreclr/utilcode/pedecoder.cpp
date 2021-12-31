@@ -13,6 +13,11 @@
 #include "mdcommon.h"
 #include "nibblemapmacros.h"
 
+#if defined(PAL_STDCPP_COMPAT)
+#define max(a, b) (((a) > (b)) ? (a) : (b))
+#define min(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+
 CHECK PEDecoder::CheckFormat() const
 {
     CONTRACT_CHECK
@@ -567,7 +572,7 @@ CHECK PEDecoder::CheckOffset(COUNT_T fileOffset, IsNullOK ok) const
     }
     CONTRACT_CHECK_END;
 
-    if (fileOffset == NULL)
+    if (fileOffset == (COUNT_T)NULL)
         CHECK_MSG(ok == NULL_OK, "Null pointer illegal");
     else
     {
@@ -863,7 +868,7 @@ RVA PEDecoder::GetDataRva(const TADDR data) const
     }
     CONTRACT_END;
 
-    if (data == NULL)
+    if ((void*)data == NULL)
         RETURN 0;
 
     COUNT_T offset = (COUNT_T) (data - m_base);
@@ -1079,7 +1084,7 @@ CHECK PEDecoder::CheckCorHeader() const
     COUNT_T ctMD = (COUNT_T)VAL32(pDirMD->Size);
     TADDR   pcMD = (TADDR)GetDirectoryData(pDirMD);
 
-    if(pcMD != NULL)
+    if((void*)pcMD != NULL)
     {
         // Storage signature checks
         CHECK(ctMD >= sizeof(STORAGESIGNATURE));
@@ -1835,7 +1840,7 @@ DWORD ReadResourceDirectory(const PEDecoder *pDecoder, DWORD rvaOfResourceSectio
                 return 0;
 
             size_t entryNameLen = *(WORD*)pDecoder->GetRvaData(entryNameRva);
-            if (wcslen(name) != entryNameLen)
+            if (PAL_wcslen(name) != entryNameLen)
                 continue;
 
             if (!pDecoder->CheckRva(entryNameRva, (COUNT_T)(sizeof(WORD) * (1 + entryNameLen))))
@@ -2003,7 +2008,7 @@ bool DoesResourceNameMatch(LPCWSTR nameA, LPCWSTR nameB)
         if (IS_INTRESOURCE(nameB))
             return false;
         else
-            foundEntry = !wcscmp(nameB, nameA);
+            foundEntry = !PAL_wcscmp(nameB, nameA);
     }
 
     return foundEntry;

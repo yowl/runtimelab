@@ -156,7 +156,7 @@ bool ClrDirectoryEnumerator::Next()
         }
 
         // Skip junk
-        if (wcscmp(data.cFileName, W(".")) != 0 && wcscmp(data.cFileName, W("..")) != 0)
+        if (PAL_wcscmp(data.cFileName, W(".")) != 0 && PAL_wcscmp(data.cFileName, W("..")) != 0)
             return TRUE;
     }
 }

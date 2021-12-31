@@ -16,6 +16,11 @@
 #include "eventtracebase.h"
 #include "ex.h"
 
+#if defined(PAL_STDCPP_COMPAT)
+#define max(a, b) (((a) > (b)) ? (a) : (b))
+#define min(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+
  #if !defined(STRESS_LOG_READONLY)
 #ifdef HOST_WINDOWS
 HANDLE StressLogChunk::s_LogChunkHeap = NULL;

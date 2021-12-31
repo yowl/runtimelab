@@ -593,7 +593,11 @@ __Mono=0
 __MonoAot=0
 CORE_ROOT=
 
+echo targetos $__TargetOS
+
 source $__RepoRootDir/src/coreclr/_build-commons.sh
+
+echo targetos $__TargetOS
 
 if [[ "${__BuildArch}" != "${__HostArch}" ]]; then
     __CrossBuild=1

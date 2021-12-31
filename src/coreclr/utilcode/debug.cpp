@@ -20,6 +20,10 @@
 
 #include "log.h"
 
+#if defined(PAL_STDCPP_COMPAT)
+//#include "pal/palinternal.h" // safecrt.h is included even on Linux?  So we can't include this, and just comment fwprintf
+#endif
+
 extern "C" _CRTIMP int __cdecl _flushall(void);
 
 #ifdef HOST_WINDOWS
@@ -386,7 +390,7 @@ bool _DbgBreakCheck(
     if (formattedMessages)
     {
         WszOutputDebugString(debugOutput);
-        fwprintf(stderr, W("%s"), (const WCHAR*)debugOutput);
+        //PAL_fwprintf(stderr, W("%s"), (const WCHAR*)debugOutput);
     }
     else
     {
@@ -397,9 +401,11 @@ bool _DbgBreakCheck(
         OutputDebugStringA("\n");
         OutputDebugStringA(szExpr);
         OutputDebugStringA("\n");
-        printf(szLowMemoryAssertMessage);
+	// -Wformat-security ?
+        //printf(szLowMemoryAssertMessage);
         printf("\n");
-        printf(szFile);
+	// -Wformat-security ?
+        //printf(szFile);
         printf("\n");
         printf("%s", szExpr);
         printf("\n");

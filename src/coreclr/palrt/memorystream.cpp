@@ -24,6 +24,11 @@ Revision History:
 
 #include "objidl.h"
 
+#if defined(PAL_STDCPP_COMPAT)
+#define max(a, b) (((a) > (b)) ? (a) : (b))
+#define min(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+
 class MemoryStream : public IStream
 {
     LONG m_cRef; // QI refcount

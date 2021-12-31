@@ -343,10 +343,10 @@ private:
     ComponentSpan GetNextComponentString(LPCWSTR start) const
     {
         const WCHAR ComponentDelimiter = W(':');
-        const WCHAR * end = wcschr(start, ComponentDelimiter);
+        const WCHAR * end = PAL_wcschr(start, ComponentDelimiter);
         if (end == nullptr)
         {
-            end = start + wcslen(start);
+            end = start + PAL_wcslen(start);
         }
 
         return ComponentSpan(start, end);
@@ -359,7 +359,7 @@ private:
         {
             auto const length = component.End - component.Start;
             providerName = new WCHAR[length + 1];
-            wcsncpy(providerName, component.Start, length);
+            PAL_wcsncpy(providerName, component.Start, length);
             providerName[length] = '\0';
         }
         return providerName;
@@ -392,7 +392,7 @@ private:
         {
             auto const length = component.End - component.Start;
             argument = new WCHAR[length + 1];
-            wcsncpy(argument, component.Start, length);
+            PAL_wcsncpy(argument, component.Start, length);
             argument[length] = '\0';
         }
         return argument;
@@ -457,7 +457,7 @@ private:
 #ifdef FEATURE_EVENT_TRACE
     static LTTNG_TRACE_CONTEXT * const GetProvider(LPCWSTR providerName)
     {
-        auto length = wcslen(providerName);
+        auto length = PAL_wcslen(providerName);
         for (auto provider : ALL_LTTNG_PROVIDERS_CONTEXT)
         {
             if (_wcsicmp(provider->Name, providerName) == 0)
@@ -534,7 +534,7 @@ public:
         while (configToParse != nullptr)
         {
             const WCHAR comma = W(',');
-            auto end = wcschr(configToParse, comma);
+            auto end = PAL_wcschr(configToParse, comma);
             configuration.Parse(configToParse);
             XplatEventLoggerController::UpdateProviderContext(configuration);
             if (end == nullptr)
@@ -822,7 +822,7 @@ namespace ETW
         friend class ETW::EnumerationLog;
 #if defined(FEATURE_EVENT_TRACE)
         static VOID SendModuleEvent(Module *pModule, DWORD dwEventOptions, BOOL bFireDomainModuleEvents=FALSE);
-        static ULONG SendModuleRange(__in Module *pModule, __in DWORD dwEventOptions);
+        static ULONG SendModuleRange(__sal_in Module *pModule, __sal_in DWORD dwEventOptions);
         static VOID SendAssemblyEvent(Assembly *pAssembly, DWORD dwEventOptions);
         static VOID SendDomainEvent(BaseDomain *pBaseDomain, DWORD dwEventOptions, LPCWSTR wszFriendlyName=NULL);
     public:
@@ -960,8 +960,8 @@ namespace ETW
     {
 #ifdef FEATURE_EVENT_TRACE
     public:
-        static VOID StrongNameVerificationStart(DWORD dwInFlags, __in LPWSTR strFullyQualifiedAssemblyName);
-        static VOID StrongNameVerificationStop(DWORD dwInFlags,ULONG result, __in LPWSTR strFullyQualifiedAssemblyName);
+        static VOID StrongNameVerificationStart(DWORD dwInFlags, __sal_in LPWSTR strFullyQualifiedAssemblyName);
+        static VOID StrongNameVerificationStop(DWORD dwInFlags,ULONG result, __sal_in LPWSTR strFullyQualifiedAssemblyName);
 
         static void FireFieldTransparencyComputationStart(LPCWSTR wszFieldName,
                                                           LPCWSTR wszModuleName,

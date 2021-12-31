@@ -231,5 +231,5 @@ void CorGuidFromNameW
         pGuidResult,
         COMPLUS_RUNTIME_GUID,
         wzName,
-        (DWORD)((cchName == (SIZE_T) -1 ? (wcslen(wzName)+1) : cchName) * sizeof(WCHAR)));
+        (DWORD)((cchName == (SIZE_T) -1 ? (PAL_wcslen(wzName)+1) : cchName) * sizeof(WCHAR)));
 }

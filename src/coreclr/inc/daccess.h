@@ -531,6 +531,10 @@
 #include "safemath.h"
 #include "corerror.h"
 
+#if defined(PAL_STDCPP_COMPAT)
+#include "pal.h"
+#endif
+
 #ifndef __in
 #include <specstrings.h>
 #endif
@@ -541,8 +545,8 @@
 #include <type_traits>
 #else
 #include "clr_std/type_traits"
-#include "crosscomp.h"
 #endif
+#include "crosscomp.h"
 
 // Information stored in the DAC table of interest to the DAC implementation
 // Note that this information is shared between all instantiations of ClrDataAccess, so initialize
@@ -2367,6 +2371,10 @@ typedef S8PTR(char)           PTR_UTF8;
 typedef S8PTR(const char)     PTR_CUTF8;
 typedef S16PTR(WCHAR)         PTR_WSTR;
 typedef S16PTR(const WCHAR)   PTR_CWSTR;
+
+#if defined(PAL_STDCPP_COMPAT)
+#define T_CONTEXT CONTEXT
+#endif
 
 #if TARGET_WASM
 #define T_CONTEXT CONTEXT

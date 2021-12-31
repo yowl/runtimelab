@@ -39,11 +39,11 @@
 *******************************************************************************/
 
 void MakePath (
-        __out CQuickWSTR &szPath,
-        __in LPCWSTR drive,
-        __in LPCWSTR dir,
-        __in LPCWSTR fname,
-        __in LPCWSTR ext
+        __sal_out CQuickWSTR &szPath,
+        __sal_in LPCWSTR drive,
+        __sal_in LPCWSTR dir,
+        __sal_in LPCWSTR fname,
+        __sal_in LPCWSTR ext
         )
 {
         CONTRACTL
@@ -55,9 +55,9 @@ void MakePath (
 
         SIZE_T maxCount = 4      // Possible separators between components, plus null terminator
             + (drive != nullptr ? 2 : 0)
-            + (dir != nullptr ? wcslen(dir) : 0)
-            + (fname != nullptr ? wcslen(fname) : 0)
-            + (ext != nullptr ? wcslen(ext) : 0);
+            + (dir != nullptr ? PAL_wcslen(dir) : 0)
+            + (fname != nullptr ? PAL_wcslen(fname) : 0)
+            + (ext != nullptr ? PAL_wcslen(ext) : 0);
         LPWSTR path = szPath.AllocNoThrow(maxCount);
 
         const WCHAR *p;

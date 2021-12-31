@@ -43,6 +43,11 @@ Revision History:
 #include <utilcode.h>                   // Utility helpers.
 #include "sha1.h"
 
+#if defined(PAL_STDCPP_COMPAT)
+#define max(a, b) (((a) > (b)) ? (a) : (b))
+#define min(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+
 typedef const DWORD DWORDC;
 #define ROTATE32L(x,n) _rotl(x,n)
 #define SHAVE32(x)     (DWORD)(x)

@@ -6,6 +6,11 @@
 #include "sigbuilder.h"
 #include "ex.h"
 
+#if defined(PAL_STDCPP_COMPAT)
+#define max(a, b) (((a) > (b)) ? (a) : (b))
+#define min(a, b) (((a) < (b)) ? (a) : (b))
+#endif
+
 void SigBuilder::AppendByte(BYTE b)
 {
     STANDARD_VM_CONTRACT;

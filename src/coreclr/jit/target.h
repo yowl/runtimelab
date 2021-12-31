@@ -85,6 +85,7 @@ enum _regMask_enum : unsigned __int64
 
 #elif defined(TARGET_ARM64)
 
+#undef REG_RAX
 enum _regNumber_enum : unsigned
 {
 #define REGDEF(name, rnum, mask, xname, wname) REG_##name = rnum,
