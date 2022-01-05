@@ -26,10 +26,10 @@ public:
 };
 
 bool vlogf(unsigned level, const char* fmt, va_list args);
-int vflogf(FILE* file, const char* fmt, va_list args);
+int vflogf(PAL_FILE* file, const char* fmt, va_list args);
 
 int logf(const char* fmt, ...);
-int flogf(FILE* file, const char* fmt, ...);
+int flogf(PAL_FILE* file, const char* fmt, ...);
 void gcDump_logf(const char* fmt, ...);
 
 void logf(unsigned level, const char* fmt, ...);
@@ -50,11 +50,11 @@ extern "C" void ANALYZER_NORETURN __cdecl assertAbort(const char* why, const cha
 #define _HOST_H_
 /*****************************************************************************/
 
-extern FILE* jitstdout;
+extern PAL_FILE* jitstdout;
 
-inline FILE* procstdout()
+inline PAL_FILE* procstdout()
 {
-    return stdout;
+    return PAL_stdout;
 }
 #undef stdout
 #define stdout use_jitstdout

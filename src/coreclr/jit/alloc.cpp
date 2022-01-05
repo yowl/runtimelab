@@ -243,14 +243,14 @@ const char* ArenaAllocator::MemStats::s_CompMemKindNames[] = {
 #include "compmemkind.h"
 };
 
-void ArenaAllocator::MemStats::Print(FILE* f)
+void ArenaAllocator::MemStats::Print(PAL_FILE* f)
 {
     fprintf(f, "count: %10u, size: %10llu, max = %10llu\n", allocCnt, allocSz, allocSzMax);
     fprintf(f, "allocateMemory: %10llu, nraUsed: %10llu\n", nraTotalSizeAlloc, nraTotalSizeUsed);
     PrintByKind(f);
 }
 
-void ArenaAllocator::MemStats::PrintByKind(FILE* f)
+void ArenaAllocator::MemStats::PrintByKind(PAL_FILE* f)
 {
     fprintf(f, "\nAlloc'd bytes by kind:\n  %20s | %10s | %7s\n", "kind", "size", "pct");
     fprintf(f, "  %20s-+-%10s-+-%7s\n", "--------------------", "----------", "-------");
@@ -263,7 +263,7 @@ void ArenaAllocator::MemStats::PrintByKind(FILE* f)
     fprintf(f, "\n");
 }
 
-void ArenaAllocator::AggregateMemStats::Print(FILE* f)
+void ArenaAllocator::AggregateMemStats::Print(PAL_FILE* f)
 {
     fprintf(f, "For %9u methods:\n", nMethods);
     if (nMethods == 0)
@@ -305,17 +305,17 @@ void ArenaAllocator::finishMemStats()
     }
 }
 
-void ArenaAllocator::dumpMemStats(FILE* file)
+void ArenaAllocator::dumpMemStats(PAL_FILE* file)
 {
     m_stats.Print(file);
 }
 
-void ArenaAllocator::dumpAggregateMemStats(FILE* file)
+void ArenaAllocator::dumpAggregateMemStats(PAL_FILE* file)
 {
     s_aggStats.Print(file);
 }
 
-void ArenaAllocator::dumpMaxMemStats(FILE* file)
+void ArenaAllocator::dumpMaxMemStats(PAL_FILE* file)
 {
     s_maxStats.Print(file);
 }

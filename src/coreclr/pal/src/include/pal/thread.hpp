@@ -442,6 +442,9 @@ namespace CorUnix
             return synchronizationInfo.TryAcquireNativeWaitLock();
         }
 
+#ifdef PAL_STDCPP_COMPAT
+	static DWORD errno;
+#endif
         static void
         SetLastError(
             DWORD dwLastError

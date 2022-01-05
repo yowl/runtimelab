@@ -17,6 +17,38 @@
 #include "llvm/BinaryFormat/Dwarf.h"
 #pragma warning (error: 4702)
 
+int vflogf(PAL_FILE* file, const char* fmt, va_list args)
+{
+    // 0-length string means flush
+    if (fmt[0] == '\0')
+    {
+        PAL_fflush(file);
+        return 0;
+    }
+
+    const int BUFF_SIZE = 8192;
+    char      buffer[BUFF_SIZE];
+    int       written = _vsnprintf_s(&buffer[0], BUFF_SIZE, _TRUNCATE, fmt, args);
+
+    if (JitConfig.JitDumpToDebugger())
+    {
+        OutputDebugStringA(buffer);
+    }
+
+    // We use fputs here so that this executes as fast a possible
+    PAL_fputs(&buffer[0], file);
+    return written;
+}
+
+int flogf(PAL_FILE* file, const char* fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    int written = vflogf(file, fmt, args);
+    va_end(args);
+    return written;
+}
+
 using llvm::Function;
 using llvm::FunctionType;
 using llvm::LLVMContext;
@@ -177,6 +209,7 @@ llvm::Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
                     llvmType = Type::getInt16Ty(_llvmContext);
                     break;
                 }
+		LLVM_FALLTHROUGH;
             case 4:
                 if (structAlignment == 4)
                 {
@@ -190,6 +223,7 @@ llvm::Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
                     }
                     break;
                 }
+		LLVM_FALLTHROUGH;
             case 8:
                 if (structAlignment == 8)
                 {
@@ -203,6 +237,7 @@ llvm::Type* Llvm::getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle)
                     }
                     break;
                 }
+		LLVM_FALLTHROUGH;
 
             default:
                 // Forward-declare the struct in case there's a reference to it in the fields.
@@ -622,11 +657,14 @@ llvm::Instruction* Llvm::getCast(llvm::Value* source, Type* targetType)
                 {
                     return new llvm::TruncInst(source, targetType, "TruncInt");
                 }
+	    LLVM_FALLTHROUGH;
             default:
                 failFunctionCompilation();
         }
     }
 
+    struct _FILE f;
+    f.PALferrorCode = 0;
     failFunctionCompilation();
 }
 
@@ -2180,6 +2218,7 @@ void Llvm::PlaceAndConvertShadowStackLocals()
 // TODO-LLVM: A legal optimization here is to not GC-report things if we know they're not on the heap (say this is actually a local). 
 void Llvm::Compile()
 {
+	printf("Compile1\n");
     CompAllocator allocator = _compiler->getAllocator();
     BlkToLlvmBlkVectorMap blkToLlvmBlkVectorMap(allocator);
     _blkToLlvmBlkVectorMap = &blkToLlvmBlkVectorMap;

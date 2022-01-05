@@ -275,79 +275,79 @@ CorInfoType Compiler::getBaseJitTypeAndSizeOfSIMDType(CORINFO_CLASS_HANDLE typeH
             noway_assert(pbuf < &className[256]);
             JITDUMP("SIMD Candidate Type %S\n", className);
 
-            if (wcsncmp(className, W("System.Numerics."), 16) == 0)
+            if (PAL_wcsncmp(className, W("System.Numerics."), 16) == 0)
             {
-                if (wcsncmp(&(className[16]), W("Vector`1["), 9) == 0)
+                if (PAL_wcsncmp(&(className[16]), W("Vector`1["), 9) == 0)
                 {
                     size = getSIMDVectorRegisterByteLength();
 
-                    if (wcsncmp(&(className[25]), W("System.Single"), 13) == 0)
+                    if (PAL_wcsncmp(&(className[25]), W("System.Single"), 13) == 0)
                     {
                         m_simdHandleCache->SIMDFloatHandle = typeHnd;
                         simdBaseJitType                    = CORINFO_TYPE_FLOAT;
                         JITDUMP("  Found type SIMD Vector<Float>\n");
                     }
-                    else if (wcsncmp(&(className[25]), W("System.Int32"), 12) == 0)
+                    else if (PAL_wcsncmp(&(className[25]), W("System.Int32"), 12) == 0)
                     {
                         m_simdHandleCache->SIMDIntHandle = typeHnd;
                         simdBaseJitType                  = CORINFO_TYPE_INT;
                         JITDUMP("  Found type SIMD Vector<Int>\n");
                     }
-                    else if (wcsncmp(&(className[25]), W("System.UInt16"), 13) == 0)
+                    else if (PAL_wcsncmp(&(className[25]), W("System.UInt16"), 13) == 0)
                     {
                         m_simdHandleCache->SIMDUShortHandle = typeHnd;
                         simdBaseJitType                     = CORINFO_TYPE_USHORT;
                         JITDUMP("  Found type SIMD Vector<ushort>\n");
                     }
-                    else if (wcsncmp(&(className[25]), W("System.Byte"), 11) == 0)
+                    else if (PAL_wcsncmp(&(className[25]), W("System.Byte"), 11) == 0)
                     {
                         m_simdHandleCache->SIMDUByteHandle = typeHnd;
                         simdBaseJitType                    = CORINFO_TYPE_UBYTE;
                         JITDUMP("  Found type SIMD Vector<ubyte>\n");
                     }
-                    else if (wcsncmp(&(className[25]), W("System.Double"), 13) == 0)
+                    else if (PAL_wcsncmp(&(className[25]), W("System.Double"), 13) == 0)
                     {
                         m_simdHandleCache->SIMDDoubleHandle = typeHnd;
                         simdBaseJitType                     = CORINFO_TYPE_DOUBLE;
                         JITDUMP("  Found type SIMD Vector<Double>\n");
                     }
-                    else if (wcsncmp(&(className[25]), W("System.Int64"), 12) == 0)
+                    else if (PAL_wcsncmp(&(className[25]), W("System.Int64"), 12) == 0)
                     {
                         m_simdHandleCache->SIMDLongHandle = typeHnd;
                         simdBaseJitType                   = CORINFO_TYPE_LONG;
                         JITDUMP("  Found type SIMD Vector<Long>\n");
                     }
-                    else if (wcsncmp(&(className[25]), W("System.Int16"), 12) == 0)
+                    else if (PAL_wcsncmp(&(className[25]), W("System.Int16"), 12) == 0)
                     {
                         m_simdHandleCache->SIMDShortHandle = typeHnd;
                         simdBaseJitType                    = CORINFO_TYPE_SHORT;
                         JITDUMP("  Found type SIMD Vector<short>\n");
                     }
-                    else if (wcsncmp(&(className[25]), W("System.SByte"), 12) == 0)
+                    else if (PAL_wcsncmp(&(className[25]), W("System.SByte"), 12) == 0)
                     {
                         m_simdHandleCache->SIMDByteHandle = typeHnd;
                         simdBaseJitType                   = CORINFO_TYPE_BYTE;
                         JITDUMP("  Found type SIMD Vector<byte>\n");
                     }
-                    else if (wcsncmp(&(className[25]), W("System.UInt32"), 13) == 0)
+                    else if (PAL_wcsncmp(&(className[25]), W("System.UInt32"), 13) == 0)
                     {
                         m_simdHandleCache->SIMDUIntHandle = typeHnd;
                         simdBaseJitType                   = CORINFO_TYPE_UINT;
                         JITDUMP("  Found type SIMD Vector<uint>\n");
                     }
-                    else if (wcsncmp(&(className[25]), W("System.UInt64"), 13) == 0)
+                    else if (PAL_wcsncmp(&(className[25]), W("System.UInt64"), 13) == 0)
                     {
                         m_simdHandleCache->SIMDULongHandle = typeHnd;
                         simdBaseJitType                    = CORINFO_TYPE_ULONG;
                         JITDUMP("  Found type SIMD Vector<ulong>\n");
                     }
-                    else if (wcsncmp(&(className[25]), W("System.IntPtr"), 13) == 0)
+                    else if (PAL_wcsncmp(&(className[25]), W("System.IntPtr"), 13) == 0)
                     {
                         m_simdHandleCache->SIMDNIntHandle = typeHnd;
                         simdBaseJitType                   = CORINFO_TYPE_NATIVEINT;
                         JITDUMP("  Found type SIMD Vector<nint>\n");
                     }
-                    else if (wcsncmp(&(className[25]), W("System.UIntPtr"), 14) == 0)
+                    else if (PAL_wcsncmp(&(className[25]), W("System.UIntPtr"), 14) == 0)
                     {
                         m_simdHandleCache->SIMDNUIntHandle = typeHnd;
                         simdBaseJitType                    = CORINFO_TYPE_NATIVEUINT;
@@ -358,7 +358,7 @@ CorInfoType Compiler::getBaseJitTypeAndSizeOfSIMDType(CORINFO_CLASS_HANDLE typeH
                         JITDUMP("  Unknown SIMD Vector<T>\n");
                     }
                 }
-                else if (wcsncmp(&(className[16]), W("Vector2"), 8) == 0)
+                else if (PAL_wcsncmp(&(className[16]), W("Vector2"), 8) == 0)
                 {
                     m_simdHandleCache->SIMDVector2Handle = typeHnd;
 
@@ -367,7 +367,7 @@ CorInfoType Compiler::getBaseJitTypeAndSizeOfSIMDType(CORINFO_CLASS_HANDLE typeH
                     assert(size == roundUp(info.compCompHnd->getClassSize(typeHnd), TARGET_POINTER_SIZE));
                     JITDUMP(" Found Vector2\n");
                 }
-                else if (wcsncmp(&(className[16]), W("Vector3"), 8) == 0)
+                else if (PAL_wcsncmp(&(className[16]), W("Vector3"), 8) == 0)
                 {
                     m_simdHandleCache->SIMDVector3Handle = typeHnd;
 
@@ -376,7 +376,7 @@ CorInfoType Compiler::getBaseJitTypeAndSizeOfSIMDType(CORINFO_CLASS_HANDLE typeH
                     assert(size == info.compCompHnd->getClassSize(typeHnd));
                     JITDUMP(" Found Vector3\n");
                 }
-                else if (wcsncmp(&(className[16]), W("Vector4"), 8) == 0)
+                else if (PAL_wcsncmp(&(className[16]), W("Vector4"), 8) == 0)
                 {
                     m_simdHandleCache->SIMDVector4Handle = typeHnd;
 
@@ -385,7 +385,7 @@ CorInfoType Compiler::getBaseJitTypeAndSizeOfSIMDType(CORINFO_CLASS_HANDLE typeH
                     assert(size == roundUp(info.compCompHnd->getClassSize(typeHnd), TARGET_POINTER_SIZE));
                     JITDUMP(" Found Vector4\n");
                 }
-                else if (wcsncmp(&(className[16]), W("Vector"), 6) == 0)
+                else if (PAL_wcsncmp(&(className[16]), W("Vector"), 6) == 0)
                 {
                     m_simdHandleCache->SIMDVectorHandle = typeHnd;
                     size                                = getSIMDVectorRegisterByteLength();

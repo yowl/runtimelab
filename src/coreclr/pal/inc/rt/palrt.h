@@ -707,7 +707,9 @@ STDAPI_(LPWSTR) StrCatBuffW(LPWSTR pszDest, LPCWSTR pszSrc, int cchDestBuffSize)
 #define _SAFECRT_SET_ERRNO 0
 #define _SAFECRT_DEFINE_MBS_FUNCTIONS 0
 #define _SAFECRT_DEFINE_TCS_MACROS 1
-#include "safecrt.h"
+#ifndef PAL_STDCPP_COMPAT
+#include "safecrt.h" // conflicts with mbusafecrt.h
+#endif
 #include "specstrings.h"
 
 /*
@@ -715,7 +717,9 @@ The wrappers below are simple implementations that may not be as robust as compl
 Remember to fix the errcode defintion in safecrt.h.
 */
 
-#define swscanf_s swscanf
+#ifndef PAL_STDCPP_COMPAT
+#define swscanf_s swscanf // use the extern from mbusafecrt.h
+#endif 
 
 #define _wfopen_s _wfopen_unsafe
 #define fopen_s _fopen_unsafe
@@ -848,10 +852,12 @@ typedef HANDLE HWND;
 #define IS_TEXT_UNICODE_UNICODE_MASK          0x000F
 
 //#if !defined(PAL_STDCPP_COMPAT) // defined in pal/src/include/pal/list.h
+/*
 typedef struct _LIST_ENTRY {
    struct _LIST_ENTRY *Flink;
    struct _LIST_ENTRY *Blink;
 } LIST_ENTRY, *PLIST_ENTRY;
+*/
 //#endif
 
 typedef VOID (NTAPI *WAITORTIMERCALLBACK)(PVOID, BOOLEAN);

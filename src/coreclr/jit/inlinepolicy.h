@@ -131,7 +131,7 @@ public:
     int CodeSizeEstimate() override;
 
 #if defined(DEBUG) || defined(INLINE_DATA)
-    void OnDumpXml(FILE* file, unsigned indent = 0) const override;
+    void OnDumpXml(PAL_FILE* file, unsigned indent = 0) const override;
 
     const char* GetName() const override
     {
@@ -228,7 +228,7 @@ public:
     }
 
 #if defined(DEBUG) || defined(INLINE_DATA)
-    void OnDumpXml(FILE* file, unsigned indent = 0) const override;
+    void OnDumpXml(PAL_FILE* file, unsigned indent = 0) const override;
 
     const char* GetName() const override
     {
@@ -294,8 +294,8 @@ public:
 #if defined(DEBUG) || defined(INLINE_DATA)
 
     // Externalize data
-    void DumpData(FILE* file) const override;
-    void DumpSchema(FILE* file) const override;
+    void DumpData(PAL_FILE* file) const override;
+    void DumpSchema(PAL_FILE* file) const override;
 
     // Miscellaneous
     const char* GetName() const override
@@ -539,7 +539,7 @@ private:
     bool FindInline(unsigned token, unsigned hash, unsigned offset);
 
     static bool          s_WroteReplayBanner;
-    static FILE*         s_ReplayFile;
+    static PAL_FILE*     s_ReplayFile;
     static CritSecObject s_XmlReaderLock;
     InlineContext*       m_InlineContext;
     IL_OFFSETX           m_Offset;

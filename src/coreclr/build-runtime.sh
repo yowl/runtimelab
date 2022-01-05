@@ -248,7 +248,7 @@ fi
 if [[ "$__SkipNative" == 1 ]]; then
     echo "Skipping CoreCLR component build."
 else
-    build_native "$__TargetOS" "$__BuildArch" "$__ProjectRoot" "$__IntermediatesDir" "$__CMakeTarget" "$__CMakeArgs $__ExtraCmakeArgs --trace" "CoreCLR component"
+    build_native "$__TargetOS" "$__BuildArch" "$__ProjectRoot" "$__IntermediatesDir" "$__CMakeTarget" "$__CMakeArgs $__ExtraCmakeArgs" "CoreCLR component"
 
     # Build cross-architecture components
     if [[ "$__SkipCrossArchNative" != 1 ]]; then

@@ -18,7 +18,11 @@
 #ifndef __clr_std_utility_h__
 #define __clr_std_utility_h__
 
+#ifdef PAL_STDCPP_COMPAT
+#include <type_traits>
+#else
 #include "clr_std/type_traits"
+#endif
 
 namespace std
 {

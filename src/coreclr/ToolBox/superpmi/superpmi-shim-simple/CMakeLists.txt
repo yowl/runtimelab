@@ -14,6 +14,11 @@ endif(CLR_CMAKE_HOST_WIN32)
 include_directories(.)
 include_directories(../superpmi-shared)
 
+if (CLR_CMAKE_BUILD_LLVM_JIT)
+    add_definitions(-DPAL_STDCPP_COMPAT)
+    include_directories("../pal/src/include")
+endif(CLR_CMAKE_BUILD_LLVM_JIT)
+
 set(SUPERPMI_SHIM_SIMPLE_SOURCES
     jithost.cpp
     icorjitcompiler.cpp

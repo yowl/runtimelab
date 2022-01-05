@@ -9,6 +9,7 @@ XX                                                                           XX
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 */
+
 #include "jitpch.h"
 #ifdef _MSC_VER
 #pragma hdrstop
@@ -24,13 +25,38 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 #include "patchpointinfo.h"
 #include "jitstd/algorithm.h"
 
+#if defined(PAL_STDCPP_COMPAT)
+#ifndef va_start
+#define va_start __builtin_va_start
+#endif
+#ifndef va_end
+#define va_end __builtin_va_end
+#endif
+
+#ifndef va_copy
+#define va_copy  __builtin_va_copy
+#endif
+
+
+#endif
+
+
 extern ICorJitHost* g_jitHost;
 
-#undef min
-#undef max
+//#undef min
+//#undef max
 
 #if defined(TARGET_WASM)
 #include "llvm.h"
+#endif
+
+#if defined(PAL_STDCPP_COMPAT)
+#define max(a, b) (((a) > (b)) ? (a) : (b))
+#define min(a, b) (((a) < (b)) ? (a) : (b))
+#ifdef TARGET_WASM
+#undef fprintf
+#define fprintf // is PAL_FILE what is really wanted in here?
+#endif
 #endif
 
 #if defined(DEBUG)
@@ -1389,7 +1415,7 @@ void DisplayNowayAssertMap()
 {
     if (NowayAssertMap != nullptr)
     {
-        FILE* fout;
+        PAL_FILE* fout;
 
         LPCWSTR strJitMeasureNowayAssertFile = JitConfig.JitMeasureNowayAssertFile();
         if (strJitMeasureNowayAssertFile != nullptr)
@@ -1397,7 +1423,7 @@ void DisplayNowayAssertMap()
             fout = _wfopen(strJitMeasureNowayAssertFile, W("a"));
             if (fout == nullptr)
             {
-                fprintf(jitstdout, "Failed to open JitMeasureNowayAssertFile \"%ws\"\n", strJitMeasureNowayAssertFile);
+                PAL_fprintf(jitstdout, "Failed to open JitMeasureNowayAssertFile \"%ws\"\n", strJitMeasureNowayAssertFile);
                 return;
             }
         }
@@ -1424,19 +1450,19 @@ void DisplayNowayAssertMap()
         if (fout == jitstdout)
         {
             // Don't output the header if writing to a file, since we'll be appending to existing dumps in that case.
-            fprintf(fout, "\nnoway_assert counts:\n");
-            fprintf(fout, "count, file, line, text\n");
+            PAL_fprintf(fout, "\nnoway_assert counts:\n");
+            PAL_fprintf(fout, "count, file, line, text\n");
         }
 
         for (i = 0; i < count; i++)
         {
-            fprintf(fout, "%u, %s, %u, \"%s\"\n", nacp[i].count, nacp[i].fl.m_file, nacp[i].fl.m_line,
+            PAL_fprintf(fout, "%u, %s, %u, \"%s\"\n", nacp[i].count, nacp[i].fl.m_file, nacp[i].fl.m_line,
                     nacp[i].fl.m_condStr);
         }
 
         if (fout != jitstdout)
         {
-            fclose(fout);
+            PAL_fclose(fout);
             fout = nullptr;
         }
     }
@@ -1552,11 +1578,11 @@ void Compiler::compShutdown()
     // Finish reading and/or writing inline xml
     if (JitConfig.JitInlineDumpXmlFile() != nullptr)
     {
-        FILE* file = _wfopen(JitConfig.JitInlineDumpXmlFile(), W("a"));
+        PAL_FILE* file = _wfopen(JitConfig.JitInlineDumpXmlFile(), W("a"));
         if (file != nullptr)
         {
             InlineStrategy::FinalizeXml(file);
-            fclose(file);
+            PAL_fclose(file);
         }
         else
         {
@@ -1577,16 +1603,16 @@ void Compiler::compShutdown()
 #endif
 
     // Where should we write our statistics output?
-    FILE* fout = jitstdout;
+    PAL_FILE* fout = jitstdout;
 
 #ifdef FEATURE_JIT_METHOD_PERF
     if (compJitTimeLogFilename != nullptr)
     {
-        FILE* jitTimeLogFile = _wfopen(compJitTimeLogFilename, W("a"));
+        PAL_FILE* jitTimeLogFile = _wfopen(compJitTimeLogFilename, W("a"));
         if (jitTimeLogFile != nullptr)
         {
             CompTimeSummaryInfo::s_compTimeSummary.Print(jitTimeLogFile);
-            fclose(jitTimeLogFile);
+            PAL_fclose(jitTimeLogFile);
         }
     }
 
@@ -1805,20 +1831,20 @@ void Compiler::compShutdown()
 
     if (s_dspMemStats)
     {
-        fprintf(fout, "\nAll allocations:\n");
+        PAL_fprintf(fout, "\nAll allocations:\n");
         ArenaAllocator::dumpAggregateMemStats(jitstdout);
 
-        fprintf(fout, "\nLargest method:\n");
+        PAL_fprintf(fout, "\nLargest method:\n");
         ArenaAllocator::dumpMaxMemStats(jitstdout);
 
-        fprintf(fout, "\n");
-        fprintf(fout, "---------------------------------------------------\n");
-        fprintf(fout, "Distribution of total memory allocated per method (in KB):\n");
+        PAL_fprintf(fout, "\n");
+        PAL_fprintf(fout, "---------------------------------------------------\n");
+        PAL_fprintf(fout, "Distribution of total memory allocated per method (in KB):\n");
         memAllocHist.dump(fout);
 
-        fprintf(fout, "\n");
-        fprintf(fout, "---------------------------------------------------\n");
-        fprintf(fout, "Distribution of total memory used      per method (in KB):\n");
+        PAL_fprintf(fout, "\n");
+        PAL_fprintf(fout, "---------------------------------------------------\n");
+        PAL_fprintf(fout, "Distribution of total memory used      per method (in KB):\n");
         memUsedHist.dump(fout);
     }
 
@@ -1835,12 +1861,12 @@ void Compiler::compShutdown()
 
 #if MEASURE_PTRTAB_SIZE
 
-    fprintf(fout, "\n");
-    fprintf(fout, "---------------------------------------------------\n");
-    fprintf(fout, "GC pointer table stats\n");
-    fprintf(fout, "---------------------------------------------------\n");
+    PAL_fprintf(fout, "\n");
+    PAL_fprintf(fout, "---------------------------------------------------\n");
+    PAL_fprintf(fout, "GC pointer table stats\n");
+    PAL_fprintf(fout, "---------------------------------------------------\n");
 
-    fprintf(fout, "Reg pointer descriptor size (internal): %8u (avg %4u per method)\n", GCInfo::s_gcRegPtrDscSize,
+    PALPAL__fprintf(fout, "Reg pointer descriptor size (internal): %8u (avg %4u per method)\n", GCInfo::s_gcRegPtrDscSize,
             GCInfo::s_gcRegPtrDscSize / genMethodCnt);
 
     fprintf(fout, "Total pointer table size: %8u (avg %4u per method)\n", GCInfo::s_gcTotalPtrTabSize,
@@ -1852,15 +1878,15 @@ void Compiler::compShutdown()
 
     if (genMethodCnt != 0)
     {
-        fprintf(fout, "\n");
-        fprintf(fout, "A total of %6u methods compiled", genMethodCnt);
+        PAL_fprintf(fout, "\n");
+        PAL_fprintf(fout, "A total of %6u methods compiled", genMethodCnt);
 #if DISPLAY_SIZES
         if (genMethodICnt || genMethodNCnt)
         {
-            fprintf(fout, " (%u interruptible, %u non-interruptible)", genMethodICnt, genMethodNCnt);
+            PAL_fprintf(fout, " (%u interruptible, %u non-interruptible)", genMethodICnt, genMethodNCnt);
         }
 #endif // DISPLAY_SIZES
-        fprintf(fout, ".\n");
+        PAL_fprintf(fout, ".\n");
     }
 
 #endif // MEASURE_NODE_SIZE || MEASURE_BLOCK_SIZE || MEASURE_PTRTAB_SIZE || DISPLAY_SIZES
@@ -1870,19 +1896,19 @@ void Compiler::compShutdown()
 #endif
 
 #if MEASURE_FATAL
-    fprintf(fout, "\n");
-    fprintf(fout, "---------------------------------------------------\n");
-    fprintf(fout, "Fatal errors stats\n");
-    fprintf(fout, "---------------------------------------------------\n");
-    fprintf(fout, "   badCode:             %u\n", fatal_badCode);
-    fprintf(fout, "   noWay:               %u\n", fatal_noWay);
-    fprintf(fout, "   implLimitation:      %u\n", fatal_implLimitation);
-    fprintf(fout, "   NOMEM:               %u\n", fatal_NOMEM);
-    fprintf(fout, "   noWayAssertBody:     %u\n", fatal_noWayAssertBody);
+    PAL_fprintf(fout, "\n");
+    PAL_fprintf(fout, "---------------------------------------------------\n");
+    PAL_fprintf(fout, "Fatal errors stats\n");
+    PAL_fprintf(fout, "---------------------------------------------------\n");
+    PAL_fprintf(fout, "   badCode:             %u\n", fatal_badCode);
+    PAL_fprintf(fout, "   noWay:               %u\n", fatal_noWay);
+    PAL_fprintf(fout, "   implLimitation:      %u\n", fatal_implLimitation);
+    PAL_fprintf(fout, "   NOMEM:               %u\n", fatal_NOMEM);
+    PAL_fprintf(fout, "   noWayAssertBody:     %u\n", fatal_noWayAssertBody);
 #ifdef DEBUG
-    fprintf(fout, "   noWayAssertBodyArgs: %u\n", fatal_noWayAssertBodyArgs);
+    PAL_fprintf(fout, "   noWayAssertBodyArgs: %u\n", fatal_noWayAssertBodyArgs);
 #endif // DEBUG
-    fprintf(fout, "   NYI:                 %u\n", fatal_NYI);
+    PAL_fprintf(fout, "   NYI:                 %u\n", fatal_NYI);
 #endif // MEASURE_FATAL
 }
 
@@ -1891,7 +1917,7 @@ void Compiler::compShutdown()
  */
 
 /* static */
-void Compiler::compDisplayStaticSizes(FILE* fout)
+void Compiler::compDisplayStaticSizes(PAL_FILE* fout)
 {
 #if MEASURE_NODE_SIZE
     GenTree::DumpNodeSizes(fout);
@@ -2042,7 +2068,9 @@ void Compiler::compInit(ArenaAllocator*       pAlloc,
     }
     else
     {
+#ifndef TARGET_WASM
         codeGen = nullptr;
+#endif
     }
 
     compJmpOpUsed         = false;
@@ -3494,8 +3522,11 @@ void Compiler::compInitOptions(JitFlags* jitFlags)
         compMaxUncheckedOffsetForNullObject = (size_t)JitConfig.JitMaxUncheckedOffset();
         if (verbose)
         {
+		// size_t int or long ?
+#ifndef TARGET_WASM
             printf("STRESS_NULL_OBJECT_CHECK: compMaxUncheckedOffsetForNullObject=0x%X\n",
                    compMaxUncheckedOffsetForNullObject);
+#endif
         }
     }
 
@@ -3653,7 +3684,9 @@ bool Compiler::compStressCompile(compStressArea stressArea, unsigned weight)
     {
         if (verbose)
         {
+#ifndef TARGET_WASM  // ws?
             printf("\n\n*** JitStress: %ws ***\n\n", s_compStressModeNames[stressArea]);
+#endif
         }
         compActiveStressModes[stressArea] = 1;
     }
@@ -3691,7 +3724,7 @@ bool Compiler::compStressCompileHelper(compStressArea stressArea, unsigned weigh
     // Does user explicitly prevent using this STRESS_MODE through the command line?
     const WCHAR* strStressModeNamesNot = JitConfig.JitStressModeNamesNot();
     if ((strStressModeNamesNot != nullptr) &&
-        (wcsstr(strStressModeNamesNot, s_compStressModeNames[stressArea]) != nullptr))
+        (PAL_wcsstr(strStressModeNamesNot, s_compStressModeNames[stressArea]) != nullptr))
     {
         return false;
     }
@@ -3700,7 +3733,7 @@ bool Compiler::compStressCompileHelper(compStressArea stressArea, unsigned weigh
     const WCHAR* strStressModeNames = JitConfig.JitStressModeNames();
     if (strStressModeNames != nullptr)
     {
-        if (wcsstr(strStressModeNames, s_compStressModeNames[stressArea]) != nullptr)
+        if (PAL_wcsstr(strStressModeNames, s_compStressModeNames[stressArea]) != nullptr)
         {
             return true;
         }
@@ -5975,11 +6008,11 @@ void Compiler::compCompileFinish()
 
     if (JitConfig.JitInlineDumpXmlFile() != nullptr)
     {
-        FILE* file = _wfopen(JitConfig.JitInlineDumpXmlFile(), W("a"));
+        PAL_FILE* file = _wfopen(JitConfig.JitInlineDumpXmlFile(), W("a"));
         if (file != nullptr)
         {
             m_inlineStrategy->DumpXml(file);
-            fclose(file);
+            PAL_fclose(file);
         }
         else
         {
@@ -6721,7 +6754,7 @@ void Compiler::compInitVarScopeMap()
     compVarScopeMap = new (getAllocator()) VarNumToScopeDscMap(getAllocator());
 
     // 599 prime to limit huge allocations; for ex: duplicated scopes on single var.
-    compVarScopeMap->Reallocate(std::min(info.compVarScopesCount, 599U));
+    compVarScopeMap->Reallocate(min(info.compVarScopesCount, 599U));
 
     for (unsigned i = 0; i < info.compVarScopesCount; ++i)
     {
@@ -7838,16 +7871,16 @@ void CompTimeSummaryInfo::AddInfo(CompTimeInfo& info, bool includePhases)
 
         // Update the totals and maxima.
         m_total.m_byteCodeBytes += info.m_byteCodeBytes;
-        m_maximum.m_byteCodeBytes = std::max(m_maximum.m_byteCodeBytes, info.m_byteCodeBytes);
+        m_maximum.m_byteCodeBytes = max(m_maximum.m_byteCodeBytes, info.m_byteCodeBytes);
         m_total.m_totalCycles += info.m_totalCycles;
-        m_maximum.m_totalCycles = std::max(m_maximum.m_totalCycles, info.m_totalCycles);
+        m_maximum.m_totalCycles = max(m_maximum.m_totalCycles, info.m_totalCycles);
 
 #if MEASURE_CLRAPI_CALLS
         // Update the CLR-API values.
         m_total.m_allClrAPIcalls += info.m_allClrAPIcalls;
-        m_maximum.m_allClrAPIcalls = std::max(m_maximum.m_allClrAPIcalls, info.m_allClrAPIcalls);
+        m_maximum.m_allClrAPIcalls = max(m_maximum.m_allClrAPIcalls, info.m_allClrAPIcalls);
         m_total.m_allClrAPIcycles += info.m_allClrAPIcycles;
-        m_maximum.m_allClrAPIcycles = std::max(m_maximum.m_allClrAPIcycles, info.m_allClrAPIcycles);
+        m_maximum.m_allClrAPIcycles = max(m_maximum.m_allClrAPIcycles, info.m_allClrAPIcycles);
 #endif
 
         if (includeInFiltered)
@@ -7877,14 +7910,14 @@ void CompTimeSummaryInfo::AddInfo(CompTimeInfo& info, bool includePhases)
                 m_filtered.m_CLRcyclesByPhase[i] += info.m_CLRcyclesByPhase[i];
 #endif
             }
-            m_maximum.m_cyclesByPhase[i] = std::max(m_maximum.m_cyclesByPhase[i], info.m_cyclesByPhase[i]);
+            m_maximum.m_cyclesByPhase[i] = max(m_maximum.m_cyclesByPhase[i], info.m_cyclesByPhase[i]);
 
 #if MEASURE_CLRAPI_CALLS
             m_maximum.m_CLRcyclesByPhase[i] = max(m_maximum.m_CLRcyclesByPhase[i], info.m_CLRcyclesByPhase[i]);
 #endif
         }
         m_total.m_parentPhaseEndSlop += info.m_parentPhaseEndSlop;
-        m_maximum.m_parentPhaseEndSlop = std::max(m_maximum.m_parentPhaseEndSlop, info.m_parentPhaseEndSlop);
+        m_maximum.m_parentPhaseEndSlop = max(m_maximum.m_parentPhaseEndSlop, info.m_parentPhaseEndSlop);
     }
 #if MEASURE_CLRAPI_CALLS
     else
@@ -7922,7 +7955,7 @@ void CompTimeSummaryInfo::AddInfo(CompTimeInfo& info, bool includePhases)
 // Static
 LPCWSTR Compiler::compJitTimeLogFilename = nullptr;
 
-void CompTimeSummaryInfo::Print(FILE* f)
+void CompTimeSummaryInfo::Print(PAL_FILE* f)
 {
     if (f == nullptr)
     {
@@ -7932,24 +7965,24 @@ void CompTimeSummaryInfo::Print(FILE* f)
     double countsPerSec = CachedCyclesPerSecond();
     if (countsPerSec == 0.0)
     {
-        fprintf(f, "Processor does not have a high-frequency timer.\n");
+        PAL_fprintf(f, "Processor does not have a high-frequency timer.\n");
         return;
     }
 
     double totTime_ms = 0.0;
 
-    fprintf(f, "JIT Compilation time report:\n");
-    fprintf(f, "  Compiled %d methods.\n", m_numMethods);
+    PAL_fprintf(f, "JIT Compilation time report:\n");
+    PAL_fprintf(f, "  Compiled %d methods.\n", m_numMethods);
     if (m_numMethods != 0)
     {
-        fprintf(f, "  Compiled %d bytecodes total (%d max, %8.2f avg).\n", m_total.m_byteCodeBytes,
+        PAL_fprintf(f, "  Compiled %d bytecodes total (%d max, %8.2f avg).\n", m_total.m_byteCodeBytes,
                 m_maximum.m_byteCodeBytes, (double)m_total.m_byteCodeBytes / (double)m_numMethods);
         totTime_ms = ((double)m_total.m_totalCycles / countsPerSec) * 1000.0;
-        fprintf(f, "  Time: total: %10.3f Mcycles/%10.3f ms\n", ((double)m_total.m_totalCycles / 1000000.0),
+        PAL_fprintf(f, "  Time: total: %10.3f Mcycles/%10.3f ms\n", ((double)m_total.m_totalCycles / 1000000.0),
                 totTime_ms);
-        fprintf(f, "          max: %10.3f Mcycles/%10.3f ms\n", ((double)m_maximum.m_totalCycles) / 1000000.0,
+        PAL_fprintf(f, "          max: %10.3f Mcycles/%10.3f ms\n", ((double)m_maximum.m_totalCycles) / 1000000.0,
                 ((double)m_maximum.m_totalCycles / countsPerSec) * 1000.0);
-        fprintf(f, "          avg: %10.3f Mcycles/%10.3f ms\n",
+        PAL_fprintf(f, "          avg: %10.3f Mcycles/%10.3f ms\n",
                 ((double)m_total.m_totalCycles) / 1000000.0 / (double)m_numMethods, totTime_ms / (double)m_numMethods);
 
         const char* extraHdr1 = "";
@@ -7963,10 +7996,10 @@ void CompTimeSummaryInfo::Print(FILE* f)
         }
 #endif
 
-        fprintf(f, "\n  Total time by phases:\n");
-        fprintf(f, "     PHASE                          inv/meth   Mcycles    time (ms)  %% of total    max (ms)%s\n",
+        PAL_fprintf(f, "\n  Total time by phases:\n");
+        PAL_fprintf(f, "     PHASE                          inv/meth   Mcycles    time (ms)  %% of total    max (ms)%s\n",
                 extraHdr1);
-        fprintf(f, "     ---------------------------------------------------------------------------------------%s\n",
+        PAL_fprintf(f, "     ---------------------------------------------------------------------------------------%s\n",
                 extraHdr2);
 
         // Ensure that at least the names array and the Phases enum have the same number of entries:
@@ -7986,10 +8019,10 @@ void CompTimeSummaryInfo::Print(FILE* f)
             int ancPhase = PhaseParent[i];
             while (ancPhase != -1)
             {
-                fprintf(f, "  ");
+                PAL_fprintf(f, "  ");
                 ancPhase = PhaseParent[ancPhase];
             }
-            fprintf(f, "     %-30s %6.2f  %10.2f   %9.3f   %8.2f%%    %8.3f", PhaseNames[i],
+            PAL_fprintf(f, "     %-30s %6.2f  %10.2f   %9.3f   %8.2f%%    %8.3f", PhaseNames[i],
                     ((double)m_total.m_invokesByPhase[i]) / ((double)m_numMethods),
                     ((double)m_total.m_cyclesByPhase[i]) / 1000000.0, phase_tot_ms, (phase_tot_ms * 100.0 / totTime_ms),
                     phase_max_ms);
@@ -8005,33 +8038,33 @@ void CompTimeSummaryInfo::Print(FILE* f)
                     fprintf(f, "       %5.1f   %8.2f%%", calls_per_fn, nest_percent);
             }
 #endif
-            fprintf(f, "\n");
+            PAL_fprintf(f, "\n");
         }
 
         // Show slop if it's over a certain percentage of the total
         double pslop_pct = 100.0 * m_total.m_parentPhaseEndSlop * 1000.0 / countsPerSec / totTime_ms;
         if (pslop_pct >= 1.0)
         {
-            fprintf(f, "\n  'End phase slop' should be very small (if not, there's unattributed time): %9.3f Mcycles = "
+            PAL_fprintf(f, "\n  'End phase slop' should be very small (if not, there's unattributed time): %9.3f Mcycles = "
                        "%3.1f%% of total.\n\n",
                     m_total.m_parentPhaseEndSlop / 1000000.0, pslop_pct);
         }
     }
     if (m_numFilteredMethods > 0)
     {
-        fprintf(f, "  Compiled %d methods that meet the filter requirement.\n", m_numFilteredMethods);
-        fprintf(f, "  Compiled %d bytecodes total (%8.2f avg).\n", m_filtered.m_byteCodeBytes,
+        PAL_fprintf(f, "  Compiled %d methods that meet the filter requirement.\n", m_numFilteredMethods);
+        PAL_fprintf(f, "  Compiled %d bytecodes total (%8.2f avg).\n", m_filtered.m_byteCodeBytes,
                 (double)m_filtered.m_byteCodeBytes / (double)m_numFilteredMethods);
         double totTime_ms = ((double)m_filtered.m_totalCycles / countsPerSec) * 1000.0;
-        fprintf(f, "  Time: total: %10.3f Mcycles/%10.3f ms\n", ((double)m_filtered.m_totalCycles / 1000000.0),
+        PAL_fprintf(f, "  Time: total: %10.3f Mcycles/%10.3f ms\n", ((double)m_filtered.m_totalCycles / 1000000.0),
                 totTime_ms);
-        fprintf(f, "          avg: %10.3f Mcycles/%10.3f ms\n",
+        PAL_fprintf(f, "          avg: %10.3f Mcycles/%10.3f ms\n",
                 ((double)m_filtered.m_totalCycles) / 1000000.0 / (double)m_numFilteredMethods,
                 totTime_ms / (double)m_numFilteredMethods);
 
-        fprintf(f, "  Total time by phases:\n");
-        fprintf(f, "     PHASE                            inv/meth Mcycles    time (ms)  %% of total\n");
-        fprintf(f, "     --------------------------------------------------------------------------------------\n");
+        PAL_fprintf(f, "  Total time by phases:\n");
+        PAL_fprintf(f, "     PHASE                            inv/meth Mcycles    time (ms)  %% of total\n");
+        PAL_fprintf(f, "     --------------------------------------------------------------------------------------\n");
         // Ensure that at least the names array and the Phases enum have the same number of entries:
         assert(_countof(PhaseNames) == PHASE_NUMBER_OF);
         for (int i = 0; i < PHASE_NUMBER_OF; i++)
@@ -8041,10 +8074,10 @@ void CompTimeSummaryInfo::Print(FILE* f)
             int ancPhase = PhaseParent[i];
             while (ancPhase != -1)
             {
-                fprintf(f, "  ");
+                PAL_fprintf(f, "  ");
                 ancPhase = PhaseParent[ancPhase];
             }
-            fprintf(f, "     %-30s  %5.2f  %10.2f   %9.3f   %8.2f%%\n", PhaseNames[i],
+            PAL_fprintf(f, "     %-30s  %5.2f  %10.2f   %9.3f   %8.2f%%\n", PhaseNames[i],
                     ((double)m_filtered.m_invokesByPhase[i]) / ((double)m_numFilteredMethods),
                     ((double)m_filtered.m_cyclesByPhase[i]) / 1000000.0, phase_tot_ms,
                     (phase_tot_ms * 100.0 / totTime_ms));
@@ -8053,7 +8086,7 @@ void CompTimeSummaryInfo::Print(FILE* f)
         double fslop_ms = m_filtered.m_parentPhaseEndSlop * 1000.0 / countsPerSec;
         if (fslop_ms > 1.0)
         {
-            fprintf(f, "\n  'End phase slop' should be very small (if not, there's unattributed time): %9.3f Mcycles = "
+            PAL_fprintf(f, "\n  'End phase slop' should be very small (if not, there's unattributed time): %9.3f Mcycles = "
                        "%3.1f%% of total.\n\n",
                     m_filtered.m_parentPhaseEndSlop / 1000000.0, fslop_ms);
         }
@@ -8062,14 +8095,14 @@ void CompTimeSummaryInfo::Print(FILE* f)
 #if MEASURE_CLRAPI_CALLS
     if (m_total.m_allClrAPIcalls > 0 && m_total.m_allClrAPIcycles > 0)
     {
-        fprintf(f, "\n");
+        PAL_fprintf(f, "\n");
         if (m_totMethods > 0)
             fprintf(f, "  Imported %u methods.\n\n", m_numMethods + m_totMethods);
 
-        fprintf(f, "     CLR API                                   # calls   total time    max time     avg time   %% "
+        PAL_fprintf(f, "     CLR API                                   # calls   total time    max time     avg time   %% "
                    "of total\n");
-        fprintf(f, "     -------------------------------------------------------------------------------");
-        fprintf(f, "---------------------\n");
+        PAL_fprintf(f, "     -------------------------------------------------------------------------------");
+        PAL_fprintf(f, "---------------------\n");
 
         static const char* APInames[] = {
 #define DEF_CLR_API(name) #name,
@@ -8119,10 +8152,10 @@ void CompTimeSummaryInfo::Print(FILE* f)
                 unsigned __int32 maxcyc = m_maximum.m_maxClrAPIcycles[i];
                 double           max_ms = 1000.0 * maxcyc / countsPerSec;
 
-                fprintf(f, "     %-40s", APInames[i]);                                 // API name
-                fprintf(f, " %8u %9.1f ms", calls, millis);                            // #calls, total time
-                fprintf(f, " %8.1f ms  %8.1f ns", max_ms, 1000000.0 * millis / calls); // max, avg time
-                fprintf(f, "     %5.1f%%\n", 100.0 * millis / shownMillis);            // % of total
+                PAL_fprintf(f, "     %-40s", APInames[i]);                                 // API name
+                PAL_fprintf(f, " %8u %9.1f ms", calls, millis);                            // #calls, total time
+                PAL_fprintf(f, " %8.1f ms  %8.1f ns", max_ms, 1000000.0 * millis / calls); // max, avg time
+                PAL_fprintf(f, "     %5.1f%%\n", 100.0 * millis / shownMillis);            // % of total
 
 #ifdef DEBUG
                 checkedCalls += m_total.m_perClrAPIcalls[i];
@@ -8138,18 +8171,18 @@ void CompTimeSummaryInfo::Print(FILE* f)
 
         if (shownCalls > 0 || shownMillis > 0)
         {
-            fprintf(f, "     -------------------------");
-            fprintf(f, "---------------------------------------------------------------------------\n");
-            fprintf(f, "     Total for calls shown above              %8u %10.1f ms", shownCalls, shownMillis);
+            PAL_fprintf(f, "     -------------------------");
+            PAL_fprintf(f, "---------------------------------------------------------------------------\n");
+            PAL_fprintf(f, "     Total for calls shown above              %8u %10.1f ms", shownCalls, shownMillis);
             if (totTime_ms > 0.0)
-                fprintf(f, " (%4.1lf%% of overall JIT time)", shownMillis * 100.0 / totTime_ms);
-            fprintf(f, "\n");
+                PAL_fprintf(f, " (%4.1lf%% of overall JIT time)", shownMillis * 100.0 / totTime_ms);
+            PAL_fprintf(f, "\n");
         }
-        fprintf(f, "\n");
+        PAL_fprintf(f, "\n");
     }
 #endif
 
-    fprintf(f, "\n");
+    PAL_fprintf(f, "\n");
 }
 
 JitTimer::JitTimer(unsigned byteCodeSize) : m_info(byteCodeSize)
@@ -8325,7 +8358,7 @@ CritSecObject JitTimer::s_csvLock;
 
 // It's expensive to constantly open and close the file, so open it once and close it
 // when the process exits. This should be accessed under the s_csvLock.
-FILE* JitTimer::s_csvFile = nullptr;
+PAL_FILE* JitTimer::s_csvFile = nullptr;
 
 LPCWSTR Compiler::JitTimeLogCsv()
 {
@@ -8350,42 +8383,42 @@ void JitTimer::PrintCsvHeader()
     if (s_csvFile != nullptr)
     {
         // Seek to the end of the file s.t. `ftell` doesn't lie to us on Windows
-        fseek(s_csvFile, 0, SEEK_END);
+        PAL_fseek(s_csvFile, 0, SEEK_END);
 
         // Write the header if the file is empty
-        if (ftell(s_csvFile) == 0)
+        if (PAL_ftell(s_csvFile) == 0)
         {
-            fprintf(s_csvFile, "\"Method Name\",");
-            fprintf(s_csvFile, "\"Assembly or SPMI Index\",");
-            fprintf(s_csvFile, "\"IL Bytes\",");
-            fprintf(s_csvFile, "\"Basic Blocks\",");
-            fprintf(s_csvFile, "\"Min Opts\",");
-            fprintf(s_csvFile, "\"Loops\",");
-            fprintf(s_csvFile, "\"Loops Cloned\",");
+            PAL_fprintf(s_csvFile, "\"Method Name\",");
+            PAL_fprintf(s_csvFile, "\"Assembly or SPMI Index\",");
+            PAL_fprintf(s_csvFile, "\"IL Bytes\",");
+            PAL_fprintf(s_csvFile, "\"Basic Blocks\",");
+            PAL_fprintf(s_csvFile, "\"Min Opts\",");
+            PAL_fprintf(s_csvFile, "\"Loops\",");
+            PAL_fprintf(s_csvFile, "\"Loops Cloned\",");
 #if FEATURE_LOOP_ALIGN
 #ifdef DEBUG
-            fprintf(s_csvFile, "\"Alignment Candidates\",");
-            fprintf(s_csvFile, "\"Loops Aligned\",");
+            PAL_fprintf(s_csvFile, "\"Alignment Candidates\",");
+            PAL_fprintf(s_csvFile, "\"Loops Aligned\",");
 #endif // DEBUG
 #endif // FEATURE_LOOP_ALIGN
             for (int i = 0; i < PHASE_NUMBER_OF; i++)
             {
-                fprintf(s_csvFile, "\"%s\",", PhaseNames[i]);
+                PAL_fprintf(s_csvFile, "\"%s\",", PhaseNames[i]);
                 if ((JitConfig.JitMeasureIR() != 0) && PhaseReportsIRSize[i])
                 {
-                    fprintf(s_csvFile, "\"Node Count After %s\",", PhaseNames[i]);
+                    PAL_fprintf(s_csvFile, "\"Node Count After %s\",", PhaseNames[i]);
                 }
             }
 
             InlineStrategy::DumpCsvHeader(s_csvFile);
 
-            fprintf(s_csvFile, "\"Executable Code Bytes\",");
-            fprintf(s_csvFile, "\"GC Info Bytes\",");
-            fprintf(s_csvFile, "\"Total Bytes Allocated\",");
-            fprintf(s_csvFile, "\"Total Cycles\",");
-            fprintf(s_csvFile, "\"CPS\"\n");
+            PAL_fprintf(s_csvFile, "\"Executable Code Bytes\",");
+            PAL_fprintf(s_csvFile, "\"GC Info Bytes\",");
+            PAL_fprintf(s_csvFile, "\"Total Bytes Allocated\",");
+            PAL_fprintf(s_csvFile, "\"Total Cycles\",");
+            PAL_fprintf(s_csvFile, "\"CPS\"\n");
 
-            fflush(s_csvFile);
+            PAL_fflush(s_csvFile);
         }
     }
 }
@@ -8468,7 +8501,7 @@ void JitTimer::PrintCsvMethodStats(Compiler* comp)
     fprintf(s_csvFile, "%I64u,", m_info.m_totalCycles);
     fprintf(s_csvFile, "%f\n", CachedCyclesPerSecond());
 
-    fflush(s_csvFile);
+    PAL_fflush(s_csvFile);
 }
 
 // Perform process shutdown actions.
@@ -8479,7 +8512,7 @@ void JitTimer::Shutdown()
     CritSecHolder csvLock(s_csvLock);
     if (s_csvFile != nullptr)
     {
-        fclose(s_csvFile);
+        PAL_fclose(s_csvFile);
     }
 }
 
@@ -8503,7 +8536,7 @@ unsigned      Compiler::s_loopsWithHoistedExpressions = 0;
 unsigned      Compiler::s_totalHoistedExpressions     = 0;
 
 // static
-void Compiler::PrintAggregateLoopHoistStats(FILE* f)
+void Compiler::PrintAggregateLoopHoistStats(PAL_FILE* f)
 {
     fprintf(f, "\n");
     fprintf(f, "---------------------------------------------------\n");
@@ -8608,7 +8641,7 @@ void Compiler::RecordStateAtEndOfCompilation()
 LPCWSTR Compiler::compJitFuncInfoFilename = nullptr;
 
 // static
-FILE* Compiler::compJitFuncInfoFile = nullptr;
+PAL_FILE* Compiler::compJitFuncInfoFile = nullptr;
 #endif // FUNC_INFO_LOGGING
 
 #ifdef DEBUG
@@ -8644,7 +8677,7 @@ void dumpConvertedVarSet(Compiler* comp, VARSET_VALARG_TP vars)
             {
                 printf(" ");
             }
-            printf("V%02u", varNum);
+            //printf("V%02u", varNum);
             first = false;
         }
     }
@@ -9090,7 +9123,7 @@ Compiler::LoopDsc* dFindLoop(unsigned loopNum)
 
     if (loopNum >= comp->optLoopCount)
     {
-        printf("loopNum %u out of range\n");
+        printf("loopNum %u out of range\n", loopNum);
         return nullptr;
     }
 

@@ -318,6 +318,8 @@ Initialize(
     int retval = -1;
     bool fFirstTimeInit = false;
 
+    printf("pal initialize\n");
+    _ASSERTE(0);
     /* the first ENTRY within the first call to PAL_Initialize is a special
        case, since debug channels are not initialized yet. So in that case the
        ENTRY will be called after the DBG channels initialization */

@@ -3940,13 +3940,13 @@ void emitter::emitDispCommentForHandle(size_t handle, GenTreeFlags flag)
         }
         else
         {
-            const size_t actualLen = wcslen(wstr);
+            const size_t actualLen = PAL_wcslen(wstr);
             const size_t maxLength = 63;
             const size_t newLen    = min(maxLength, actualLen);
 
             // +1 for null terminator
             WCHAR buf[maxLength + 1] = {0};
-            wcsncpy(buf, wstr, newLen);
+            PAL_wcsncpy(buf, wstr, newLen);
             for (size_t i = 0; i < newLen; i++)
             {
                 // Escape \n and \r symbols

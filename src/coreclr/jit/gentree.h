@@ -23,6 +23,10 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 #include "ssaconfig.h" // For "SsaConfig::RESERVED_SSA_NUM"
 #include "reglist.h"
 #include "valuenumtype.h"
+#ifdef PAL_STDCPP_COMPAT
+// is in #include "pal.h" // UCHAR_MAX but is #ifed out
+#define UCHAR_MAX     0xff
+#endif
 #include "jitstd.h"
 #include "jithashtable.h"
 #include "simd.h"

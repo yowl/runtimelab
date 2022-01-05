@@ -14,6 +14,15 @@
 #include "utilcode.h"
 #include "ex.h"
 
+#ifdef PAL_STDCPP_COMPAT // these are in mbusafecrt_internal ?
+#ifndef va_start
+#define va_start __builtin_va_start
+#endif
+#ifndef va_end
+#define va_end __builtin_va_end
+#endif
+#endif
+
 #if !defined(FEATURE_UTILCODE_NO_DEPENDENCIES) || defined(_DEBUG)
 
 RunningOnStatusEnum gRunningOnStatus = RUNNING_ON_STATUS_UNINITED;

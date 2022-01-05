@@ -610,6 +610,7 @@ Return Values
 --*/
 BOOL ResizeEnvironment(int newSize)
 {
+	printf("ResizeEnv\n");
     CPalThread * pthrCurrent = InternalGetCurrentThread();
     InternalEnterCriticalSection(pthrCurrent, &gcsEnvironment);
 
@@ -939,6 +940,7 @@ BOOL
 EnvironInitialize(void)
 {
     BOOL ret = FALSE;
+    printf("EnvironInitialize\n");
 
     InternalInitializeCriticalSection(&gcsEnvironment);
 

@@ -312,21 +312,21 @@ const char* Compiler::fgProcessEscapes(const char* nameIn, escapeMapping_t* map)
     return nameOut;
 }
 
-static void fprintfDouble(FILE* fgxFile, double value)
+static void fprintfDouble(PAL_FILE* fgxFile, double value)
 {
     assert(value >= 0.0);
 
     if ((value >= 0.010) || (value == 0.0))
     {
-        fprintf(fgxFile, "\"%7.3f\"", value);
+        PAL_fprintf(fgxFile, "\"%7.3f\"", value);
     }
     else if (value >= 0.00010)
     {
-        fprintf(fgxFile, "\"%7.5f\"", value);
+        PAL_fprintf(fgxFile, "\"%7.5f\"", value);
     }
     else
     {
-        fprintf(fgxFile, "\"%7E\"", value);
+        PAL_fprintf(fgxFile, "\"%7E\"", value);
     }
 }
 
@@ -339,7 +339,7 @@ static void fprintfDouble(FILE* fgxFile, double value)
 //    tree    - The operand to dump.
 //
 // static
-void Compiler::fgDumpTree(FILE* fgxFile, GenTree* const tree)
+void Compiler::fgDumpTree(PAL_FILE* fgxFile, GenTree* const tree)
 {
     if (tree->OperIsCompare())
     {
@@ -432,9 +432,9 @@ void Compiler::fgDumpTree(FILE* fgxFile, GenTree* const tree)
 //    Opens a file to which a flowgraph can be dumped, whose name is based on the current
 //    config vales.
 
-FILE* Compiler::fgOpenFlowGraphFile(bool* wbDontClose, Phases phase, PhasePosition pos, LPCWSTR type)
+PAL_FILE* Compiler::fgOpenFlowGraphFile(bool* wbDontClose, Phases phase, PhasePosition pos, LPCWSTR type)
 {
-    FILE*       fgxFile;
+    PAL_FILE*       fgxFile;
     LPCWSTR     prePhasePattern  = nullptr; // pre-phase:  default (used in Release) is no pre-phase dump
     LPCWSTR     postPhasePattern = W("*");  // post-phase: default (used in Release) is dump all phases
     bool        dumpFunction     = true;    // default (used in Release) is always dump
@@ -484,7 +484,7 @@ FILE* Compiler::fgOpenFlowGraphFile(bool* wbDontClose, Phases phase, PhasePositi
         }
         else if (*prePhasePattern != W('*'))
         {
-            if (wcsstr(prePhasePattern, phaseName) == nullptr)
+            if (PAL_wcsstr(prePhasePattern, phaseName) == nullptr)
             {
                 return nullptr;
             }
@@ -509,7 +509,7 @@ FILE* Compiler::fgOpenFlowGraphFile(bool* wbDontClose, Phases phase, PhasePositi
         }
         else if (*postPhasePattern != W('*'))
         {
-            if (wcsstr(postPhasePattern, phaseName) == nullptr)
+            if (PAL_wcsstr(postPhasePattern, phaseName) == nullptr)
             {
                 return nullptr;
             }
@@ -521,7 +521,7 @@ FILE* Compiler::fgOpenFlowGraphFile(bool* wbDontClose, Phases phase, PhasePositi
         filename = W("default");
     }
 
-    if (wcscmp(filename, W("profiled")) == 0)
+    if (PAL_wcscmp(filename, W("profiled")) == 0)
     {
         if (fgFirstBB->hasProfileWeight())
         {
@@ -533,7 +533,7 @@ FILE* Compiler::fgOpenFlowGraphFile(bool* wbDontClose, Phases phase, PhasePositi
             return nullptr;
         }
     }
-    if (wcscmp(filename, W("hot")) == 0)
+    if (PAL_wcscmp(filename, W("hot")) == 0)
     {
         if (info.compMethodInfo->regionKind == CORINFO_REGION_HOT)
 
@@ -546,7 +546,7 @@ FILE* Compiler::fgOpenFlowGraphFile(bool* wbDontClose, Phases phase, PhasePositi
             return nullptr;
         }
     }
-    else if (wcscmp(filename, W("cold")) == 0)
+    else if (PAL_wcscmp(filename, W("cold")) == 0)
     {
         if (info.compMethodInfo->regionKind == CORINFO_REGION_COLD)
         {
@@ -558,7 +558,7 @@ FILE* Compiler::fgOpenFlowGraphFile(bool* wbDontClose, Phases phase, PhasePositi
             return nullptr;
         }
     }
-    else if (wcscmp(filename, W("jit")) == 0)
+    else if (PAL_wcscmp(filename, W("jit")) == 0)
     {
         if (info.compMethodInfo->regionKind == CORINFO_REGION_JIT)
         {
@@ -570,7 +570,7 @@ FILE* Compiler::fgOpenFlowGraphFile(bool* wbDontClose, Phases phase, PhasePositi
             return nullptr;
         }
     }
-    else if (wcscmp(filename, W("all")) == 0)
+    else if (PAL_wcscmp(filename, W("all")) == 0)
     {
         createDuplicateFgxFiles = true;
 
@@ -580,10 +580,10 @@ FILE* Compiler::fgOpenFlowGraphFile(bool* wbDontClose, Phases phase, PhasePositi
 
         const char* tierName = compGetTieringName(true);
         size_t      wCharCount =
-            strlen(escapedString) + wcslen(phaseName) + 1 + strlen("~999") + wcslen(type) + strlen(tierName) + 1;
+            strlen(escapedString) + PAL_wcslen(phaseName) + 1 + strlen("~999") + PAL_wcslen(type) + strlen(tierName) + 1;
         if (pathname != nullptr)
         {
-            wCharCount += wcslen(pathname) + 1;
+            wCharCount += PAL_wcslen(pathname) + 1;
         }
         filename = (LPCWSTR)alloca(wCharCount * sizeof(WCHAR));
 
@@ -602,13 +602,13 @@ FILE* Compiler::fgOpenFlowGraphFile(bool* wbDontClose, Phases phase, PhasePositi
             // For Generic methods we will have both hot and cold versions
             if (createDuplicateFgxFiles == false)
             {
-                fclose(fgxFile);
+                PAL_fclose(fgxFile);
                 return nullptr;
             }
             // Yes, this filename already exists, so create a different one by appending ~2, ~3, etc...
             for (int i = 2; i < 1000; i++)
             {
-                fclose(fgxFile);
+                PAL_fclose(fgxFile);
                 if (pathname != nullptr)
                 {
                     swprintf_s((LPWSTR)filename, wCharCount, W("%s\\%S~%d.%s"), pathname, escapedString, i, type);
@@ -626,30 +626,30 @@ FILE* Compiler::fgOpenFlowGraphFile(bool* wbDontClose, Phases phase, PhasePositi
             // If we have already created 1000 files with this name then just fail
             if (fgxFile != nullptr)
             {
-                fclose(fgxFile);
+                PAL_fclose(fgxFile);
                 return nullptr;
             }
         }
         fgxFile      = _wfopen(filename, W("a+"));
         *wbDontClose = false;
     }
-    else if (wcscmp(filename, W("stdout")) == 0)
+    else if (PAL_wcscmp(filename, W("stdout")) == 0)
     {
         fgxFile      = jitstdout;
         *wbDontClose = true;
     }
-    else if (wcscmp(filename, W("stderr")) == 0)
+    else if (PAL_wcscmp(filename, W("stderr")) == 0)
     {
-        fgxFile      = stderr;
+        fgxFile      = PAL_stderr;
         *wbDontClose = true;
     }
     else
     {
         LPCWSTR origFilename = filename;
-        size_t  wCharCount   = wcslen(origFilename) + wcslen(type) + 2;
+        size_t  wCharCount   = PAL_wcslen(origFilename) + PAL_wcslen(type) + 2;
         if (pathname != nullptr)
         {
-            wCharCount += wcslen(pathname) + 1;
+            wCharCount += PAL_wcslen(pathname) + 1;
         }
         filename = (LPCWSTR)alloca(wCharCount * sizeof(WCHAR));
         if (pathname != nullptr)
@@ -742,7 +742,7 @@ bool Compiler::fgDumpFlowGraph(Phases phase, PhasePosition pos)
     const bool useBlockId    = false;
 #endif // !DEBUG
 
-    FILE* fgxFile = fgOpenFlowGraphFile(&dontClose, phase, pos, createDotFile ? W("dot") : W("fgx"));
+    PAL_FILE* fgxFile = fgOpenFlowGraphFile(&dontClose, phase, pos, createDotFile ? W("dot") : W("fgx"));
     if (fgxFile == nullptr)
     {
         return false;
@@ -1469,7 +1469,7 @@ bool Compiler::fgDumpFlowGraph(Phases phase, PhasePosition pos)
                 // Arguments:
                 //    file - the file to write output to.
                 //
-                void Output(FILE* file)
+                void Output(PAL_FILE* file)
                 {
                     unsigned clusterNum = 0;
 
@@ -1478,7 +1478,7 @@ bool Compiler::fgDumpFlowGraph(Phases phase, PhasePosition pos)
                     {
                         OutputRegion(file, clusterNum, child, 4);
                     }
-                    fprintf(file, "\n");
+                    PAL_fprintf(file, "\n");
                 }
 
             private:
@@ -1513,9 +1513,9 @@ bool Compiler::fgDumpFlowGraph(Phases phase, PhasePosition pos)
                 //    rgn        - the region to output.
                 //    indent     - the current indent level, in characters.
                 //
-                void OutputRegion(FILE* file, unsigned& clusterNum, Region* rgn, unsigned indent)
+                void OutputRegion(PAL_FILE* file, unsigned& clusterNum, Region* rgn, unsigned indent)
                 {
-                    fprintf(file, "%*ssubgraph cluster_%u {\n", indent, "", clusterNum);
+                    PAL_fprintf(file, "%*ssubgraph cluster_%u {\n", indent, "", clusterNum);
                     indent += 4;
                     fprintf(file, "%*slabel = \"%s\";\n", indent, "", rgn->m_rgnName);
                     fprintf(file, "%*scolor = %s;\n", indent, "", GetColorForRegion(rgn));
@@ -1673,7 +1673,7 @@ bool Compiler::fgDumpFlowGraph(Phases phase, PhasePosition pos)
     }
     else
     {
-        fclose(fgxFile);
+        PAL_fclose(fgxFile);
     }
 
     return result;

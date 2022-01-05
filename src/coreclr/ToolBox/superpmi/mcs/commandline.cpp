@@ -10,6 +10,10 @@
 #include "logging.h"
 #include "mclist.h"
 
+#ifdef PAL_STDCPP_COMPAT
+#include "mbusafecrt.h" // strcpy_s
+#endif
+
 void CommandLine::DumpHelp(const char* program)
 {
     printf("MCS is a utility for examining and manipulating SuperPMI MC files.\n");

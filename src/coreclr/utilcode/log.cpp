@@ -18,6 +18,15 @@
 #include "log.h"
 #include "utilcode.h"
 
+#ifdef PAL_STDCPP_COMPAT // these are in mbusafecrt_internal ?
+#ifndef va_start
+#define va_start __builtin_va_start
+#endif
+#ifndef va_end
+#define va_end __builtin_va_end
+#endif
+#endif
+
 #ifdef LOGGING
 
 #define DEFAULT_LOGFILE_NAME    W("COMPLUS.LOG")

@@ -31,7 +31,7 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 /*****************************************************************************/
 
-FILE* jitstdout = nullptr;
+PAL_FILE* jitstdout = nullptr;
 
 ICorJitHost*   g_jitHost        = nullptr;
 static CILJit* ILJitter         = nullptr; // The one and only JITTER I return
@@ -142,7 +142,7 @@ void jitShutdown(bool processIsTerminating)
         // termination sequence.
         if (!processIsTerminating)
         {
-            fclose(jitstdout);
+            PAL_fclose(jitstdout);
         }
     }
 

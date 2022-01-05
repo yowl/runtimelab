@@ -503,7 +503,7 @@ static void EscapeNameForXml(char* name)
 //    file     - file for output
 //    indent   - indentation level for this node
 
-void InlineContext::DumpXml(FILE* file, unsigned indent)
+void InlineContext::DumpXml(PAL_FILE* file, unsigned indent)
 {
     // Handle fact that siblings are in reverse order.
     if (m_Sibling != nullptr)
@@ -942,7 +942,7 @@ void InlineStrategy::NoteAttempt(InlineResult* result)
 // Argument:
 //     fp -- file for dump output
 
-void InlineStrategy::DumpCsvHeader(FILE* fp)
+void InlineStrategy::DumpCsvHeader(PAL_FILE* fp)
 {
     fprintf(fp, "\"InlineCalls\",");
     fprintf(fp, "\"InlineCandidates\",");
@@ -962,7 +962,7 @@ void InlineStrategy::DumpCsvHeader(FILE* fp)
 // Argument:
 //     fp -- file for dump output
 
-void InlineStrategy::DumpCsvData(FILE* fp)
+void InlineStrategy::DumpCsvData(PAL_FILE* fp)
 {
     fprintf(fp, "%u,", m_CallCount);
     fprintf(fp, "%u,", m_CandidateCount);
@@ -1428,13 +1428,13 @@ void InlineStrategy::DumpData()
     // Dump header, if not already dumped
     if (!s_HasDumpedDataHeader)
     {
-        DumpDataHeader(stderr);
+        DumpDataHeader(PAL_stderr);
         s_HasDumpedDataHeader = true;
     }
 
     // Dump contents
-    DumpDataContents(stderr);
-    fprintf(stderr, "\n");
+    DumpDataContents(PAL_stderr);
+    PAL_fprintf(PAL_stderr, "\n");
 }
 
 //------------------------------------------------------------------------
@@ -1470,7 +1470,7 @@ void InlineStrategy::DumpDataEnsurePolicyIsSet()
 // Arguments:
 //    file - file for data output
 
-void InlineStrategy::DumpDataHeader(FILE* file)
+void InlineStrategy::DumpDataHeader(PAL_FILE* file)
 {
     DumpDataEnsurePolicyIsSet();
     const int limit = JitConfig.JitInlineLimit();
@@ -1485,7 +1485,7 @@ void InlineStrategy::DumpDataHeader(FILE* file)
 // Arguments:
 //    file - file for data output
 
-void InlineStrategy::DumpDataSchema(FILE* file)
+void InlineStrategy::DumpDataSchema(PAL_FILE* file)
 {
     DumpDataEnsurePolicyIsSet();
     fprintf(file, "Method,Version,HotSize,ColdSize,JitTime,SizeEstimate,TimeEstimate,");
@@ -1498,7 +1498,7 @@ void InlineStrategy::DumpDataSchema(FILE* file)
 // Arguments:
 //    file - file for data output
 
-void InlineStrategy::DumpDataContents(FILE* file)
+void InlineStrategy::DumpDataContents(PAL_FILE* file)
 {
     DumpDataEnsurePolicyIsSet();
 
@@ -1541,7 +1541,7 @@ CritSecObject InlineStrategy::s_XmlWriterLock;
 //    file - file for data output
 //    indent - indent level of this element
 
-void InlineStrategy::DumpXml(FILE* file, unsigned indent)
+void InlineStrategy::DumpXml(PAL_FILE* file, unsigned indent)
 {
     if (JitConfig.JitInlineDumpXml() == 0)
     {
@@ -1670,14 +1670,14 @@ void InlineStrategy::DumpXml(FILE* file, unsigned indent)
 // Arguments
 //    file - file for data output
 
-void InlineStrategy::FinalizeXml(FILE* file)
+void InlineStrategy::FinalizeXml(PAL_FILE* file)
 {
     // If we dumped the header, dump a footer
     if (s_HasDumpedXmlHeader)
     {
         fprintf(file, "</Methods>\n");
         fprintf(file, "</InlineForest>\n");
-        fflush(file);
+        PAL_fflush(file);
 
         // Workaroud compShutdown getting called twice.
         s_HasDumpedXmlHeader = false;

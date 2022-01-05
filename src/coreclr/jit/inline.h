@@ -71,6 +71,10 @@
 #ifndef _INLINE_H_
 #define _INLINE_H_
 
+#ifdef PAL_STDCPP_COMPAT
+#define USHRT_MAX     0xffff
+#endif
+
 #include "jit.h"
 #include "gentree.h"
 
@@ -262,11 +266,11 @@ public:
     // Name of the policy
     virtual const char* GetName() const = 0;
     // Detailed data value dump
-    virtual void DumpData(FILE* file) const
+    virtual void DumpData(PAL_FILE* file) const
     {
     }
     // Detailed data name dump
-    virtual void DumpSchema(FILE* file) const
+    virtual void DumpSchema(PAL_FILE* file) const
     {
     }
 
@@ -287,14 +291,14 @@ public:
     }
 
     // Detailed data value dump as XML
-    void DumpXml(FILE* file, unsigned indent = 0)
+    void DumpXml(PAL_FILE* file, unsigned indent = 0)
     {
         fprintf(file, "%*s<%s", indent, "", GetName());
         OnDumpXml(file);
         fprintf(file, " />\n");
     }
 
-    virtual void OnDumpXml(FILE* file, unsigned indent = 0) const
+    virtual void OnDumpXml(PAL_FILE* file, unsigned indent = 0) const
     {
     }
 
@@ -701,7 +705,7 @@ public:
     void DumpData(unsigned indent = 0);
 
     // Dump full subtree in xml format
-    void DumpXml(FILE* file = stderr, unsigned indent = 0);
+    void DumpXml(PAL_FILE* file = PAL_stderr, unsigned indent = 0);
 
     // Get callee handle
     CORINFO_METHOD_HANDLE GetCallee() const
@@ -908,10 +912,10 @@ public:
     }
 
     // Dump csv header for inline stats to indicated file.
-    static void DumpCsvHeader(FILE* f);
+    static void DumpCsvHeader(PAL_FILE* f);
 
     // Dump csv data for inline stats to indicated file.
-    void DumpCsvData(FILE* f);
+    void DumpCsvData(PAL_FILE* f);
 
     // See if an inline of this size would fit within the current jit
     // time budget.
@@ -928,13 +932,13 @@ public:
     // Dump data-format description of inlines done so far.
     void DumpData();
     void DumpDataEnsurePolicyIsSet();
-    void DumpDataHeader(FILE* file);
-    void DumpDataSchema(FILE* file);
-    void DumpDataContents(FILE* file);
+    void DumpDataHeader(PAL_FILE* file);
+    void DumpDataSchema(PAL_FILE* file);
+    void DumpDataContents(PAL_FILE* file);
 
     // Dump xml-formatted description of inlines
-    void DumpXml(FILE* file = stderr, unsigned indent = 0);
-    static void FinalizeXml(FILE* file = stderr);
+    void DumpXml(PAL_FILE* file = PAL_stderr, unsigned indent = 0);
+    static void FinalizeXml(PAL_FILE* file = PAL_stderr);
 
     // Cache for file position of this method in the inline xml
     long GetMethodXmlFilePosition()

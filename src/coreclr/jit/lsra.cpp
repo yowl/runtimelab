@@ -8644,7 +8644,7 @@ void LinearScan::updateLsraStat(LsraStat stat, unsigned bbNum)
 // Arguments:
 //    file    -  file to which stats are to be written.
 //
-void LinearScan::dumpLsraStats(FILE* file)
+void LinearScan::dumpLsraStats(PAL_FILE* file)
 {
     unsigned             sumStats[LsraStat::COUNT] = {0};
     BasicBlock::weight_t wtdStats[LsraStat::COUNT] = {0};
@@ -8786,12 +8786,12 @@ void LinearScan::dumpLsraStats(FILE* file)
 // Arguments:
 //    file    -  file to which stats are to be written.
 //
-void LinearScan::dumpLsraStatsCsv(FILE* file)
+void LinearScan::dumpLsraStatsCsv(PAL_FILE* file)
 {
     unsigned sumStats[LsraStat::COUNT] = {0};
 
     // Write the header if the file is empty
-    if (ftell(file) == 0)
+    if (PAL_ftell(file) == 0)
     {
         // header
         fprintf(file, "\"Method Name\"");
@@ -8836,7 +8836,7 @@ void LinearScan::dumpLsraStatsCsv(FILE* file)
 // Arguments:
 //    file    -  file to which stats are to be written.
 //
-void LinearScan::dumpLsraStatsSummary(FILE* file)
+void LinearScan::dumpLsraStatsSummary(PAL_FILE* file)
 {
     unsigned             sumStats[LsraStat::STAT_FREE] = {0};
     BasicBlock::weight_t wtdStats[LsraStat::STAT_FREE] = {0.0};

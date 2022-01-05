@@ -14,6 +14,10 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 #ifndef _EH_H_
 #define _EH_H_
 
+#ifdef PAL_STDCPP_COMPAT
+#define USHRT_MAX     0xffff
+#endif
+
 struct BasicBlock;
 class Compiler;
 

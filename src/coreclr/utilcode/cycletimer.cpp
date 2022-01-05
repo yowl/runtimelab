@@ -56,10 +56,10 @@ unsigned __int64 CycleTimer::QueryOverhead()
     unsigned __int64 startCycles;
     unsigned __int64 endCycles;
     const int N = 1000;
-    bool b = GetThreadCyclesS(&startCycles); assert(b);
+    bool b = GetThreadCyclesS(&startCycles); _ASSERTE(b);
     for (int i = 0; i < N; i++)
     {
-        b = GetThreadCyclesS(&endCycles); assert(b);
+        b = GetThreadCyclesS(&endCycles); _ASSERTE(b);
         tot += (endCycles-startCycles);
         startCycles = endCycles;
     }

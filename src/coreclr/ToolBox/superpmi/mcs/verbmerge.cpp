@@ -18,13 +18,13 @@ RemoveDup verbMerge::m_removeDups;
 // static
 LPWSTR verbMerge::MergePathStrings(LPCWSTR dir, LPCWSTR file)
 {
-    size_t dirlen  = wcslen(dir);
-    size_t filelen = wcslen(file);
+    size_t dirlen  = PAL_wcslen(dir);
+    size_t filelen = PAL_wcslen(file);
     size_t newlen  = dirlen + 1 /* slash */ + filelen + 1 /* null */;
     LPWSTR newpath = new WCHAR[newlen];
-    wcscpy(newpath, dir);
-    wcscat(newpath, DIRECTORY_SEPARATOR_STR_W);
-    wcscat(newpath, file);
+    PAL_wcscpy(newpath, dir);
+    PAL_wcscat(newpath, DIRECTORY_SEPARATOR_STR_W);
+    PAL_wcscat(newpath, file);
     return newpath;
 }
 
@@ -161,9 +161,9 @@ bool verbMerge::DirectoryFilterDirectories(WIN32_FIND_DATAW* findData)
         if ((findData->dwFileAttributes & FILE_ATTRIBUTE_HIDDEN) != 0)
             return false;
 
-        if (wcscmp(findData->cFileName, W(".")) == 0)
+        if (PAL_wcscmp(findData->cFileName, W(".")) == 0)
             return false;
-        if (wcscmp(findData->cFileName, W("..")) == 0)
+        if (PAL_wcscmp(findData->cFileName, W("..")) == 0)
             return false;
 
         return true;
@@ -191,7 +191,7 @@ int __cdecl verbMerge::WIN32_FIND_DATAW_qsort_helper(const void* p1, const void*
 {
     const WIN32_FIND_DATAW* file1 = (WIN32_FIND_DATAW*)p1;
     const WIN32_FIND_DATAW* file2 = (WIN32_FIND_DATAW*)p2;
-    return wcscmp(file1->cFileName, file2->cFileName);
+    return PAL_wcscmp(file1->cFileName, file2->cFileName);
 }
 
 // Enumerate a directory for the files specified by "searchPattern". For each element in the directory,
@@ -349,28 +349,28 @@ int verbMerge::AppendAllInDir(HANDLE              hFileOut,
         const _WIN32_FIND_DATAW& findData     = fileArray[i];
         LPWSTR                   fileFullPath = MergePathStrings(dir, findData.cFileName);
 
-        if (wcslen(fileFullPath) > MAX_PATH) // This path is too long, use \\?\ to access it.
+        if (PAL_wcslen(fileFullPath) > MAX_PATH) // This path is too long, use \\?\ to access it.
         {
-            if (wcscmp(dir, W(".")) == 0)
+            if (PAL_wcscmp(dir, W(".")) == 0)
             {
                 LogError("can't access the relative path with UNC");
                 goto CLEAN_UP;
             }
-            LPWSTR newBuffer = new WCHAR[wcslen(fileFullPath) + 30];
-            wcscpy(newBuffer, W("\\\\?\\"));
+            LPWSTR newBuffer = new WCHAR[PAL_wcslen(fileFullPath) + 30];
+            PAL_wcscpy(newBuffer, W("\\\\?\\"));
             if (*fileFullPath == '\\') // It is UNC path, use \\?\UNC\serverName to access it.
             {
                 LPWSTR serverName = fileFullPath;
-                wcscat(newBuffer, W("UNC\\"));
+                PAL_wcscat(newBuffer, W("UNC\\"));
                 while (*serverName == '\\')
                 {
                     serverName++;
                 }
-                wcscat(newBuffer, serverName);
+                PAL_wcscat(newBuffer, serverName);
             }
             else
             {
-                wcscat(newBuffer, fileFullPath);
+                PAL_wcscat(newBuffer, fileFullPath);
             }
             delete[] fileFullPath;
 
@@ -497,13 +497,13 @@ int verbMerge::DoWork(const char* nameOfOutputFile, const char* pattern, bool re
     LPCWSTR        dir    = nullptr;
     LPCWSTR        file   = nullptr;
 
-    LPWSTR lastSlash = wcsrchr(patternAsWchar, DIRECTORY_SEPARATOR_CHAR_A);
+    LPWSTR lastSlash = PAL_wcsrchr(patternAsWchar, DIRECTORY_SEPARATOR_CHAR_A);
     if (lastSlash == NULL)
     {
         // The user may have passed a relative path without a slash, or the current directory.
         // If there is a wildcard, we use it as the file pattern. If there isn't, we assume it's a relative directory
         // name and use it as a directory, with "*" as the file pattern.
-        LPCWSTR wildcard = wcschr(patternAsWchar, '*');
+        LPCWSTR wildcard = PAL_wcschr(patternAsWchar, '*');
         if (wildcard == NULL)
         {
             file = W("*");
@@ -518,7 +518,7 @@ int verbMerge::DoWork(const char* nameOfOutputFile, const char* pattern, bool re
     else
     {
         dir              = patternAsWchar;
-        LPCWSTR wildcard = wcschr(lastSlash, '*');
+        LPCWSTR wildcard = PAL_wcschr(lastSlash, '*');
         if (wildcard == NULL)
         {
             file = W("*");

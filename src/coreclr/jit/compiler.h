@@ -24,6 +24,24 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 #include "jit.h"
 #include "opcode.h"
 #include "varset.h"
+#ifdef PAL_STDCPP_COMPAT
+#define SCHAR_MIN   (-128)
+#define SCHAR_MAX     127
+#define UCHAR_MAX     0xff
+
+#define SHRT_MIN    (-32768)
+#define SHRT_MAX      32767
+#define USHRT_MAX     0xffff
+
+#define INT_MIN     (-2147483647 - 1)
+#define INT_MAX       2147483647
+#define UINT_MAX      0xffffffff
+
+// LONG_MIN, LONG_MAX, ULONG_MAX -- use INT32_MIN etc. instead.
+
+#define FLT_MAX 3.402823466e+38F
+#define DBL_MAX 1.7976931348623157e+308
+#endif
 #include "jitstd.h"
 #include "jithashtable.h"
 #include "gentree.h"
@@ -61,6 +79,8 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 #include "hwintrinsic.h"
 #include "simd.h"
 #include "simdashwintrinsic.h"
+
+#include "pal/cruntime.h" // for _FILE
 
 // This is only used locally in the JIT to indicate that
 // a verification block should be inserted
@@ -1180,8 +1200,8 @@ public:
     virtual void recordVarLocationsAtStartOfBB(BasicBlock* bb) = 0;
     virtual bool willEnregisterLocalVars() const               = 0;
 #if TRACK_LSRA_STATS
-    virtual void dumpLsraStatsCsv(FILE* file)     = 0;
-    virtual void dumpLsraStatsSummary(FILE* file) = 0;
+    virtual void dumpLsraStatsCsv(PAL_FILE* file)     = 0;
+    virtual void dumpLsraStatsSummary(PAL_FILE* file) = 0;
 #endif // TRACK_LSRA_STATS
 };
 
@@ -1342,7 +1362,7 @@ public:
 
     // Print the summary information to "f".
     // This is not thread-safe; assumed to be called by only one thread.
-    void Print(FILE* f);
+    void Print(PAL_FILE* f);
 };
 
 // A JitTimer encapsulates a CompTimeInfo for a single compilation. It also tracks the start of compilation,
@@ -1365,7 +1385,7 @@ class JitTimer
     CompTimeInfo m_info; // The CompTimeInfo for this compilation.
 
     static CritSecObject s_csvLock; // Lock to protect the time log file.
-    static FILE*         s_csvFile; // The time log file handle.
+    static PAL_FILE*         s_csvFile; // The time log file handle.
     void PrintCsvMethodStats(Compiler* comp);
 
 private:
@@ -5764,8 +5784,8 @@ public:
         PostPhase
     };
     const char* fgProcessEscapes(const char* nameIn, escapeMapping_t* map);
-    static void fgDumpTree(FILE* fgxFile, GenTree* const tree);
-    FILE* fgOpenFlowGraphFile(bool* wbDontClose, Phases phase, PhasePosition pos, LPCWSTR type);
+    static void fgDumpTree(PAL_FILE* fgxFile, GenTree* const tree);
+    PAL_FILE* fgOpenFlowGraphFile(bool* wbDontClose, Phases phase, PhasePosition pos, LPCWSTR type);
     bool fgDumpFlowGraph(Phases phase, PhasePosition pos);
 #endif // DUMP_FLOWGRAPHS
 
@@ -8070,7 +8090,7 @@ public:
     void eeDispVar(ICorDebugInfo::NativeVarInfo* var);
     void eeDispVars(CORINFO_METHOD_HANDLE ftn, ULONG32 cVars, ICorDebugInfo::NativeVarInfo* vars);
 #endif // DEBUG
-#endif
+#endif // TARGET_WASM
 
     // ICorJitInfo wrappers
 
@@ -8157,10 +8177,10 @@ public:
     */
 
 public:
+#ifndef TARGET_WASM
     CodeGenInterface* codeGen;
 
     //  The following holds information about instr offsets in terms of generated code.
-#ifndef TARGET_WASM
     struct IPmappingDsc
     {
         IPmappingDsc* ipmdNext;      // next line# record
@@ -10208,7 +10228,7 @@ public:
                   InlineInfo*           inlineInfo);
     void compDone();
 
-    static void compDisplayStaticSizes(FILE* fout);
+    static void compDisplayStaticSizes(PAL_FILE* fout);
 
     //------------ Some utility functions --------------
 
@@ -10265,7 +10285,7 @@ public:
     static unsigned      s_loopsWithHoistedExpressions;
     static unsigned      s_totalHoistedExpressions;
 
-    static void PrintAggregateLoopHoistStats(FILE* f);
+    static void PrintAggregateLoopHoistStats(PAL_FILE* f);
 #endif // LOOP_HOIST_STATS
 
     bool compIsForImportOnly();
@@ -10689,7 +10709,7 @@ public:
 #if FUNC_INFO_LOGGING
     static LPCWSTR compJitFuncInfoFilename; // If a log file for per-function information is required, this is the
                                             // filename to write it to.
-    static FILE* compJitFuncInfoFile;       // And this is the actual FILE* to write to.
+    static PAL_FILE* compJitFuncInfoFile;       // And this is the actual FILE* to write to.
 #endif                                      // FUNC_INFO_LOGGING
 
     Compiler* prevCompiler; // Previous compiler on stack for TLS Compiler* linked list for reentrant compilers.

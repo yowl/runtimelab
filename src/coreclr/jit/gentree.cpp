@@ -10764,7 +10764,7 @@ void Compiler::gtDispCommonEndLine(GenTree* tree)
 //    'indentStack' may be null, in which case no indentation or arcs are printed
 //    'msg' may be null
 
-void Compiler::gtDispNode(GenTree* tree, IndentStack* indentStack, __in __in_z __in_opt const char* msg, bool isLIR)
+void Compiler::gtDispNode(GenTree* tree, IndentStack* indentStack, __sal_in __in_z __in_opt const char* msg, bool isLIR)
 {
     bool printFlags = true; // always true..
 
@@ -12137,7 +12137,7 @@ extern const char* const simdIntrinsicNames[] = {
 
 void Compiler::gtDispTree(GenTree*     tree,
                           IndentStack* indentStack,                 /* = nullptr */
-                          __in __in_z __in_opt const char* msg,     /* = nullptr  */
+                          __sal_in __in_z __in_opt const char* msg,     /* = nullptr  */
                           bool                             topOnly, /* = false */
                           bool                             isLIR)   /* = false */
 {

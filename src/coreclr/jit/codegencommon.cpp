@@ -29,6 +29,9 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 #include "patchpointinfo.h"
 
+#ifdef PAL_STDCPP_COMPAT
+#endif
+
 /*****************************************************************************/
 
 void CodeGenInterface::setFramePointerRequiredEH(bool value)
@@ -2518,12 +2521,12 @@ void CodeGen::genEmitUnwindDebugGCandEH()
         genCreateAndStoreGCInfo(codeSize, prologSize, epilogSize DEBUGARG(codePtr));
 
 #ifdef DEBUG
-    FILE* dmpf = jitstdout;
+    PAL_FILE* dmpf = jitstdout;
 
     compiler->opts.dmpHex = false;
     if (!strcmp(compiler->info.compMethodName, "<name of method you want the hex dump for"))
     {
-        FILE*   codf;
+        PAL_FILE*   codf;
         errno_t ec = fopen_s(&codf, "C:\\JIT.COD", "at"); // NOTE: file append mode
         if (ec != 0)
         {
@@ -2536,24 +2539,24 @@ void CodeGen::genEmitUnwindDebugGCandEH()
     {
         size_t consSize = GetEmitter()->emitDataSize();
 
-        fprintf(dmpf, "Generated code for %s:\n", compiler->info.compFullName);
-        fprintf(dmpf, "\n");
+        PAL_fprintf(dmpf, "Generated code for %s:\n", compiler->info.compFullName);
+        PAL_fprintf(dmpf, "\n");
 
         if (codeSize)
         {
-            fprintf(dmpf, "    Code  at %p [%04X bytes]\n", dspPtr(*codePtr), codeSize);
+            PAL_fprintf(dmpf, "    Code  at %p [%04X bytes]\n", dspPtr(*codePtr), codeSize);
         }
         if (consSize)
         {
-            fprintf(dmpf, "    Const at %p [%04X bytes]\n", dspPtr(consPtr), consSize);
+            PAL_fprintf(dmpf, "    Const at %p [%04X bytes]\n", dspPtr(consPtr), consSize);
         }
 #ifdef JIT32_GCENCODER
         size_t infoSize = compiler->compInfoBlkSize;
         if (infoSize)
-            fprintf(dmpf, "    Info  at %p [%04X bytes]\n", dspPtr(infoPtr), infoSize);
+            PAL_fprintf(dmpf, "    Info  at %p [%04X bytes]\n", dspPtr(infoPtr), infoSize);
 #endif // JIT32_GCENCODER
 
-        fprintf(dmpf, "\n");
+        PAL_fprintf(dmpf, "\n");
 
         if (codeSize)
         {
@@ -2568,12 +2571,12 @@ void CodeGen::genEmitUnwindDebugGCandEH()
             hexDump(dmpf, "Info", (BYTE*)infoPtr, infoSize);
 #endif // JIT32_GCENCODER
 
-        fflush(dmpf);
+        PAL_fflush(dmpf);
     }
 
     if (dmpf != jitstdout)
     {
-        fclose(dmpf);
+        PAL_fclose(dmpf);
     }
 
 #endif // DEBUG

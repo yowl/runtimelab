@@ -13,6 +13,8 @@
 #include "logging.h"
 #include "runtimedetails.h"
 
+#ifdef PAL_STDCPP_COMPAT
+#endif
 // Just a helper...
 HANDLE MethodContextReader::OpenFile(const char* inputFile, DWORD flags)
 {

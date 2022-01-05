@@ -128,9 +128,12 @@ typedef struct _LIST_ENTRY {
     _EX_ListHead->Flink = (Entry);\
     }
 
+
+#ifndef CONTAINING_RECORD // in palrt.h
 #define CONTAINING_RECORD(address, type, field) ((type *)( \
                                                   (PCHAR)(address) - \
                                                   (ULONG_PTR)(&((type *)0)->field)))
+#endif
 
 #ifdef __cplusplus
 }

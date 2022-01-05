@@ -413,7 +413,7 @@ bool _DbgBreakCheck(
 
     LogAssert(szFile, iLine, szExpr);
     FlushLogging();         // make certain we get the last part of the log
-    _flushall();
+    PAL__flushall();
 
     if (ContinueOnAssert())
     {
@@ -834,7 +834,7 @@ void DECLSPEC_NORETURN __FreeBuildAssertFail(const char *szFile, int iLine, cons
 
     FlushLogging();         // make certain we get the last part of the log
 
-    _flushall();
+    PAL__flushall();
 
     ShutdownLogging();
 

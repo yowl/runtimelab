@@ -1450,13 +1450,13 @@ private:
 #if TRACK_LSRA_STATS
     unsigned regCandidateVarCount;
     void updateLsraStat(LsraStat stat, unsigned currentBBNum);
-    void dumpLsraStats(FILE* file);
+    void dumpLsraStats(PAL_FILE* file);
     LsraStat getLsraStatFromScore(RegisterScore registerScore);
     LsraStat firstRegSelStat = STAT_FREE;
 
 public:
-    virtual void dumpLsraStatsCsv(FILE* file);
-    virtual void dumpLsraStatsSummary(FILE* file);
+    virtual void dumpLsraStatsCsv(PAL_FILE* file);
+    virtual void dumpLsraStatsSummary(PAL_FILE* file);
     static const char* getStatName(unsigned stat);
 
 #define INTRACK_STATS(x) x

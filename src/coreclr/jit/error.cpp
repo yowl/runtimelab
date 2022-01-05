@@ -16,6 +16,20 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 #endif
 #include "compiler.h"
 
+#if defined(PAL_STDCPP_COMPAT)
+#define max(a, b) (((a) > (b)) ? (a) : (b))
+#define min(a, b) (((a) < (b)) ? (a) : (b))
+#ifndef va_start
+#define va_start __builtin_va_start
+#endif
+#ifndef va_end
+#define va_end __builtin_va_end
+#endif
+#ifndef va_copy
+#define va_copy  __builtin_va_copy
+#endif
+#endif
+
 #if MEASURE_FATAL
 unsigned fatal_badCode;
 unsigned fatal_noWay;
@@ -163,13 +177,13 @@ void notYetImplemented(const char* msg, const char* filename, unsigned line)
     {
         fprintf(Compiler::compJitFuncInfoFile, "%s - NYI (%s:%d - %s)\n",
                 (env == nullptr) ? "UNKNOWN" : env->compiler->info.compFullName, filename, line, msg);
-        fflush(Compiler::compJitFuncInfoFile);
+        PAL_fflush(Compiler::compJitFuncInfoFile);
     }
 #else  // !DEBUG
     if (Compiler::compJitFuncInfoFile != nullptr)
     {
         fprintf(Compiler::compJitFuncInfoFile, "NYI (%s:%d - %s)\n", filename, line, msg);
-        fflush(Compiler::compJitFuncInfoFile);
+        PAL_fflush(Compiler::compJitFuncInfoFile);
     }
 #endif // !DEBUG
 #endif // FUNC_INFO_LOGGING

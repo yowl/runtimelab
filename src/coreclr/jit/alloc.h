@@ -82,8 +82,8 @@ private:
             allocSzByKind[cmk] += sz;
         }
 
-        void Print(FILE* f);       // Print these stats to file.
-        void PrintByKind(FILE* f); // Do just the by-kind histogram part.
+        void Print(PAL_FILE* f);       // Print these stats to file.
+        void PrintByKind(PAL_FILE* f); // Do just the by-kind histogram part.
     };
 
     struct AggregateMemStats : public MemStats
@@ -104,7 +104,7 @@ private:
             nraTotalSizeUsed += ms.nraTotalSizeUsed;
         }
 
-        void Print(FILE* f); // Print these stats to file.
+        void Print(PAL_FILE* f); // Print these stats to file.
     };
 
 public:
@@ -131,10 +131,10 @@ private:
 public:
     MemStatsAllocator* getMemStatsAllocator(CompMemKind kind);
     void finishMemStats();
-    void dumpMemStats(FILE* file);
+    void dumpMemStats(PAL_FILE* file);
 
-    static void dumpMaxMemStats(FILE* file);
-    static void dumpAggregateMemStats(FILE* file);
+    static void dumpMaxMemStats(PAL_FILE* file);
+    static void dumpAggregateMemStats(PAL_FILE* file);
 #endif // MEASURE_MEM_ALLOC
 
 public:

@@ -23,6 +23,30 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 
 #include "opcode.h"
 
+#if defined(PAL_STDCPP_COMPAT)
+// can't include malloc.hpp because it brings in ucontext.h/REG_xxx
+char *
+__cdecl
+PAL__strdup(
+    const char *c_szStr
+    )
+{
+    return strdup(c_szStr);
+}
+
+#define max(a, b) (((a) > (b)) ? (a) : (b))
+#define min(a, b) (((a) < (b)) ? (a) : (b))
+#ifndef va_start
+#define va_start __builtin_va_start
+#endif
+#ifndef va_end
+#define va_end __builtin_va_end
+#endif
+#ifndef va_copy
+#define va_copy  __builtin_va_copy
+#endif
+#endif
+
 /*****************************************************************************/
 // Define the string platform name based on compilation #ifdefs. This is the
 // same code for all platforms, hence it is here instead of in the targetXXX.cpp
@@ -916,7 +940,7 @@ Histogram::Histogram(const unsigned* const sizeTable) : m_sizeTable(sizeTable)
     memset(m_counts, 0, (m_sizeCount + 1) * sizeof(*m_counts));
 }
 
-void Histogram::dump(FILE* output)
+void Histogram::dump(PAL_FILE* output)
 {
     unsigned t = 0;
     for (unsigned i = 0; i < m_sizeCount; i++)
@@ -1189,7 +1213,7 @@ int SimpleSprintf_s(__in_ecount(cbBufSize - (pWriteStart - pBufStart)) char* pWr
 
 #ifdef DEBUG
 
-void hexDump(FILE* dmpf, const char* name, BYTE* addr, size_t size)
+void hexDump(PAL_FILE* dmpf, const char* name, BYTE* addr, size_t size)
 {
     if (!size)
     {
@@ -1618,7 +1642,7 @@ bool AssemblyNamesList2::IsInList(const char* assemblyName)
 
 MethodSet::MethodSet(const WCHAR* filename, HostAllocator alloc) : m_pInfos(nullptr), m_alloc(alloc)
 {
-    FILE* methodSetFile = _wfopen(filename, W("r"));
+    PAL_FILE* methodSetFile = _wfopen(filename, W("r"));
     if (methodSetFile == nullptr)
     {
         return;
@@ -1630,7 +1654,7 @@ MethodSet::MethodSet(const WCHAR* filename, HostAllocator alloc) : m_pInfos(null
     while (true)
     {
         // Get next line
-        if (fgets(buffer, sizeof(buffer), methodSetFile) == nullptr)
+        if (PAL_fgets(buffer, sizeof(buffer), methodSetFile) == nullptr)
         {
             break;
         }
@@ -1715,7 +1739,7 @@ MethodSet::MethodSet(const WCHAR* filename, HostAllocator alloc) : m_pInfos(null
         }
     }
 
-    if (fclose(methodSetFile))
+    if (PAL_fclose(methodSetFile))
     {
         JITDUMP("Unable to close %ws\n", filename);
     }

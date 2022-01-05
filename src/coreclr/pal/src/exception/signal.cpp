@@ -41,7 +41,9 @@ SET_DEFAULT_DEBUG_CHANNEL(EXCEPT); // some headers have code with asserts, so do
 #include "pal/utils.h"
 
 #include <string.h>
+#ifndef PAL_STDCPP_COMPAT
 #include <sys/ucontext.h>
+#endif 
 #include <sys/utsname.h>
 #include <unistd.h>
 #include <sys/mman.h>

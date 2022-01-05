@@ -15,6 +15,20 @@
 #include "neardiffer.h"
 #include "spmiutil.h"
 
+#if defined(PAL_STDCPP_COMPAT)
+#define max(a, b) (((a) > (b)) ? (a) : (b))
+#define min(a, b) (((a) < (b)) ? (a) : (b))
+#ifndef va_start
+#define va_start __builtin_va_start
+#endif
+#ifndef va_end
+#define va_end __builtin_va_end
+#endif
+#ifndef va_copy
+#define va_copy  __builtin_va_copy
+#endif
+#endif
+
 #ifdef USE_COREDISTOOLS
 
 //
@@ -81,7 +95,7 @@ bool NearDiffer::InitAsmDiff()
             return false;
         }
 
-        WCHAR* ptr = ::wcsrchr(coreCLRLoadedPath, '/');
+        WCHAR* ptr = PAL_wcsrchr(coreCLRLoadedPath, '/');
 
         // Move past the / character.
         ptr = ptr + 1;

@@ -11,6 +11,15 @@
 #include <ex.h>
 #include <contract.h>
 
+#ifdef PAL_STDCPP_COMPAT // these are in mbusafecrt_internal ?
+#ifndef va_start
+#define va_start __builtin_va_start
+#endif
+#ifndef va_end
+#define va_end __builtin_va_end
+#endif
+#endif
+
 #ifdef _DEBUG
 size_t CHECK::s_cLeakedBytes = 0;
 size_t CHECK::s_cNumFailures = 0;

@@ -12,7 +12,9 @@
 
 #include "crtwrap.h"
 #include "winwrap.h"
+#ifndef PAL_STDCPP_COMPAT
 #include <wchar.h>
+#endif
 #include <stdio.h>
 #include <malloc.h>
 #include <ole2.h>
@@ -33,6 +35,7 @@
 #ifdef PAL_STDCPP_COMPAT
 #include <type_traits>
 #include <cwctype>
+#include "mbusafecrt.h" // wcnscp_s
 #else
 #include "clr_std/type_traits"
 #endif
@@ -157,9 +160,10 @@ typedef LPSTR   LPUTF8;
 #define NumItems(s) (sizeof(s) / sizeof(s[0]))
 #endif
 
-#ifndef StrLen
+// conflicts with llvm StringMap
+#ifndef ClrStrLen
 // Number of characters in a string literal. Excludes terminating NULL.
-#define StrLen(str) (NumItems(str) - 1)
+#define ClrStrLen(str) (NumItems(str) - 1)
 #endif
 
 

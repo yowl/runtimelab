@@ -16,7 +16,7 @@ WCHAR* GetCOMPlusVariable(const WCHAR* key, JitInstance& jitInstance)
     static const size_t  PrefixLen = (sizeof(Prefix) / sizeof(Prefix[0])) - 1;
 
     // Prepend "COMPlus_" to the provided key
-    size_t   keyLen       = wcslen(key);
+    size_t   keyLen       = PAL_wcslen(key);
     size_t   keyBufferLen = keyLen + PrefixLen + 1;
     WCHAR* keyBuffer =
         reinterpret_cast<WCHAR*>(jitInstance.allocateArray(sizeof(WCHAR) * keyBufferLen));
@@ -67,8 +67,8 @@ bool JitHost::convertStringValueToInt(const WCHAR* key, const WCHAR* stringValue
     }
 
     WCHAR*      endPtr;
-    unsigned long longResult = wcstoul(stringValue, &endPtr, 16);
-    bool          succeeded  = (errno != ERANGE) && (endPtr != stringValue) && (longResult <= INT_MAX);
+    unsigned long longResult = PAL_wcstoul(stringValue, &endPtr, 16);
+    bool          succeeded  = (PAL_errno != ERANGE) && (endPtr != stringValue) && (longResult <= INT_MAX);
     if (!succeeded)
     {
         LogWarning("Can't convert int config value from string, key: %ws, string value: %ws\n", key, stringValue);
@@ -107,7 +107,7 @@ int JitHost::getIntConfigValue(const WCHAR* key, int defaultValue)
     if (!valueFound)
     {
         // Look for special case keys.
-        if (wcscmp(key, W("SuperPMIMethodContextNumber")) == 0)
+        if (PAL_wcscmp(key, W("SuperPMIMethodContextNumber")) == 0)
         {
             result     = jitInstance.mc->index;
             valueFound = true;
@@ -168,7 +168,7 @@ const WCHAR* JitHost::getStringConfigValue(const WCHAR* key)
     if (result != nullptr && needToDup)
     {
         // Now we need to dup it, so you can call freeStringConfigValue() on what we return.
-        size_t   resultLenInChars = wcslen(result) + 1;
+        size_t   resultLenInChars = PAL_wcslen(result) + 1;
         WCHAR* dupResult = (WCHAR*)jitInstance.allocateLongLivedArray(sizeof(WCHAR) * resultLenInChars);
         wcscpy_s(dupResult, resultLenInChars, result);
         result = dupResult;

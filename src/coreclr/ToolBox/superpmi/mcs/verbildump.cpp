@@ -915,9 +915,9 @@ char* DumpAttributeToConsoleBare(DWORD attribute)
 
     if (0)
         ;
-    ifPrint(CORINFO_FLG_STATIC, s_static)
-    ifPrint(CORINFO_FLG_DONT_INLINE, s_dontInline)
-    ifPrint(CORINFO_FLG_CONSTRUCTOR, s_constructor)
+    //ifPrint(CORINFO_FLG_STATIC, s_static)
+    //ifPrint(CORINFO_FLG_DONT_INLINE, s_dontInline)
+    //ifPrint(CORINFO_FLG_CONSTRUCTOR, s_constructor)
     return nullptr;
 
 #undef ifPrint

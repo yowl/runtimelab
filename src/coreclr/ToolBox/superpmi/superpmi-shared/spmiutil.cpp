@@ -75,7 +75,7 @@ WCHAR* GetEnvironmentVariableWithDefaultW(const WCHAR* envVarName, const WCHAR* 
     {
         if (defaultValue != nullptr)
         {
-            dwRetVal  = (DWORD)wcslen(defaultValue) + 1; // add one for null terminator
+            dwRetVal  = (DWORD)PAL_wcslen(defaultValue) + 1; // add one for null terminator
             retString = new WCHAR[dwRetVal];
             memcpy_s(retString, dwRetVal * sizeof(WCHAR), defaultValue, dwRetVal * sizeof(WCHAR));
         }
@@ -141,13 +141,13 @@ void ReplaceIllegalCharacters(WCHAR* fileName)
     WCHAR* quote = nullptr;
 
     // If there are any quotes in the file name convert them to spaces.
-    while ((quote = wcsstr(fileName, W("\""))) != nullptr)
+    while ((quote = PAL_wcsstr(fileName, W("\""))) != nullptr)
     {
         *quote = W(' ');
     }
 
     // Remove any illegal or annoying characters from the file name by converting them to underscores.
-    while ((quote = wcspbrk(fileName, W("=<>:\"/\\|?! *.,"))) != nullptr)
+    while ((quote = PAL_wcspbrk(fileName, W("=<>:\"/\\|?! *.,"))) != nullptr)
     {
         *quote = W('_');
     }
@@ -156,8 +156,8 @@ void ReplaceIllegalCharacters(WCHAR* fileName)
 // All lengths in this function exclude the terminal NULL.
 WCHAR* GetResultFileName(const WCHAR* folderPath, const WCHAR* fileName, const WCHAR* extension)
 {
-    const size_t extensionLength    = wcslen(extension);
-    const size_t fileNameLength     = wcslen(fileName);
+    const size_t extensionLength    = PAL_wcslen(extension);
+    const size_t fileNameLength     = PAL_wcslen(fileName);
     const size_t randomStringLength = 8;
     const size_t maxPathLength      = MAX_PATH - 50;
     bool         appendRandomString = false;

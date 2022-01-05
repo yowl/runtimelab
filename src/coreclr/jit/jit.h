@@ -648,7 +648,7 @@ class Histogram
 public:
     Histogram(const unsigned* const sizeTable);
 
-    void dump(FILE* output);
+    void dump(PAL_FILE* output);
     void record(unsigned size);
 
 private:

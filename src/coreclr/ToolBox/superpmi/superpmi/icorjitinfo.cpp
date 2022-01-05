@@ -447,7 +447,7 @@ int MyICJI::appendClassName(__deref_inout_ecount(*pnBufLen) char16_t** ppBuf,
     int          nLen   = 0;
     if (ppBuf != nullptr && result != nullptr)
     {
-        nLen = (int)wcslen(result);
+        nLen = (int)PAL_wcslen(result);
         if (*pnBufLen > nLen)
         {
             wcscpy_s((WCHAR*)*ppBuf, *pnBufLen, result);

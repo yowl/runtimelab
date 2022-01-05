@@ -11,10 +11,10 @@
 
 // Config prefixes
 #define COMPLUS_PREFIX W("COMPlus_")
-#define LEN_OF_COMPLUS_PREFIX StrLen(COMPLUS_PREFIX)
+#define LEN_OF_COMPLUS_PREFIX ClrStrLen(COMPLUS_PREFIX)
 
 #define DOTNET_PREFIX W("DOTNET_")
-#define LEN_OF_DOTNET_PREFIX StrLen(DOTNET_PREFIX)
+#define LEN_OF_DOTNET_PREFIX ClrStrLen(DOTNET_PREFIX)
 
 using ConfigDWORDInfo = CLRConfig::ConfigDWORDInfo;
 using ConfigStringInfo = CLRConfig::ConfigStringInfo;
@@ -240,10 +240,10 @@ namespace
         NewArrayHolder<WCHAR> val = EnvGetString(name, options);
         if (val != NULL)
         {
-            errno = 0;
+            PAL_errno = 0;
             LPWSTR endPtr;
             DWORD configMaybe = PAL_wcstoul(val, &endPtr, radix);
-            BOOL fSuccess = ((errno != ERANGE) && (endPtr != val));
+            BOOL fSuccess = ((PAL_errno != ERANGE) && (endPtr != val));
             if (fSuccess)
             {
                 *result = configMaybe;

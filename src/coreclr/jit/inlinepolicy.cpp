@@ -987,7 +987,7 @@ int DefaultPolicy::CodeSizeEstimate()
 //    file     - stream to output to
 //    indent   - indent level
 
-void DefaultPolicy::OnDumpXml(FILE* file, unsigned indent) const
+void DefaultPolicy::OnDumpXml(PAL_FILE* file, unsigned indent) const
 {
     XATTR_R8(m_Multiplier);
     XATTR_I4(m_CodeSize);
@@ -1755,7 +1755,7 @@ double ExtendedDefaultPolicy::DetermineMultiplier()
 //    file     - stream to output to
 //    indent   - indent level
 
-void ExtendedDefaultPolicy::OnDumpXml(FILE* file, unsigned indent) const
+void ExtendedDefaultPolicy::OnDumpXml(PAL_FILE* file, unsigned indent) const
 {
     DefaultPolicy::OnDumpXml(file, indent);
     XATTR_R8(m_ProfileFrequency)
@@ -2495,7 +2495,7 @@ int DiscretionaryPolicy::CodeSizeEstimate()
 // Arguments:
 //    file -- file to write to
 
-void DiscretionaryPolicy::DumpSchema(FILE* file) const
+void DiscretionaryPolicy::DumpSchema(PAL_FILE* file) const
 {
     fprintf(file, "ILSize");
     fprintf(file, ",CallsiteFrequency");
@@ -2577,7 +2577,7 @@ void DiscretionaryPolicy::DumpSchema(FILE* file) const
 // Arguments:
 //    file -- file to write to
 
-void DiscretionaryPolicy::DumpData(FILE* file) const
+void DiscretionaryPolicy::DumpData(PAL_FILE* file) const
 {
     fprintf(file, "%u", m_CodeSize);
     fprintf(file, ",%u", m_CallsiteFrequency);
@@ -3193,7 +3193,7 @@ void SizePolicy::DetermineProfitability(CORINFO_METHOD_INFO* methodInfo)
 // and provide file access to the inline xml
 
 bool          ReplayPolicy::s_WroteReplayBanner = false;
-FILE*         ReplayPolicy::s_ReplayFile        = nullptr;
+PAL_FILE*     ReplayPolicy::s_ReplayFile        = nullptr;
 CritSecObject ReplayPolicy::s_XmlReaderLock;
 
 //------------------------------------------------------------------------/
@@ -3223,7 +3223,7 @@ ReplayPolicy::ReplayPolicy(Compiler* compiler, bool isPrejitRoot)
             // in which case the policy name is captured in the Xml.
             if (JitConfig.JitInlineDumpXml() == 0)
             {
-                fprintf(stderr, "*** %s inlines from %ws\n", s_ReplayFile == nullptr ? "Unable to replay" : "Replaying",
+                fprintf(PAL_stderr, "*** %s inlines from %ws\n", s_ReplayFile == nullptr ? "Unable to replay" : "Replaying",
                         replayFileName);
             }
 
@@ -3242,7 +3242,7 @@ void ReplayPolicy::FinalizeXml()
 {
     if (s_ReplayFile != nullptr)
     {
-        fclose(s_ReplayFile);
+        PAL_fclose(s_ReplayFile);
         s_ReplayFile = nullptr;
     }
 }
@@ -3273,7 +3273,7 @@ bool ReplayPolicy::FindMethod()
     else if (filePosition > 0)
     {
         // Past lookup succeeded, jump there
-        fseek(s_ReplayFile, filePosition, SEEK_SET);
+        PAL_fseek(s_ReplayFile, filePosition, SEEK_SET);
         return true;
     }
 
@@ -3285,12 +3285,12 @@ bool ReplayPolicy::FindMethod()
 
     bool foundMethod = false;
     char buffer[256];
-    fseek(s_ReplayFile, 0, SEEK_SET);
+    PAL_fseek(s_ReplayFile, 0, SEEK_SET);
 
     while (!foundMethod)
     {
         // Get next line
-        if (fgets(buffer, sizeof(buffer), s_ReplayFile) == nullptr)
+        if (PAL_fgets(buffer, sizeof(buffer), s_ReplayFile) == nullptr)
         {
             break;
         }
@@ -3302,7 +3302,7 @@ bool ReplayPolicy::FindMethod()
         }
 
         // Get next line
-        if (fgets(buffer, sizeof(buffer), s_ReplayFile) == nullptr)
+        if (PAL_fgets(buffer, sizeof(buffer), s_ReplayFile) == nullptr)
         {
             break;
         }
@@ -3316,7 +3316,7 @@ bool ReplayPolicy::FindMethod()
         }
 
         // Get next line
-        if (fgets(buffer, sizeof(buffer), s_ReplayFile) == nullptr)
+        if (PAL_fgets(buffer, sizeof(buffer), s_ReplayFile) == nullptr)
         {
             break;
         }
@@ -3339,7 +3339,7 @@ bool ReplayPolicy::FindMethod()
 
     if (foundMethod)
     {
-        foundPosition = ftell(s_ReplayFile);
+        foundPosition = PAL_ftell(s_ReplayFile);
     }
 
     inlineStrategy->SetMethodXmlFilePosition(foundPosition);
@@ -3416,7 +3416,7 @@ bool ReplayPolicy::FindInline(unsigned token, unsigned hash, unsigned offset)
     while (!foundInline)
     {
         // Get next line
-        if (fgets(buffer, sizeof(buffer), s_ReplayFile) == nullptr)
+        if (PAL_fgets(buffer, sizeof(buffer), s_ReplayFile) == nullptr)
         {
             break;
         }
@@ -3475,7 +3475,7 @@ bool ReplayPolicy::FindInline(unsigned token, unsigned hash, unsigned offset)
         }
 
         // Get next line
-        if (fgets(buffer, sizeof(buffer), s_ReplayFile) == nullptr)
+        if (PAL_fgets(buffer, sizeof(buffer), s_ReplayFile) == nullptr)
         {
             break;
         }
@@ -3490,7 +3490,7 @@ bool ReplayPolicy::FindInline(unsigned token, unsigned hash, unsigned offset)
         }
 
         // Get next line
-        if (fgets(buffer, sizeof(buffer), s_ReplayFile) == nullptr)
+        if (PAL_fgets(buffer, sizeof(buffer), s_ReplayFile) == nullptr)
         {
             break;
         }
@@ -3505,7 +3505,7 @@ bool ReplayPolicy::FindInline(unsigned token, unsigned hash, unsigned offset)
         }
 
         // Get next line
-        if (fgets(buffer, sizeof(buffer), s_ReplayFile) == nullptr)
+        if (PAL_fgets(buffer, sizeof(buffer), s_ReplayFile) == nullptr)
         {
             break;
         }
@@ -3528,7 +3528,7 @@ bool ReplayPolicy::FindInline(unsigned token, unsigned hash, unsigned offset)
         // matching...
 
         // Get next line
-        if (fgets(buffer, sizeof(buffer), s_ReplayFile) != nullptr)
+        if (PAL_fgets(buffer, sizeof(buffer), s_ReplayFile) != nullptr)
         {
             unsigned collectData = 0;
             count                = sscanf_s(buffer, " <CollectData>%u</CollectData> ", &collectData);

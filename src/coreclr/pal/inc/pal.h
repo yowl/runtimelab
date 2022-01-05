@@ -48,7 +48,6 @@ Abstract:
 #include <ctype.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/param.h> // min/max
 #include <unistd.h>
 #endif
 
@@ -3914,12 +3913,11 @@ PAL_GetCurrentThreadAffinitySet(SIZE_T size, UINT_PTR* data);
 #define sincosf       PAL_sincosf
 #define malloc        PAL_malloc
 #define free          PAL_free
-#define _strdup       PAL__strdup
 #define _open         PAL__open
 #define _pread        PAL__pread
 #define _close        PAL__close
 #define _wcstoui64    PAL__wcstoui64
-#define _flushall     PAL__flushall
+
 #define strnlen       PAL_strnlen
 #define wcsnlen       PAL_wcsnlen
 
@@ -3929,6 +3927,10 @@ PAL_GetCurrentThreadAffinitySet(SIZE_T size, UINT_PTR* data);
 #endif // HOST_AMD64
 
 #endif // !PAL_STDCPP_COMPAT
+
+// moved from in !PAL_STDCPP_COMPAT
+#define _strdup       PAL__strdup
+#define _flushall     PAL__flushall
 
 #ifndef _CONST_RETURN
 #ifdef  __cplusplus
@@ -3951,6 +3953,8 @@ typedef __WINT_TYPE__ wint_t;
 #else
 typedef unsigned int wint_t;
 #endif
+
+PALIMPORT int __cdecl _strnicmp(const char *, const char *, size_t);
 
 #ifndef PAL_STDCPP_COMPAT
 
@@ -3985,7 +3989,6 @@ PALIMPORT long long int __cdecl atoll(const char *) MATH_THROW_DECL;
 PALIMPORT size_t __cdecl strlen(const char *);
 PALIMPORT int __cdecl strcmp(const char*, const char *);
 PALIMPORT int __cdecl strncmp(const char*, const char *, size_t);
-PALIMPORT int __cdecl _strnicmp(const char *, const char *, size_t);
 PALIMPORT char * __cdecl strcat(char *, const char *);
 PALIMPORT char * __cdecl strncat(char *, const char *, size_t);
 PALIMPORT char * __cdecl strcpy(char *, const char *);
@@ -4141,11 +4144,14 @@ unsigned int __cdecl _rotr(unsigned int value, int shift)
 PALIMPORT int __cdecl abs(int);
 // clang complains if this is declared with __int64
 PALIMPORT long long __cdecl llabs(long long);
+PALIMPORT int __cdecl _isnan(double);
+PALIMPORT int __cdecl _isnanf(float);
+
+PALIMPORT double __cdecl _copysign(double, double);
+PALIMPORT float __cdecl _copysignf(float, float);
+PALIMPORT int __cdecl _finite(double);
 #ifndef PAL_STDCPP_COMPAT
 
-PALIMPORT int __cdecl _finite(double);
-PALIMPORT int __cdecl _isnan(double);
-PALIMPORT double __cdecl _copysign(double, double);
 PALIMPORT double __cdecl acos(double);
 PALIMPORT double __cdecl acosh(double) MATH_THROW_DECL;
 PALIMPORT double __cdecl asin(double);
@@ -4176,8 +4182,6 @@ PALIMPORT double __cdecl tan(double);
 PALIMPORT double __cdecl tanh(double);
 
 PALIMPORT int __cdecl _finitef(float);
-PALIMPORT int __cdecl _isnanf(float);
-PALIMPORT float __cdecl _copysignf(float, float);
 PALIMPORT float __cdecl acosf(float);
 PALIMPORT float __cdecl acoshf(float) MATH_THROW_DECL;
 PALIMPORT float __cdecl asinf(float);
@@ -4257,8 +4261,8 @@ PALIMPORT DLLEXPORT int __cdecl _flushall();
 
 #ifdef PAL_STDCPP_COMPAT
 
-struct _PAL_FILE;
-typedef struct _PAL_FILE PAL_FILE;
+struct _FILE;
+typedef struct _FILE PAL_FILE;
 
 #else // PAL_STDCPP_COMPAT
 

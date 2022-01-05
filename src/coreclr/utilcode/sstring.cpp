@@ -16,6 +16,18 @@
 #pragma inline_depth (25)
 #endif
 
+#ifdef PAL_STDCPP_COMPAT // these are in mbusafecrt_internal ?
+#ifndef va_start
+#define va_start __builtin_va_start
+#endif
+#ifndef va_end
+#define va_end __builtin_va_end
+#endif
+#ifndef va_copy
+#define va_copy  __builtin_va_copy
+#endif
+#endif
+
 //-----------------------------------------------------------------------------
 // Static variables
 //-----------------------------------------------------------------------------
@@ -1985,7 +1997,7 @@ void SString::VPrintf(const CHAR *format, va_list args)
         Resize(guess, REPRESENTATION_ANSI);
 
         // Clear errno to avoid false alarms
-        errno = 0;
+        PAL_errno = 0;
 
         va_copy(ap, args);
         int result = _vsnprintf_s(GetRawANSI(), GetRawCount()+1, _TRUNCATE, format, ap);
@@ -2000,12 +2012,12 @@ void SString::VPrintf(const CHAR *format, va_list args)
             RETURN;
         }
 
-        if (errno==ENOMEM)
+        if (PAL_errno==ENOMEM)
         {
             ThrowOutOfMemory();
         }
         else
-        if (errno!=0 && errno!=EBADF && errno!=ERANGE)
+        if (PAL_errno!=0 && PAL_errno!=EBADF && PAL_errno!=ERANGE)
         {
             CONSISTENCY_CHECK_MSG(FALSE, "_vsnprintf_s failed. Potential globalization bug.");
             ThrowHR(HRESULT_FROM_WIN32(ERROR_NO_UNICODE_TRANSLATION));
@@ -2090,7 +2102,7 @@ void SString::VPrintf(const WCHAR *format, va_list args)
         Resize(guess, REPRESENTATION_UNICODE);
 
         // Clear errno to avoid false alarms
-        errno = 0;
+        PAL_errno = 0;
 
         va_copy(ap, args);
         int result = _vsnwprintf_s(GetRawUnicode(), GetRawCount()+1, _TRUNCATE, format, ap);
@@ -2104,12 +2116,12 @@ void SString::VPrintf(const WCHAR *format, va_list args)
             RETURN;
         }
 
-        if (errno==ENOMEM)
+        if (PAL_errno==ENOMEM)
         {
             ThrowOutOfMemory();
         }
         else
-        if (errno!=0 && errno!=EBADF && errno!=ERANGE)
+        if (PAL_errno!=0 && PAL_errno!=EBADF && PAL_errno!=ERANGE)
         {
             CONSISTENCY_CHECK_MSG(FALSE, "_vsnwprintf_s failed. Potential globalization bug.");
             ThrowHR(HRESULT_FROM_WIN32(ERROR_NO_UNICODE_TRANSLATION));
@@ -2168,7 +2180,7 @@ void SString::PVPrintf(const WCHAR *format, va_list args)
         Resize(guess, REPRESENTATION_UNICODE, DONT_PRESERVE);
 
         // Clear errno to avoid false alarms
-        errno = 0;
+        PAL_errno = 0;
 
         va_copy(ap, args);
 #if defined(FEATURE_CORESYSTEM)
@@ -2186,12 +2198,12 @@ void SString::PVPrintf(const WCHAR *format, va_list args)
             RETURN;
         }
 
-        if (errno==ENOMEM)
+        if (PAL_errno==ENOMEM)
         {
             ThrowOutOfMemory();
         }
         else
-        if (errno!=0 && errno!=EBADF && errno!=ERANGE)
+        if (PAL_errno!=0 && PAL_errno!=EBADF && PAL_errno!=ERANGE)
         {
             CONSISTENCY_CHECK_MSG(FALSE, "_vsnwprintf_s failed. Potential globalization bug.");
             ThrowHR(HRESULT_FROM_WIN32(ERROR_NO_UNICODE_TRANSLATION));

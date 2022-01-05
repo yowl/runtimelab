@@ -34,7 +34,9 @@ extern "C" {
 
 #include <sys/types.h>
 #include <inttypes.h>
+#ifndef PAL_STDCPP_COMPAT
 #include <ucontext.h>
+#endif
 
 #define UNW_TARGET              x86_64
 #define UNW_TARGET_X86_64       1

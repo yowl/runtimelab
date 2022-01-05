@@ -8,6 +8,10 @@
 #include "staticcontract.h"
 #include "cfi.h"
 
+#if defined(PAL_STDCPP_COMPAT)
+#include "pal/list.h"
+#endif
+
 //
 // This file is the result of some changes to the SDK header files.
 // In particular, nt.h and some of its dependencies are no longer

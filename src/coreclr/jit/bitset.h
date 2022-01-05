@@ -56,7 +56,7 @@ public:
         unsigned    TotalOps;
         unsigned    OpCounts[BSOP_NUMOPS];
         const char* m_fileName;
-        FILE*       OpOutputFile;
+        PAL_FILE*       OpOutputFile;
 
     public:
         BitSetOpCounter(const char* fileName) : TotalOps(0), m_fileName(fileName), OpOutputFile(nullptr)

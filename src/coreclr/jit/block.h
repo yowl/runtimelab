@@ -24,7 +24,11 @@ XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 #include "varset.h"
 
 #include "blockset.h"
+#ifdef PAL_STDCPP_COMPAT
+#define FLT_MAX 3.402823466e+38F
+#else
 #include "jitstd.h"
+#endif
 #include "bitvec.h"
 #include "jithashtable.h"
 

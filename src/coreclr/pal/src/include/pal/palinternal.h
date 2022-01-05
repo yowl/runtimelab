@@ -315,6 +315,7 @@ function_name() to call the system's implementation
 
 // The standard headers define va_start and va_end as macros,
 // To avoid redefinition problems, undefine those macros.
+#ifndef PAL_STDCPP_COMPAT
 #ifdef va_start
 #undef va_start
 #endif
@@ -324,6 +325,7 @@ function_name() to call the system's implementation
 #ifdef va_copy
 #undef va_copy
 #endif
+#endif 
 
 #define ptrdiff_t PAL_ptrdiff_t
 #define intptr_t PAL_intptr_t

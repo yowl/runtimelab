@@ -12,6 +12,20 @@
 #include "spmidumphelper.h"
 #include "spmiutil.h"
 
+#if defined(PAL_STDCPP_COMPAT)
+#define max(a, b) (((a) > (b)) ? (a) : (b))
+#define min(a, b) (((a) < (b)) ? (a) : (b))
+#ifndef va_start
+#define va_start __builtin_va_start
+#endif
+#ifndef va_end
+#define va_end __builtin_va_end
+#endif
+#ifndef va_copy
+#define va_copy  __builtin_va_copy
+#endif
+#endif
+
 CompileResult::CompileResult()
 {
 #define LWM(map, key, value) map = nullptr;
@@ -76,8 +90,8 @@ void CompileResult::recAssert(const char* assertText)
 }
 void CompileResult::dmpAssertLog(DWORD key, DWORD value)
 {
-    const char* assert = (const char*)AssertLog->GetBuffer(value);
-    printf("AssertLog key %u, value '%s'", key, assert);
+    const char* assertText = (const char*)AssertLog->GetBuffer(value);
+    printf("AssertLog key %u, value '%s'", key, assertText);
     AssertLog->Unlock();
 }
 const char* CompileResult::repAssert()
