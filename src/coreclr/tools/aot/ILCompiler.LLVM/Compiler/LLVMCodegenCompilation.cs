@@ -72,7 +72,7 @@ namespace ILCompiler
             LLVMObjectWriter.EmitObject(outputFile, nodes, NodeFactory, this, dumper);
 
 
-            Console.WriteLine($"RyuJIT compilation results, total methods {totalMethodCount} RyuJit Methods {ryuJitMethodCount} {((decimal)ryuJitMethodCount * 100 / totalMethodCount):n4}%");
+            // Console.WriteLine($"RyuJIT compilation results, total methods {totalMethodCount} RyuJit Methods {ryuJitMethodCount} {((decimal)ryuJitMethodCount * 100 / totalMethodCount):n4}%");
         }
 
         protected override void ComputeDependencyNodeDependencies(List<DependencyNodeCore<NodeFactory>> obj)
@@ -118,37 +118,37 @@ namespace ILCompiler
         }
 
         static int totalMethodCount;
-        static int ryuJitMethodCount;
+        // static int ryuJitMethodCount;
         private unsafe void CompileSingleMethod(CorInfoImpl corInfo, LLVMMethodCodeNode methodCodeNodeNeedingCode)
         {
             MethodDesc method = methodCodeNodeNeedingCode.Method;
 
             try
             {
-                if (GetMethodIL(method).GetExceptionRegions().Length == -1)
-                {
-                    var sig = method.Signature;
-                    // this could be inlined, by the local makes debugging easier
-                    var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
-                    corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile,
-                        Module.Target,
-                        Module.DataLayout);
-                    corInfo.InitialiseDebugInfo(method, GetMethodIL(method));
-                    corInfo.CompileMethod(methodCodeNodeNeedingCode);
-                    methodCodeNodeNeedingCode.CompilationCompleted = true;
-                    // TODO: delete this external function when old module is gone
-                    LLVMValueRef externFunc = Module.AddFunction(mangledName,
-                        GetLLVMSignatureForMethod(sig, method.RequiresInstArg()));
-                    externFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
-
-                    ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
-
-                    ryuJitMethodCount++;
-                }
-                    else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
-            }
-            catch (CodeGenerationFailedException)
-            {
+            //     if (GetMethodIL(method).GetExceptionRegions().Length == -1)
+            //     {
+            //         var sig = method.Signature;
+            //         // this could be inlined, by the local makes debugging easier
+            //         var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
+            //         corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile,
+            //             Module.Target,
+            //             Module.DataLayout);
+            //         corInfo.InitialiseDebugInfo(method, GetMethodIL(method));
+            //         corInfo.CompileMethod(methodCodeNodeNeedingCode);
+            //         methodCodeNodeNeedingCode.CompilationCompleted = true;
+            //         // TODO: delete this external function when old module is gone
+            //         LLVMValueRef externFunc = Module.AddFunction(mangledName,
+            //             GetLLVMSignatureForMethod(sig, method.RequiresInstArg()));
+            //         externFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
+            //
+            //         ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
+            //
+            //         ryuJitMethodCount++;
+            //     }
+            //         else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
+            // }
+            // catch (CodeGenerationFailedException)
+            // {
                 ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
             }
             catch (TypeSystemException ex)
