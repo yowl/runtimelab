@@ -11,6 +11,13 @@ namespace ILCompiler.DependencyAnalysis
         public LlvmUnboxingThunkNode(MethodDesc method)
             : base(method)
         {
+            var methodName = method.ToString();
+            if (methodName.Contains("Internal.Metadata.NativeFormat.Boxed_NamespaceDefinitionHandle.ToString"))
+            {
+
+            }
+            //{[S.P.CompilerGenerated]Internal.Metadata.NativeFormat.Boxed_NamespaceDefinitionHandle.ToString_Unbox()}
+            //            if(base.GetNameInternal() == "<Boxed>S_P_Reflection_Metadata_Internal_Metadata_NativeFormat_NamespaceDefinitionHandle__<unbox>S_P_Reflection_Metadata_Internal_Metadata_NativeFormat_NamespaceDefinitionHandle__ToString"))
         }
 
         protected override string GetName(NodeFactory factory) => this.GetMangledName(factory.NameMangler);
@@ -19,8 +26,8 @@ namespace ILCompiler.DependencyAnalysis
         {
             var dependencies = new DependencyList();
 
-            foreach (DependencyListEntry node in _dependencies)
-                dependencies.Add(node);
+            // foreach (DependencyListEntry node in _dependencies)
+            //     dependencies.Add(node);
 
             return dependencies;
         }

@@ -1717,7 +1717,7 @@ namespace Internal.IL
             LLVMValueRef typeRef;
             if (type.IsRuntimeDeterminedSubtype)
             {
-                typeRef = CallGenericHelper(ReadyToRunHelperId.TypeHandleForCasting, type);
+                typeRef = CallGenericHelper(ReadyToRunHelperId.TypeHandleForCasting, type, true);
             }
             else
             {
@@ -1734,14 +1734,12 @@ namespace Internal.IL
                 }, GetWellKnownType(WellKnownType.Object)));
         }
 
-        LLVMValueRef CallGenericHelper(ReadyToRunHelperId helperId, object helperArg)
+        LLVMValueRef CallGenericHelper(ReadyToRunHelperId helperId, object helperArg, bool addDependencies)
         {
-            var helperSymbol = GetGenericLookupHelperAndAddReference(helperId, helperArg, out LLVMValueRef helper, out GenericDictionaryLookup lookup);
+            var helperSymbol = GetGenericLookupHelperAndAddReference(helperId, helperArg, addDependencies, out LLVMValueRef helper, out GenericDictionaryLookup lookup);
             var genericContext = GetGenericContext();
             if (helperSymbol != null)
             {
-                _dependencies.Add(helperSymbol,
-                    "LLVM generic helper");
                 return _builder.BuildCall(helper, new LLVMValueRef[] { GetShadowStack(), genericContext },
                     "getHelper");
             }
@@ -1845,7 +1843,7 @@ namespace Internal.IL
                     }
                     else
                     {
-                        var typeRef = CallGenericHelper(ReadyToRunHelperId.TypeHandle, runtimeDeterminedMethod.OwningType);
+                        var typeRef = CallGenericHelper(ReadyToRunHelperId.TypeHandle, runtimeDeterminedMethod.OwningType, true);
                         arguments[0] = new ExpressionEntry(StackValueKind.ValueType, "eeType", typeRef, eeTypeDesc);
                     }
                     MetadataType helperType = _compilation.TypeSystemContext.SystemModule.GetKnownType("Internal.Runtime.CompilerHelpers", "ArrayHelpers");
@@ -1889,7 +1887,7 @@ namespace Internal.IL
                         if (runtimeDeterminedRetType.IsRuntimeDeterminedSubtype)
                         {
                             typeToAlloc = _compilation.ConvertToCanonFormIfNecessary(runtimeDeterminedRetType, CanonicalFormKind.Specific);
-                            var typeRef = CallGenericHelper(ReadyToRunHelperId.TypeHandle, typeToAlloc);
+                            var typeRef = CallGenericHelper(ReadyToRunHelperId.TypeHandle, typeToAlloc, true);
                             newObjResult = AllocateObject(new ExpressionEntry(StackValueKind.ValueType, "eeType", typeRef, GetWellKnownType(WellKnownType.IntPtr)));
                         }
                         else
@@ -1980,7 +1978,7 @@ namespace Internal.IL
                         }
                     }
 
-                    GetGenericLookupHelperAndAddReference(ReadyToRunHelperId.DelegateCtor, delegateInfo, out helper, out GenericDictionaryLookup lookup,
+                    GetGenericLookupHelperAndAddReference(ReadyToRunHelperId.DelegateCtor, delegateInfo, true, out helper, out GenericDictionaryLookup lookup,
                         additionalTypes);
                     _builder.BuildCall(helper, helperParams.ToArray(), string.Empty);
                     return;
@@ -2145,7 +2143,7 @@ namespace Internal.IL
                     //TODO interfaceEEType can be refactored out
                     eeTypeExpression = CallRuntime("System", _compilation.TypeSystemContext, "Object", "get_MethodTable",
                         new[] { new ExpressionEntry(StackValueKind.ObjRef, "thisPointer", thisPointer) });
-                    interfaceEEType = new ExpressionEntry(StackValueKind.ValueType, "interfaceEEType", CallGenericHelper(ReadyToRunHelperId.TypeHandle, runtimeDeterminedMethod.OwningType), GetWellKnownType(WellKnownType.IntPtr));
+                    interfaceEEType = new ExpressionEntry(StackValueKind.ValueType, "interfaceEEType", CallGenericHelper(ReadyToRunHelperId.TypeHandle, runtimeDeterminedMethod.OwningType, true), GetWellKnownType(WellKnownType.IntPtr));
                 }
                 else
                 {
@@ -2189,7 +2187,7 @@ namespace Internal.IL
             if (exactContextNeedsRuntimeLookup)
             {
                 LLVMValueRef helper;
-                var node = GetGenericLookupHelperAndAddReference(ReadyToRunHelperId.MethodHandle, runtimeDeterminedMethod, out helper, out GenericDictionaryLookup lookup);
+                var node = GetGenericLookupHelperAndAddReference(ReadyToRunHelperId.MethodHandle, runtimeDeterminedMethod, true, out helper, out GenericDictionaryLookup lookup);
                 _dependencies.Add(node, "LLVM GM helper");
                 runtimeMethodHandle = _builder.BuildCall(helper, new LLVMValueRef[]
                 {
@@ -2424,7 +2422,7 @@ namespace Internal.IL
 
                         if (typeOfEEType.IsRuntimeDeterminedSubtype)
                         {
-                            var typeHandlerRef = CallGenericHelper(ReadyToRunHelperId.TypeHandle, typeOfEEType);
+                            var typeHandlerRef = CallGenericHelper(ReadyToRunHelperId.TypeHandle, typeOfEEType, true);
                             PushExpression(StackValueKind.Int32, "eeType", typeHandlerRef, GetWellKnownType(WellKnownType.IntPtr));
                         }
                         else
@@ -2439,7 +2437,7 @@ namespace Internal.IL
                     {
                         if (runtimeDeterminedMethod.IsRuntimeDeterminedExactMethod)
                         {
-                            var ctorRef = CallGenericHelper(ReadyToRunHelperId.DefaultConstructor, runtimeDeterminedMethod.Instantiation[0]);
+                            var ctorRef = CallGenericHelper(ReadyToRunHelperId.DefaultConstructor, runtimeDeterminedMethod.Instantiation[0], true);
                             PushExpression(StackValueKind.Int32, "ctor", ctorRef, GetWellKnownType(WellKnownType.IntPtr));
                         }
                         else
@@ -2459,7 +2457,7 @@ namespace Internal.IL
                     {
                         if (runtimeDeterminedMethod.IsRuntimeDeterminedExactMethod)
                         {
-                            var ctorRef = CallGenericHelper(ReadyToRunHelperId.ObjectAllocator, runtimeDeterminedMethod.Instantiation[0]);
+                            var ctorRef = CallGenericHelper(ReadyToRunHelperId.ObjectAllocator, runtimeDeterminedMethod.Instantiation[0], true);
                             PushExpression(StackValueKind.Int32, "object allocator", ctorRef, GetWellKnownType(WellKnownType.IntPtr));
                         }
                         else
@@ -2481,7 +2479,7 @@ namespace Internal.IL
                         LLVMValueRef eeTypePtrRef;
                         if (runtimeDeterminedMethod.IsRuntimeDeterminedExactMethod)
                         {
-                            eeTypePtrRef = CallGenericHelper(ReadyToRunHelperId.TypeHandle, runtimeDeterminedMethod.Instantiation[0]);
+                            eeTypePtrRef = CallGenericHelper(ReadyToRunHelperId.TypeHandle, runtimeDeterminedMethod.Instantiation[0], true);
                         }
                         else
                         {
@@ -2553,7 +2551,7 @@ namespace Internal.IL
                         StackEntry eeTypeEntry;
                         if (constrainedType.IsRuntimeDeterminedSubtype)
                         {
-                            eeTypeEntry = new ExpressionEntry(StackValueKind.ValueType, "eeType", CallGenericHelper(ReadyToRunHelperId.TypeHandle, constrainedType), GetWellKnownType(WellKnownType.IntPtr));
+                            eeTypeEntry = new ExpressionEntry(StackValueKind.ValueType, "eeType", CallGenericHelper(ReadyToRunHelperId.TypeHandle, constrainedType, true), GetWellKnownType(WellKnownType.IntPtr));
                         }
                         else
                         {
@@ -2653,8 +2651,8 @@ namespace Internal.IL
                         {
                             hiddenParam =
                                 callee.RequiresInstMethodDescArg()
-                                    ? CallGenericHelper(ReadyToRunHelperId.MethodDictionary, runtimeDeterminedMethod)
-                                    : CallGenericHelper(ReadyToRunHelperId.TypeHandle, runtimeDeterminedMethod.OwningType);
+                                    ? CallGenericHelper(ReadyToRunHelperId.MethodDictionary, runtimeDeterminedMethod, true)
+                                    : CallGenericHelper(ReadyToRunHelperId.TypeHandle, runtimeDeterminedMethod.OwningType, true);
                         }
                         else
                         {
@@ -2663,7 +2661,7 @@ namespace Internal.IL
                             {
                                 if (canonMethod.RequiresInstMethodTableArg())
                                 {
-                                    hiddenParam = CallGenericHelper(ReadyToRunHelperId.TypeHandle, constrainedType);
+                                    hiddenParam = CallGenericHelper(ReadyToRunHelperId.TypeHandle, constrainedType, true);
                                 }
                                 else
                                 {
@@ -2679,8 +2677,8 @@ namespace Internal.IL
                                     }
 
                                     hiddenParam = canonMethod.RequiresInstMethodTableArg()
-                                        ? CallGenericHelper(ReadyToRunHelperId.TypeHandle, constrainedType)
-                                        : CallGenericHelper(ReadyToRunHelperId.MethodDictionary, targetOfLookup);
+                                        ? CallGenericHelper(ReadyToRunHelperId.TypeHandle, constrainedType, true)
+                                        : CallGenericHelper(ReadyToRunHelperId.MethodDictionary, targetOfLookup, true);
 
                                 }
                             }
@@ -3319,7 +3317,7 @@ namespace Internal.IL
                         : method.OwningType.IsCanonicalSubtype(CanonicalFormKind.Any);
                     if (exactContextNeedsRuntimeLookup)
                     {
-                        targetLLVMFunction = CallGenericHelper(ReadyToRunHelperId.MethodEntry, runtimeDeterminedMethod);
+                        targetLLVMFunction = CallGenericHelper(ReadyToRunHelperId.MethodEntry, runtimeDeterminedMethod, true);
                         if (!(canonMethod.IsVirtual && !canonMethod.IsFinal && !canonMethod.OwningType.IsSealed()))
                         {
                             // fat function pointer
@@ -4188,7 +4186,7 @@ namespace Internal.IL
             ExpressionEntry eeTypeExp;
             if (methodType.IsRuntimeDeterminedSubtype)
             {
-                eeType = CallGenericHelper(ReadyToRunHelperId.TypeHandle, methodType);
+                eeType = CallGenericHelper(ReadyToRunHelperId.TypeHandle, methodType, true);
                 eeTypeExp = new ExpressionEntry(StackValueKind.ByRef, "eeType", eeType, GetWellKnownType(WellKnownType.IntPtr));
             }
             else
@@ -4264,7 +4262,7 @@ namespace Internal.IL
 
                 if (typeDesc.IsRuntimeDeterminedSubtype)
                 {
-                    var handleRef = CallGenericHelper(ReadyToRunHelperId.TypeHandle, typeDesc);
+                    var handleRef = CallGenericHelper(ReadyToRunHelperId.TypeHandle, typeDesc, true);
                     //MethodDesc helper = _compilation.TypeSystemContext.GetHelperEntryPoint("LdTokenHelpers", "GetRuntimeTypeHandle");
                     //AddMethodReference(helper);
 
@@ -4627,7 +4625,7 @@ namespace Internal.IL
                     {
                         if (runtimeDeterminedOwningType.IsRuntimeDeterminedSubtype)
                         {
-                            staticBase = CallGenericHelper(ReadyToRunHelperId.GetThreadStaticBase, runtimeDeterminedOwningType);
+                            staticBase = CallGenericHelper(ReadyToRunHelperId.GetThreadStaticBase, runtimeDeterminedOwningType, true);
                         }
                         else
                         {
@@ -4643,7 +4641,7 @@ namespace Internal.IL
                             if (runtimeDeterminedOwningType.IsRuntimeDeterminedSubtype)
                             {
                                 needsCctorCheck = false; // no cctor for canonical types
-                                staticBase = CallGenericHelper(ReadyToRunHelperId.GetGCStaticBase, runtimeDeterminedOwningType);
+                                staticBase = CallGenericHelper(ReadyToRunHelperId.GetGCStaticBase, runtimeDeterminedOwningType, true);
                             }
                             else
                             {
@@ -4657,7 +4655,7 @@ namespace Internal.IL
                             if (runtimeDeterminedOwningType.IsRuntimeDeterminedSubtype)
                             {
                                 needsCctorCheck = false; // no cctor for canonical types
-                                staticBase = CallGenericHelper(ReadyToRunHelperId.GetNonGCStaticBase, runtimeDeterminedOwningType);
+                                staticBase = CallGenericHelper(ReadyToRunHelperId.GetNonGCStaticBase, runtimeDeterminedOwningType, true);
                             }
                             else
                             {
@@ -4687,7 +4685,7 @@ namespace Internal.IL
             }
         }
 
-        ISymbolNode GetGenericLookupHelperAndAddReference(ReadyToRunHelperId helperId, object helperArg, out LLVMValueRef helper, out GenericDictionaryLookup lookup, IEnumerable<LLVMTypeRef> additionalArgs = null)
+        ISymbolNode GetGenericLookupHelperAndAddReference(ReadyToRunHelperId helperId, object helperArg, bool addDependencies, out LLVMValueRef helper, out GenericDictionaryLookup lookup, IEnumerable<LLVMTypeRef> additionalArgs = null)
         {
             ISymbolNode node;
             lookup = _compilation.ComputeGenericLookup(_method, helperId, helperArg);
@@ -4724,8 +4722,11 @@ namespace Internal.IL
             // If left to when the code is written that uses the helper then its too late.
             IMethodNode helperNode = (IMethodNode)_compilation.NodeFactory.HelperEntrypoint(HelperEntrypoint.EnsureClassConstructorRunAndReturnNonGCStaticBase);
 
-            _dependencies.Add(node, "LLVM GVM R2R helper");
-            _dependencies.Add(helperNode, "LLVM GVM helper entrypoint");
+            if (addDependencies)
+            {
+                _dependencies.Add(node, "LLVM GVM R2R helper");
+                _dependencies.Add(helperNode, "LLVM GVM helper entrypoint");
+            }
             return node;
         }
 
@@ -4884,7 +4885,7 @@ namespace Internal.IL
             bool truncDouble = type.Equals(GetWellKnownType(WellKnownType.Single));
             if (type.IsRuntimeDeterminedSubtype)
             {
-                eeType = CallGenericHelper(ReadyToRunHelperId.TypeHandle, type);
+                eeType = CallGenericHelper(ReadyToRunHelperId.TypeHandle, type, type.IsValueType);
                 eeTypeEntry = new ExpressionEntry(StackValueKind.ValueType, "eeType", eeType, GetWellKnownType(WellKnownType.IntPtr).MakePointerType());
                 type = type.ConvertToCanonForm(CanonicalFormKind.Specific);
             }
@@ -4972,7 +4973,7 @@ namespace Internal.IL
             var eeTypeDesc = _compilation.TypeSystemContext.SystemModule.GetKnownType("Internal.Runtime", "MethodTable").MakePointerType();
             if (runtimeDeterminedArrayType.IsRuntimeDeterminedSubtype)
             {
-                var lookedUpType = CallGenericHelper(ReadyToRunHelperId.TypeHandle, runtimeDeterminedArrayType);
+                var lookedUpType = CallGenericHelper(ReadyToRunHelperId.TypeHandle, runtimeDeterminedArrayType, true);
                 arguments = new StackEntry[] { new ExpressionEntry(StackValueKind.ValueType, "eeType", lookedUpType, eeTypeDesc), sizeOfArray };
             }
             else

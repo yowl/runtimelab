@@ -1000,6 +1000,11 @@ namespace Internal.IL
 
         private void ImportBox(int token)
         {
+            if (_canonMethod.ToString() ==
+                "[S.P.CoreLib]System.Array`1+ArrayEnumerator<System.__Canon>.System.Collections.IEnumerator.get_Current()")
+            {
+
+            }
             AddBoxingDependencies((TypeDesc)_methodIL.GetObject(token), "Box");
         }
 

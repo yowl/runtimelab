@@ -30,6 +30,14 @@ namespace ILCompiler.DependencyAnalysis
             _dictionaryOwner = dictionaryOwner;
             _target = target;
 
+            if (target.ToString() == "[S.P.CoreLib]System.Array`1+ArrayEnumerator<T_System.__Canon>" && Id == ReadyToRunHelperId.TypeHandle && _dictionaryOwner.ToString() == "[S.P.CoreLib]System.Array`1+ArrayEnumerator<System.__Canon>")
+            {
+
+            }
+            if (Id == ReadyToRunHelperId.TypeHandle && _dictionaryOwner.ToString() == "[S.P.CoreLib]System.Array`1+ArrayEnumerator<System.__Canon>")
+            {
+
+            }
             _lookupSignature = GetLookupSignature(factory, helperId, target);
         }
 
@@ -297,6 +305,11 @@ namespace ILCompiler.DependencyAnalysis
         public ReadyToRunGenericLookupFromTypeNode(NodeFactory factory, ReadyToRunHelperId helperId, object target, TypeSystemEntity dictionaryOwner)
             : base(factory, helperId, target, dictionaryOwner)
         {
+            if (LookupSignature.ToString() ==
+                "TypeHandle: [S.P.CoreLib]System.Collections.Generic.IEnumerable`1<T_System.__Canon>")
+            {
+
+            }
         }
 
         public override void AppendMangledName(NameMangler nameMangler, Utf8StringBuilder sb)
