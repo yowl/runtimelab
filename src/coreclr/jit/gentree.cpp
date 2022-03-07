@@ -20040,6 +20040,26 @@ void ReturnTypeDesc::InitializeStructReturnType(Compiler*                comp,
             unreached(); // By the contract of getReturnTypeForStruct we should never get here.
 
     } // end of switch (howToReturnStruct)
+#elif TARGET_WASM
+    assert(retClsHnd != NO_CLASS_HANDLE);
+    unsigned structSize = comp->info.compCompHnd->getClassSize(retClsHnd);
+
+    Compiler::structPassingKind howToReturnStruct;
+    var_types returnType = comp->getReturnTypeForStruct(retClsHnd, callConv, &howToReturnStruct, structSize);
+
+    switch (howToReturnStruct)
+    {
+        case Compiler::SPK_ByValue:
+        {
+            m_regType[0] = returnType;
+            break;
+        }
+
+        default:
+
+            unreached(); // By the contract of getReturnTypeForStruct we should never get here.
+
+    } // end of switch (howToReturnStruct)
 
 #endif //  FEATURE_MULTIREG_RET
 

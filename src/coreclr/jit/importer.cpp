@@ -17425,15 +17425,20 @@ bool Compiler::impReturnInstruction(int prefixFlags, OPCODE& opcode)
                     }
                 }
                 else
-#elif defined(TARGET_X86)
+#elif defined(TARGET_X86) || defined(TARGET_WASM)
                 ReturnTypeDesc retTypeDesc;
                 retTypeDesc.InitializeStructReturnType(this, retClsHnd, info.compCallConv);
                 unsigned retRegCount = retTypeDesc.GetReturnRegCount();
 
+                fgDispBasicBlocks(true);
                 if (retRegCount != 0)
                 {
                     assert(!iciCall->HasRetBufArg());
+#if defined(TARGET_X86)
                     assert(retRegCount == MAX_RET_REG_COUNT);
+#elif defined(TARGET_WASM)
+                    assert(retRegCount == 1);
+#endif
                     if (fgNeedReturnSpillTemp())
                     {
                         if (!impInlineInfo->retExpr)
