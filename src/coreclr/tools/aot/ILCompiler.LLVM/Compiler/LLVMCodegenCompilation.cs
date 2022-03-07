@@ -134,9 +134,12 @@ namespace ILCompiler
 
             try
             {
+                
                 if (GetMethodIL(method).GetExceptionRegions().Length == 0)
                 {
                     var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
+                    if (mangledName == "S_P_CoreLib_System_ValueTuple_2<Int32__Int32>__Equals_0")
+                    {
                     var sig = method.Signature;
                     corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile,
                         Module.Target,
@@ -151,6 +154,8 @@ namespace ILCompiler
                     ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
 
                     ryuJitMethodCount++;
+                    }
+                    else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
                 }
                 else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
             }

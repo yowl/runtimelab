@@ -1643,6 +1643,25 @@ Value* Llvm::localVar(GenTreeLclVar* lclVar)
     return llvmRef;
 }
 
+void Llvm::localField(GenTreeLclFld* lclField)
+{
+    Value*       llvmRef;
+    unsigned int lclNum = lclField->GetLclNum();
+    unsigned int ssaNum = lclField->GetSsaNum();
+    LclVarDsc*   varDsc = _compiler->lvaGetDesc(lclField);
+
+    if (isLlvmFrameLocal(varDsc))
+    {
+        failFunctionCompilation();
+    }
+    else
+    {
+        llvmRef = _builder.CreateExtractValue(l)
+    }
+
+    mapGenTreeToValue(lclField, llvmRef);
+}
+
 void Llvm::buildLocalVarAddr(GenTreeLclVarCommon* lclAddr)
 {
     unsigned int lclNum = lclAddr->GetLclNum();
@@ -1781,6 +1800,9 @@ void Llvm::visitNode(GenTree* node)
             break;
         case GT_LCL_VAR:
             localVar(node->AsLclVar());
+            break;
+        case GT_LCL_FLD:
+            localField(node->AsLclFld());
             break;
         case GT_LCL_VAR_ADDR:
         case GT_LCL_FLD_ADDR:
