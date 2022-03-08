@@ -196,7 +196,7 @@ private:
     void buildStoreInd(GenTreeStoreInd* storeIndOp);
     void buildStoreObj(GenTreeObj* indirOp);
     Value* localVar(GenTreeLclVar* lclVar);
-    Value* localField(GenTreeLclFld* lclField);
+    void localField(GenTreeLclFld* lclField);
     void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);
 
     GenTreeCall::Use* lowerCallReturn(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeSigInfo, GenTreeCall::Use* lastArg);

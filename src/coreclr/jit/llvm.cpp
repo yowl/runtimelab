@@ -1656,7 +1656,9 @@ void Llvm::localField(GenTreeLclFld* lclField)
     }
     else
     {
-        llvmRef = _builder.CreateExtractValue(l)
+        Value* structValue = _localsMap->at({lclNum, ssaNum});
+        unsigned elementIx = _getElementAtIndex(lclField->)
+        llvmRef = _builder.CreateExtractValue(structValue, )
     }
 
     mapGenTreeToValue(lclField, llvmRef);
