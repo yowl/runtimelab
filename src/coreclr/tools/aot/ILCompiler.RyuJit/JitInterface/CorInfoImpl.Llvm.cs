@@ -39,6 +39,15 @@ namespace Internal.JitInterface
                     return;
                 }
 
+                if (helperNode.Id == ReadyToRunHelperId.DelegateCtor)
+                {
+                    DelegateCreationInfo delegateCreationInfo = (DelegateCreationInfo)helperNode.Target;
+                    _this._codeRelocs.Add(new Relocation(RelocType.IMAGE_REL_BASED_REL32, 0,
+                        _this._compilation.NodeFactory.MethodEntrypoint(delegateCreationInfo.TargetMethod)));
+
+                    return;
+                }
+
                 MetadataType target = (MetadataType)helperNode.Target;
                 switch (helperNode.Id)
                 {

@@ -1092,15 +1092,15 @@ bool Llvm::helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd)
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2UINT_OVF) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2ULNG_OVF) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_LMUL_OVF) ||
-           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_ULMUL_OVF);
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_ULMUL_OVF) ||
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_DELEGATE_CTOR);
 }
 
 void Llvm::buildHelperFuncCall(GenTreeCall* call)
 {
     if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_GENERIC_HANDLE) ||
         call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_GENERIC_STATIC_BASE) ||
-        call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_GVMLOOKUP_FOR_SLOT) || /* generates an extra parameter in the signature */
-        call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_DELEGATE_CTOR))
+        call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_GVMLOOKUP_FOR_SLOT)) /* generates an extra parameter in the signature */
     {
         // TODO-LLVM
         failFunctionCompilation();
@@ -1140,17 +1140,29 @@ void Llvm::buildHelperFuncCall(GenTreeCall* call)
         }
 
         void* pAddr = nullptr;
+        const char* symbolName;
+        void* addr;
 
-        CorInfoHelpFunc helperNum = _compiler->eeGetHelperNum(call->gtCallMethHnd);
-        void* addr = _compiler->compGetHelperFtn(helperNum, &pAddr);
-        const char* symbolName = (*_getMangledSymbolName)(_thisPtr, addr);
+        if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_DELEGATE_CTOR))
+        {
+            addr = call->gtEntryPoint.handle;
+            symbolName = (*_getMangledSymbolName)(_thisPtr, call->gtEntryPoint.handle);
+        }
+        else
+        {
+            CorInfoHelpFunc helperNum  = _compiler->eeGetHelperNum(call->gtCallMethHnd);
+            addr = _compiler->compGetHelperFtn(helperNum, &pAddr);
+            symbolName = (*_getMangledSymbolName)(_thisPtr, addr);
+
+        }
+
+        (*_addCodeReloc)(_thisPtr, addr);
+
         Function* llvmFunc = _module->getFunction(symbolName);
         if (llvmFunc == nullptr)
         {
             llvmFunc = Function::Create(buildHelperLlvmFunctionType(call, requiresShadowStack), Function::ExternalLinkage, 0U, symbolName, _module);
         }
-
-        (*_addCodeReloc)(_thisPtr, addr);
 
         std::vector<llvm::Value*> argVec;
         unsigned argIx = 0;

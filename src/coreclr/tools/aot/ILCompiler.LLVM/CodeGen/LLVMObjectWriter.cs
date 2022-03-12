@@ -1051,28 +1051,11 @@ namespace ILCompiler.DependencyAnalysis
         private void GetCodeForReadyToRunGenericHelper(LLVMCodegenCompilation compilation, ReadyToRunGenericHelperNode node, NodeFactory factory)
         {
             LLVMBuilderRef builder = LLVMCodegenCompilation.Module.Context.CreateBuilder();
-            var args = new List<LLVMTypeRef>();
             MethodDesc delegateCtor = null;
             if (node.Id == ReadyToRunHelperId.DelegateCtor)
             {
                 DelegateCreationInfo target = (DelegateCreationInfo)node.Target;
                 delegateCtor = target.Constructor.Method;
-                bool isStatic = delegateCtor.Signature.IsStatic;
-                int argCount = delegateCtor.Signature.Length;
-                if (!isStatic) argCount++;
-                for (int i = 0; i < argCount; i++)
-                {
-                    TypeDesc argType;
-                    if (i == 0 && !isStatic)
-                    {
-                        argType = delegateCtor.OwningType;
-                    }
-                    else
-                    {
-                        argType = delegateCtor.Signature[i - (isStatic ? 0 : 1)];
-                    }
-                    args.Add(ILImporter.GetLLVMTypeForTypeDesc(argType));
-                }
             }
 
             LLVMValueRef helperFunc = Module.GetNamedFunction(node.GetMangledName(factory.NameMangler));
@@ -1083,7 +1066,7 @@ namespace ILCompiler.DependencyAnalysis
             }
             var helperBlock = helperFunc.AppendBasicBlock("genericHelper");
             builder.PositionAtEnd(helperBlock);
-            var importer = new ILImporter(builder, compilation, Module, helperFunc, delegateCtor);
+            var importer = new ILImporter(builder, compilation, Module, helperFunc, delegateCtor, true);
             LLVMValueRef ctx;
             string gepName;
             if (node is ReadyToRunGenericLookupFromTypeNode)
@@ -1189,12 +1172,30 @@ namespace ILCompiler.DependencyAnalysis
         private void GetCodeForReadyToRunHelper(LLVMCodegenCompilation compilation, ReadyToRunHelperNode node, NodeFactory factory)
         {
             LLVMBuilderRef builder = LLVMCodegenCompilation.Module.Context.CreateBuilder();
+            LLVMValueRef helperFunc;
 
-            LLVMValueRef helperFunc = Module.AddFunction(node.GetMangledName(factory.NameMangler), LLVMTypeRef.CreateFunction(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) /* shadow stack */}));
+            MethodDesc delegateCtor = null;
+            if (node.Id == ReadyToRunHelperId.DelegateCtor)
+            {
+                DelegateCreationInfo target = (DelegateCreationInfo)node.Target;
+                delegateCtor = target.Constructor.Method;
+                // just closed fast for now, TODO-LLVM: other DelegateCreationInfo types
+                helperFunc = Module.AddFunction(node.GetMangledName(factory.NameMangler), LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[]
+                {
+                    LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) /* shadow stack */,
+                    LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), /* this ? */
+                    LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), /* target ? */
+                }));
+            }
+            else
+            {
+                helperFunc = Module.AddFunction(node.GetMangledName(factory.NameMangler), LLVMTypeRef.CreateFunction(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) /* shadow stack */}));
+            }
 
             var helperBlock = helperFunc.AppendBasicBlock("readyToRunHelper");
             builder.PositionAtEnd(helperBlock);
-            var importer = new ILImporter(builder, compilation, Module, helperFunc, null);
+
+            var importer = new ILImporter(builder, compilation, Module, helperFunc, delegateCtor, false /* not a generic helper */);
 
             LLVMValueRef resVar;
             switch (node.Id)
@@ -1247,13 +1248,14 @@ namespace ILCompiler.DependencyAnalysis
 
                 case ReadyToRunHelperId.DelegateCtor:
                     {
-                        throw new NotImplementedException();
-                        // DelegateCreationInfo target = (DelegateCreationInfo)node.Target;
-                        // MethodDesc constructor = target.Constructor.Method;
+                        DelegateCreationInfo target = (DelegateCreationInfo)node.Target;
+                        MethodDesc constructor = target.Constructor.Method;
                         // var fatPtr = ILImporter.MakeFatPointer(builder, resVar, compilation);
-                        // importer.OutputCodeForDelegateCtorInit(builder, helperFunc, constructor, fatPtr);
-                    }
+                        importer.OutputCodeForDelegateCtorInit(builder, helperFunc, constructor, null);
 
+                        resVar = null; // return void
+                    }
+                    break;
                 default:
                     throw new NotImplementedException();
             }
@@ -1320,7 +1322,7 @@ namespace Internal.IL
 {
     partial class ILImporter
     {
-        public ILImporter(LLVMBuilderRef builder, LLVMCodegenCompilation compilation, LLVMModuleRef module, LLVMValueRef helperFunc, MethodDesc delegateCtor)
+        public ILImporter(LLVMBuilderRef builder, LLVMCodegenCompilation compilation, LLVMModuleRef module, LLVMValueRef helperFunc, MethodDesc delegateCtor, bool genericHelper)
         {
             this._builder = builder;
             this._compilation = compilation;
@@ -1336,7 +1338,7 @@ namespace Internal.IL
             {
                 _signature = delegateCtor.Signature;
                 _argSlots = new LLVMValueRef[_signature.Length];
-                int signatureIndex = 2; // past hidden param
+                int signatureIndex = genericHelper ? 2 : 1; // past hidden param if present
                 int thisOffset = 0;
                 if (!_signature.IsStatic)
                 {
@@ -1388,7 +1390,7 @@ namespace Internal.IL
             argValues[0] = new LoadExpressionEntry(StackValueKind.ObjRef, "this", shadowStack, GetWellKnownType(WellKnownType.Object));
             for (var i = 0; i < constructor.Signature.Length; i++)
             {
-                if (i == 1)
+                if (i == 1 && fatFunction != null)
                 {
                     argValues[i + 1] = new ExpressionEntry(StackValueKind.Int32, "arg" + (i + 1),
                         builder.BuildIntToPtr(fatFunction, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), "toPtr"), 

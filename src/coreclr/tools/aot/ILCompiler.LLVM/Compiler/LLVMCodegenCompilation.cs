@@ -137,20 +137,25 @@ namespace ILCompiler
                 if (GetMethodIL(method).GetExceptionRegions().Length == 0)
                 {
                     var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
-                    var sig = method.Signature;
-                    corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile,
-                        Module.Target,
-                        Module.DataLayout);
-                    corInfo.InitialiseDebugInfo(method, GetMethodIL(method));
-                    corInfo.CompileMethod(methodCodeNodeNeedingCode);
-                    methodCodeNodeNeedingCode.CompilationCompleted = true;
-                    // TODO: delete this external function when old module is gone
-                    LLVMValueRef externFunc = ILImporter.GetOrCreateLLVMFunction(Module, mangledName, GetLLVMSignatureForMethod(sig, method.RequiresInstArg()));
-                    externFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
+                    if (mangledName == "S_P_CoreLib_System_Reflection_Module___cctor")
+                    {
+                        var sig = method.Signature;
+                        corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile,
+                            Module.Target,
+                            Module.DataLayout);
+                        corInfo.InitialiseDebugInfo(method, GetMethodIL(method));
+                        corInfo.CompileMethod(methodCodeNodeNeedingCode);
+                        methodCodeNodeNeedingCode.CompilationCompleted = true;
+                        // TODO: delete this external function when old module is gone
+                        LLVMValueRef externFunc = ILImporter.GetOrCreateLLVMFunction(Module, mangledName,
+                            GetLLVMSignatureForMethod(sig, method.RequiresInstArg()));
+                        externFunc.Linkage = LLVMLinkage.LLVMExternalLinkage;
 
-                    ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
+                        ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
 
-                    ryuJitMethodCount++;
+                        ryuJitMethodCount++;
+                    }
+                    else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
                 }
                 else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
             }
