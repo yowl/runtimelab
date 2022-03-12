@@ -24,6 +24,10 @@ namespace ILCompiler.DependencyAnalysis
             Debug.Assert(!method.IsCanonicalMethod(CanonicalFormKind.Any) ||
                 method.GetCanonMethodTarget(CanonicalFormKind.Specific) == method);
             _method = method;
+            if (method.ToString().Contains("InvokeJS"))
+            {
+
+            }
         }
 
         public MethodDesc Method => _method;

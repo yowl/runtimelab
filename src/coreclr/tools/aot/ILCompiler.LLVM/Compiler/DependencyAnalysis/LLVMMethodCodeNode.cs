@@ -19,6 +19,10 @@ namespace ILCompiler.DependencyAnalysis
         {
             Debug.Assert(!method.IsAbstract);
             _method = method;
+            if (_method.ToString().Contains("InvokeJS"))
+            {
+
+            }
         }
 
         public void SetDependencies(DependencyList dependencies)

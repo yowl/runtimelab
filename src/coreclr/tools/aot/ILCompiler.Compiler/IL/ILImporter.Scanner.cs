@@ -283,6 +283,21 @@ namespace Internal.IL
             var runtimeDeterminedMethod = (MethodDesc)_methodIL.GetObject(token);
             var method = (MethodDesc)_canonMethodIL.GetObject(token);
 
+            // Hard coded InternalCall mappings for mono interoperability
+            if (_compilation.TargetArchIsWasm() && method.IsInternalCall)
+            {
+                var metadataType = method.OwningType as MetadataType;
+                // See https://github.com/dotnet/runtime/blob/9ba9a300a08170c8170ea52981810f41fad68cf0/src/mono/wasm/runtime/driver.c#L400-L407
+                // Mono have these InternalCall methods in different namespaces but just mapping them to System.Private.WebAssembly.
+                if (metadataType != null && (metadataType.Namespace == "WebAssembly.JSInterop" && metadataType.Name == "InternalCalls" || metadataType.Namespace == "WebAssembly" && metadataType.Name == "Runtime"))
+                {
+                    var coreRtJsInternalCallsType = _compilation.TypeSystemContext
+                        .GetModuleForSimpleName("System.Private.WebAssembly")
+                        .GetKnownType("System.Private.WebAssembly", "InternalCalls");
+                    method = coreRtJsInternalCallsType.GetMethod(method.Name, method.Signature);
+                }
+            }
+
             _compilation.NodeFactory.MetadataManager.GetDependenciesDueToAccess(ref _dependencies, _compilation.NodeFactory, _canonMethodIL, method);
 
             if (method.IsRawPInvoke())
