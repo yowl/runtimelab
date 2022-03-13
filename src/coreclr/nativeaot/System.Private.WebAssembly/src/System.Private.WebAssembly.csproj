@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\System.Private.CoreLib\src\System.Private.CoreLib.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="InternalCalls.cs" />
+  </ItemGroup>
+
+</Project>

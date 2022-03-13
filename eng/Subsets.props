@@ -284,6 +284,7 @@
     <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\System.Private.DisabledReflection\src\System.Private.DisabledReflection.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\System.Private.StackTraceMetadata\src\System.Private.StackTraceMetadata.csproj" Category="clr" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\Test.CoreLib\src\Test.CoreLib.csproj" Category="clr" />
+    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\System.Private.WebAssembly\src\System.Private.WebAssembly.csproj" Category="clr" Condition="'$(TargetArchitecture)' == 'wasm'"/>
   </ItemGroup>
 
   <ItemGroup Condition="$(_subset.Contains('+nativeaot.objwriter+'))">

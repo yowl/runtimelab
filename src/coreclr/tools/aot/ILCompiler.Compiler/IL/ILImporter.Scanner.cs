@@ -294,7 +294,10 @@ namespace Internal.IL
                     var coreRtJsInternalCallsType = _compilation.TypeSystemContext
                         .GetModuleForSimpleName("System.Private.WebAssembly")
                         .GetKnownType("System.Private.WebAssembly", "InternalCalls");
-                    method = coreRtJsInternalCallsType.GetMethod(method.Name, method.Signature);
+                    string methodName = method.Name;
+                    method = coreRtJsInternalCallsType.GetMethod(methodName, method.Signature);
+
+                    Debug.Assert(method != null, $"{methodName} not found in System.Private.WebAssembly");
                 }
             }
 
