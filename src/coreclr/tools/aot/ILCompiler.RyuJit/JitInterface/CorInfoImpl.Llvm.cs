@@ -117,6 +117,22 @@ namespace Internal.JitInterface
             var _this = GetThis(thisHandle);
 
             var node = (ISymbolNode)_this.HandleToObject((IntPtr)handle);
+
+            if (node is ReadyToRunHelperNode readerToRunHelperNode)
+            {
+                if (readerToRunHelperNode.Id == ReadyToRunHelperId.DelegateCtor)
+                {
+                    if (readerToRunHelperNode.Target is DelegateCreationInfo delegateCreationInfo)
+                    {
+                        if (delegateCreationInfo.NeedsRuntimeLookup ||
+                            delegateCreationInfo.NeedsVirtualMethodUseTracking ||
+                            delegateCreationInfo.TargetNeedsVTableLookup || delegateCreationInfo.Thunk != null)
+                        {
+                            return null;
+                        }
+                    }
+                }
+            }
             Utf8StringBuilder sb = new Utf8StringBuilder();
             node.AppendMangledName(_this._compilation.NameMangler, sb);
             if (node is FrozenStringNode || node is EETypeNode)

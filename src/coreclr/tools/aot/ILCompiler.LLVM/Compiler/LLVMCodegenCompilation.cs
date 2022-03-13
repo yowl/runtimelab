@@ -137,9 +137,12 @@ namespace ILCompiler
                 if (GetMethodIL(method).GetExceptionRegions().Length == 0)
                 {
                     var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
-                    if (mangledName == "S_P_CoreLib_System_Reflection_Module___cctor")
+                    // if (mangledName == "S_P_CoreLib_System_Action_1<System___Canon>__Invoke")
+                    if (/*mangledName == "S_P_TypeLoader_Internal_Runtime_TypeLoader_ModuleList__AddModuleRegistrationCallback" ||
+                        mangledName == "S_P_CoreLib_System_Action_1<System___Canon>__Invoke" ||*/
+                        mangledName == "S_P_TypeLoader_Internal_Reflection_Execution_AssemblyBinderImplementation___ctor")
                     {
-                        var sig = method.Signature;
+                    var sig = method.Signature;
                         corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile,
                             Module.Target,
                             Module.DataLayout);

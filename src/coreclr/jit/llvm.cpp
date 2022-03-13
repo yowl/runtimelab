@@ -1153,7 +1153,11 @@ void Llvm::buildHelperFuncCall(GenTreeCall* call)
             CorInfoHelpFunc helperNum  = _compiler->eeGetHelperNum(call->gtCallMethHnd);
             addr = _compiler->compGetHelperFtn(helperNum, &pAddr);
             symbolName = (*_getMangledSymbolName)(_thisPtr, addr);
-
+        }
+        if(symbolName == nullptr)
+        {
+            // when CorInfoImpl.Llvm returns null, it indicates this helper is not implemented
+            failFunctionCompilation();
         }
 
         (*_addCodeReloc)(_thisPtr, addr);
