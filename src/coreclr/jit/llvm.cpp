@@ -2221,7 +2221,7 @@ void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
 
             fgArgTabEntry* curArgTabEntry = _compiler->gtArgEntryByNode(callNode, operand);
             regNumber      argReg         = curArgTabEntry->GetRegNum();
-            if (argReg == REG_STK || curArgTabEntry->argType == TYP_BYREF) // TODO-LLVM: out and ref args
+            if (argReg == REG_STK) // TODO-LLVM: out args
             {
                 failFunctionCompilation();
             }
