@@ -1705,7 +1705,18 @@ void Llvm::buildLocalField(GenTreeLclFld* lclFld)
     // TODO-LLVM: if this is an only value type field, or at offset 0, we can optimize
     Value* structAddrInt8Ptr = castIfNecessary(structAddrValue, Type::getInt8PtrTy(_llvmContext));
     Value* fieldAddressValue = _builder.CreateGEP(structAddrInt8Ptr, _builder.getInt16(lclFld->GetLclOffs()));
-    Value* fieldAddressTypedValue = _builder.CreateBitCast(fieldAddressValue, getLlvmTypeForLclVar(lclFld)->getPointerTo());
+
+    Type* fieldType;
+    if (lclFld->TypeGet() == TYP_STRUCT)
+    {
+        fieldType = getLlvmTypeForStruct(_compiler->lvaGetDesc(lclFld)->GetLayout());
+    }
+    else
+    {
+        fieldType = getLlvmTypeForVarType(lclFld->TypeGet());
+    }
+
+    Value* fieldAddressTypedValue = _builder.CreateBitCast(fieldAddressValue, fieldType->getPointerTo());
 
     mapGenTreeToValue(lclFld, _builder.CreateLoad(fieldAddressTypedValue));
 }
