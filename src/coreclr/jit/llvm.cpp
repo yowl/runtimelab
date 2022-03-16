@@ -1056,6 +1056,8 @@ bool Llvm::helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd)
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2UINT_OVF) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_DBL2ULNG_OVF) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_LMUL_OVF) ||
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_LMOD) ||
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_LDIV) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_ULMUL_OVF);
 }
 
@@ -1517,7 +1519,7 @@ void Llvm::buildStoreInd(GenTreeStoreInd* storeIndOp)
 {
     Value* address = getGenTreeValue(storeIndOp->Addr());
     Value* toStore = getGenTreeValue(storeIndOp->Data());
-    if (toStore->getType()->isPointerTy() && (storeIndOp->gtFlags & GTF_IND_TGT_NOT_HEAP) == 0)
+    if (toStore->getType()->isPointerTy() && (storeIndOp->gtFlags & GTF_IND_TGT_NOT_HEAP) == 0 && address->getType()->isPointerTy())
     {
         // RhpAssignRef will never reverse PInvoke, so do not need to store the shadow stack here
         _builder.CreateCall(getOrCreateRhpAssignRef(), ArrayRef<Value*>{address, castIfNecessary(toStore, Type::getInt8PtrTy(_llvmContext))});
