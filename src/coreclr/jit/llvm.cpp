@@ -2085,11 +2085,6 @@ void Llvm::llvmShutdown()
 
 void Llvm::populateLlvmArgNums()
 {
-    if (_sigInfo.hasTypeArg())
-    {
-        failFunctionCompilation();
-    }
-
     _shadowStackLclNum = _compiler->lvaGrabTemp(true DEBUGARG("shadowstack"));
     LclVarDsc* shadowStackVarDsc = _compiler->lvaGetDesc(_shadowStackLclNum);
     unsigned   nextLlvmArgNum    = 0;
@@ -2119,6 +2114,11 @@ void Llvm::populateLlvmArgNums()
     }
 
     if (_info.compRetBuffArg != BAD_VAR_NUM)
+    {
+        firstCorInfoArgLocalNum++;
+    }
+
+    if (_sigInfo.hasTypeArg())
     {
         firstCorInfoArgLocalNum++;
     }

@@ -137,8 +137,8 @@ namespace ILCompiler
                 if (GetMethodIL(method).GetExceptionRegions().Length == 0)
                 {
                     var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
-                    if (mangledName == "S_P_CoreLib_System_DateTimeOffset___cctor")
-                    {
+                    // if (mangledName == "S_P_CoreLib_System_DateTimeOffset___cctor")
+                    // {
                     var sig = method.Signature;
                     corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile,
                         Module.Target,
@@ -153,8 +153,8 @@ namespace ILCompiler
                     ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
 
                     ryuJitMethodCount++;
-                    }
-                    else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
+                    // }
+                    // else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
                 }
                 else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
             }
