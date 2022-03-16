@@ -558,7 +558,7 @@ CorInfoType Llvm::getCorInfoTypeForArg(CORINFO_SIG_INFO* sigInfo, CORINFO_ARG_LI
 FunctionType* Llvm::getFunctionType()
 {
     // TODO-LLVM: delete this when these signatures implemented
-    if (_sigInfo.hasExplicitThis() || _sigInfo.hasTypeArg())
+    if (_sigInfo.hasExplicitThis())
         failFunctionCompilation();
 
     std::vector<llvm::Type*> argVec(_llvmArgCount);
@@ -2120,6 +2120,9 @@ void Llvm::populateLlvmArgNums()
 
     if (_sigInfo.hasTypeArg())
     {
+        LclVarDsc* varDsc = _compiler->lvaGetDesc(firstCorInfoArgLocalNum);
+        varDsc->lvLlvmArgNum = nextLlvmArgNum++;
+        varDsc->lvCorInfoType = CORINFO_TYPE_PTR;
         firstCorInfoArgLocalNum++;
     }
 
