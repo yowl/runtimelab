@@ -2403,9 +2403,22 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
     CORINFO_SIG_INFO* calleeSigInfo = callNode->callSig;
     // Relies on the fact all arguments not in the signature come before those that are.
     unsigned firstSigArgIx = argCount - calleeSigInfo->numArgs;
-
     CORINFO_ARG_LIST_HANDLE sigArgs = calleeSigInfo->args;
-    unsigned                argIx   = 0;
+    unsigned argIx   = 0;
+
+    // We'll rely on the fact all arguments not in the signature come before those that are.
+    unsigned knownArgIx = 0;
+    unsigned thisArgIx  = UINT32_MAX;
+    unsigned ctxArgIx   = UINT32_MAX;
+
+    if (calleeSigInfo->hasThis()) // May need a (callThisArg != nullptr) check as well
+    {
+        thisArgIx = knownArgIx++;
+    }
+    if (calleeSigInfo->hasTypeArg())
+    {
+        ctxArgIx = knownArgIx++;
+    }
 
     for (OperandArgNum opAndArg : sortedArgs)
     {
@@ -2413,9 +2426,13 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
         CorInfoType          corInfoType = CORINFO_TYPE_UNDEF;
 
         // "this" not in sigInfo arg list
-        bool isThis = callThisArg != nullptr && opAndArg.argNum == 0 && calleeSigInfo->hasThis();
+        bool isThis = opAndArg.argNum == thisArgIx;
         bool isSigArg = argIx >= firstSigArgIx;
-        if (isSigArg)
+        if (argIx == ctxArgIx)
+        {
+            corInfoType = CORINFO_TYPE_PTR;
+        }
+        else if (isSigArg)
         {
             corInfoType = getCorInfoTypeForArg(calleeSigInfo, sigArgs, &clsHnd);
         }
