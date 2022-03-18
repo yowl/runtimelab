@@ -2349,9 +2349,8 @@ void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
     }
 
     CORINFO_SIG_INFO* calleeSigInfo = callNode->callSig;
-    // TODO-LLVM: not attempting to compile generic signatures with context arg via clrjit yet
-    // Investigate which methods do not get callSig set - happens currently with the Generics test
-    if (calleeSigInfo == nullptr || calleeSigInfo->hasTypeArg())
+    // TODO-LLVM: nvestigate which methods do not get callSig set - happens currently with the Generics test
+    if (calleeSigInfo == nullptr)
     {
         failFunctionCompilation();
     }
@@ -2434,7 +2433,6 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
 
     GenTreeCall::Use* lastArg;
     GenTreeCall::Use* insertReturnAfter;
-    GenTreeCall::Use* callThisArg = callNode->gtCallThisArg;
 
     callNode->ResetArgInfo();
     callNode->gtCallThisArg = nullptr;
