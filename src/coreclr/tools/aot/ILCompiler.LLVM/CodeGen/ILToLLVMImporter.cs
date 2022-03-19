@@ -1508,6 +1508,10 @@ namespace Internal.IL
         /// </summary>
         internal static bool CanStoreTypeOnStack(TypeDesc type)
         {
+            if (type.ToString().Contains("GenStructWithImplicitOp"))
+            {
+
+            }
             if (type is DefType defType)
             {
                 if (!defType.IsGCPointer && !defType.ContainsGCPointers && !ContainsIsByReferenceOfT(type))
