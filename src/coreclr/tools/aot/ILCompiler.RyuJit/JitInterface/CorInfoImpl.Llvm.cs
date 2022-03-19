@@ -370,6 +370,14 @@ namespace Internal.JitInterface
             return _this.ObjectToHandle(_this._compilation.GetCompilerHelpersMethodDesc(Encoding.UTF8.GetString(className, (int)classNameLength), Encoding.UTF8.GetString(methodName, (int)methodNameLength)));
         }
 
+        [UnmanagedCallersOnly]
+        public static uint isSpecialUnboxingThunkTargetMethod(IntPtr thisHandle, CORINFO_METHOD_STRUCT_* methodHandle)
+        {
+            var _this = GetThis(thisHandle);
+
+            return _this._compilation.IsSpecialUnboxingThunkTargetMethod(_this.HandleToObject(methodHandle)) ? 1u : 0u;
+        }
+
         [DllImport(JitLibrary)]
         private extern static void registerLlvmCallbacks(IntPtr thisHandle, byte* outputFileName, byte* triple, byte* dataLayout,
             delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, byte*> getMangedMethodNamePtr,
@@ -386,7 +394,8 @@ namespace Internal.JitInterface
             delegate* unmanaged<IntPtr, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_STRUCT_*, CORINFO_CLASS_STRUCT_**, CorInfoTypeWithMod> getArgTypeIncludingParameterized,
             delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, CORINFO_CLASS_STRUCT_**, CorInfoTypeWithMod> getParameterType,
             delegate* unmanaged<IntPtr, CORINFO_CLASS_STRUCT_*, TypeDescriptor> getTypeDescriptor,
-            delegate* unmanaged<IntPtr, byte*, uint, byte*, uint, CORINFO_METHOD_STRUCT_*> getCompilerHelpersMethodHandle
+            delegate* unmanaged<IntPtr, byte*, uint, byte*, uint, CORINFO_METHOD_STRUCT_*> getCompilerHelpersMethodHandle,
+            delegate* unmanaged<IntPtr, CORINFO_METHOD_STRUCT_*, uint> isSpecialUnboxingThunkTargetMethod
             );
 
         public void RegisterLlvmCallbacks(IntPtr corInfoPtr, string outputFileName, string triple, string dataLayout)
@@ -408,7 +417,8 @@ namespace Internal.JitInterface
                 &getArgTypeIncludingParameterized,
                 &getParameterType,
                 &getTypeDescriptor,
-                &getCompilerHelpersMethodHandle
+                &getCompilerHelpersMethodHandle,
+                &isSpecialUnboxingThunkTargetMethod
             );
         }
 

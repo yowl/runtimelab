@@ -46,6 +46,7 @@ static const CorInfoTypeWithMod (*_getArgTypeIncludingParameterized)(void*, CORI
 static const CorInfoTypeWithMod (*_getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*);
 static const TypeDescriptor (*_getTypeDescriptor)(void*, CORINFO_CLASS_HANDLE);
 static CORINFO_METHOD_HANDLE (*_getCompilerHelpersMethodHandle)(void*, const char*, unsigned, const char*, unsigned);
+static const uint32_t (*_isSpecialUnboxingThunkTargetMethod)(void*, CORINFO_METHOD_HANDLE);
 
 static char*                              _outputFileName;
 static Function*                          _doNothingFunction;
@@ -72,7 +73,8 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
                                                 const CorInfoTypeWithMod(*getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*),
                                                 const CorInfoTypeWithMod(*getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*),
                                                 const TypeDescriptor(*getTypeDescriptor)(void*, CORINFO_CLASS_HANDLE),
-                                                CORINFO_METHOD_HANDLE (*getCompilerHelpersMethodHandle)(void*, const char*, unsigned, const char*, unsigned))
+                                                CORINFO_METHOD_HANDLE (*getCompilerHelpersMethodHandle)(void*, const char*, unsigned, const char*, unsigned),
+                                                const uint32_t (*isSpecialUnboxingThunkTargetMethod)(void*, CORINFO_METHOD_HANDLE))
 {
     _thisPtr = thisPtr;
     _getMangledMethodName         = getMangledMethodNamePtr;
@@ -90,6 +92,7 @@ extern "C" DLLEXPORT void registerLlvmCallbacks(void*       thisPtr,
     _getParameterType             = getParameterType;
     _getTypeDescriptor            = getTypeDescriptor;
     _getCompilerHelpersMethodHandle = getCompilerHelpersMethodHandle;
+    _isSpecialUnboxingThunkTargetMethod    = isSpecialUnboxingThunkTargetMethod;
 
     if (_module == nullptr) // registerLlvmCallbacks is called for each method to compile, but must only created the module once.  Better perhaps to split this into 2 calls.
     {
@@ -2481,7 +2484,8 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
     {
         thisArgIx = knownArgIx++;
     }
-    if (calleeSigInfo->hasTypeArg())
+    if (calleeSigInfo->hasTypeArg() || (callNode->gtCallType == CT_USER_FUNC &&
+                                           _isSpecialUnboxingThunkTargetMethod(_thisPtr, callNode->gtCallMethHnd)))
     {
         ctxArgIx = knownArgIx++;
     }

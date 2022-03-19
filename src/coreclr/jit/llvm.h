@@ -88,7 +88,8 @@ extern "C" void registerLlvmCallbacks(void*       thisPtr,
                                       const CorInfoTypeWithMod(*_getArgTypeIncludingParameterized)(void*, CORINFO_SIG_INFO*, CORINFO_ARG_LIST_HANDLE, CORINFO_CLASS_HANDLE*),
                                       const CorInfoTypeWithMod(*_getParameterType)(void*, CORINFO_CLASS_HANDLE, CORINFO_CLASS_HANDLE*),
                                       const TypeDescriptor(*getTypeDescriptor)(void*, CORINFO_CLASS_HANDLE),
-                                      CORINFO_METHOD_HANDLE (*_getCompilerHelpersMethodHandle)(void*, const char*, unsigned, const char*, unsigned));
+                                      CORINFO_METHOD_HANDLE (*_getCompilerHelpersMethodHandle)(void*, const char*, unsigned, const char*, unsigned),
+                                      const uint32_t (*isSpecialUnboxingThunkTargetMethod)(void*, CORINFO_METHOD_HANDLE));
 
 struct PhiPair
 {

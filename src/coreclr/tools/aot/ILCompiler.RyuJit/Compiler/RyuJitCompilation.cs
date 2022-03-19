@@ -231,6 +231,11 @@ namespace ILCompiler
         {
             throw new NotImplementedException();
         }
+
+        public virtual bool IsSpecialUnboxingThunkTargetMethod(MethodDesc methodDesc)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     [Flags]

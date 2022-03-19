@@ -137,7 +137,7 @@ namespace ILCompiler
                 if (GetMethodIL(method).GetExceptionRegions().Length == 0)
                 {
                     var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
-                    if (mangledName == "<Boxed>S_P_CoreLib_System_ValueTuple_2<System___Canon__System___Canon>__<unbox>S_P_CoreLib_System_ValueTuple_2__ToString")
+                    if (mangledName == "HelloWasm_Program__TestGenericStructHandling")
                     {
                     var sig = method.Signature;
                     corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile,
@@ -279,6 +279,11 @@ namespace ILCompiler
         {
             MetadataType helperType = TypeSystemContext.SystemModule.GetKnownType("Internal.Runtime.CompilerHelpers", className);
             return helperType.GetKnownMethod(helperMethodName, null);
+        }
+
+        public override bool IsSpecialUnboxingThunkTargetMethod(MethodDesc methodDesc)
+        {
+            return TypeSystemContext.IsSpecialUnboxingThunkTargetMethod(methodDesc);
         }
     }
 }
