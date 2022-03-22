@@ -932,16 +932,6 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
             var_types trueNodeType = TYP_UNDEF;
 
             switch (node->OperGet())
-            else if (node->OperIs(GT_LCL_VAR))
-            {
-                // implicit upcast i8 -> i32
-                assert(nodeValue->getType() == Type::getInt8Ty(_llvmContext));
-
-                GenTreeLclVarCommon* lclNode = node->AsLclVarCommon();
-                LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNode->GetLclNum());
-                finalValue = varTypeIsSigned(varDsc->TypeGet()) ? _builder.CreateSExt(nodeValue, targetLlvmType)
-                                                   : _builder.CreateZExt(nodeValue, targetLlvmType);
-            }
             {
                 case GT_CALL:
                     trueNodeType = static_cast<var_types>(node->AsCall()->gtReturnType);

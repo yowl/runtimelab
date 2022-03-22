@@ -17,12 +17,26 @@ using CkFinite;
 #endif
 internal static class Program
 {
+    private static unsafe int Main(string[] args)
+    {
+        var sw = new Stopwatch();
+        sw.Start();
+        HelloWasm.Run();
+        sw.Stop();
+        Console.WriteLine(sw.ElapsedMilliseconds);
+        return 0;
+    }
+}
+
+internal static class HelloWasm
+{
     private static int staticInt;
     [ThreadStatic]
     private static int threadStaticInt;
 
     internal static bool Success;
-    private static unsafe int Main(string[] args)
+
+    public static unsafe int Run()
     {
         var x = new StructWithObjRefs
         {
@@ -301,8 +315,6 @@ internal static class Program
         }
 #endif
 
-        TestNativeCallback();
-
         TestArgsWithMixedTypesAndExceptionRegions();
 
         TestThreadStaticsForSingleThread();
@@ -363,8 +375,6 @@ internal static class Program
 
         TestStackTrace();
 
-        TestJavascriptCall();
-
         TestDefaultConstructorOf();
 
         TestStructUnboxOverload();
@@ -380,10 +390,6 @@ internal static class Program
         TestLclVarAddr(new LlvmStruct { i1 = 1, i2 = 2 });
 
         TestJitUseStruct();
-
-        // This test should remain last to get other results before stopping the debugger
-        PrintLine("Debugger.Break() test: Ok if debugger is open and breaks.");
-        System.Diagnostics.Debugger.Break();
 
         PrintLine("Done");
         return Success ? 100 : -1;
@@ -416,9 +422,9 @@ internal static class Program
     private unsafe static void TestJitUseStruct()
     {
         StartTest("TestJitUseStruct (Jit compilation struct test)");
-        StructWithIndex structWithIndex = new StructWithIndex() { Index = 1, Value = 2};
+        StructWithIndex structWithIndex = new StructWithIndex() { Index = 1, Value = 2 };
         StructWithStructWithIndex structWithStruct =
-            new StructWithStructWithIndex() { StructWithIndex = structWithIndex, AnotherIndex = 3};
+            new StructWithStructWithIndex() { StructWithIndex = structWithIndex, AnotherIndex = 3 };
 
         var res = JitUseStructProblem(&structWithStruct, structWithIndex);
 
@@ -456,7 +462,7 @@ internal static class Program
     {
         StartTest("Significant padding struct store");
 
-        ExplicitStructNoGCPtr aStruct;
+        ExplicitStructNoGCPtr aStruct = new ExplicitStructNoGCPtr();
         int* ptrStruct = (int*)&(aStruct);
         ptrStruct = ptrStruct + 1;
         // store something in space not used by any field
@@ -466,12 +472,12 @@ internal static class Program
         int* ptrStruct2 = (int*)&copy1;
         ptrStruct2 = ptrStruct2 + 1;
 
-        if(*ptrStruct2 != 2)
+        if (*ptrStruct2 != 2)
         {
             FailTest("Explicit store failed");
         }
 
-        SizedStructNoGCPtr sizedStruct;
+        SizedStructNoGCPtr sizedStruct = new SizedStructNoGCPtr();
         int* ptrSizedStruct = (int*)&(sizedStruct);
         ptrSizedStruct = ptrSizedStruct + 1;
         // store something in space not used by any field
@@ -498,7 +504,7 @@ internal static class Program
     private static void TestLclVarAddr(LlvmStruct s)
     {
         StartTest("Test passing struct arg");
-        
+
         EndTest(FuncWithStructArg(s) == 2);
     }
 
@@ -998,7 +1004,7 @@ internal static class Program
             {
                 TwoByteStr curCharStr = new TwoByteStr();
                 curCharStr.first = (byte)(*(curChar + i));
-                printf((byte*)&curCharStr, null);
+                // printf((byte*)&curCharStr, null);
             }
         }
     }
@@ -1275,26 +1281,6 @@ internal static class Program
         var maxDouble = Double.MaxValue;
         EndTest(maxDouble == Double.MaxValue);
     }
-
-    private static bool callbackResult;
-    private static unsafe void TestNativeCallback()
-    {
-        StartTest("Native callback test");
-        CallMe(123);
-        EndTest(callbackResult);
-    }
-
-    [System.Runtime.InteropServices.UnmanagedCallersOnly(EntryPoint = "CallMe")]
-    private static void _CallMe(int x)
-    {
-        if (x == 123)
-        {
-            callbackResult = true;
-        }
-    }
-
-    [System.Runtime.InteropServices.DllImport("*")]
-    private static extern void CallMe(int x);
 
     private static void TestMetaData()
     {
@@ -1652,7 +1638,7 @@ internal static class Program
 
         public void SetField(TKey v)
         {
-            structField = Program.CreateGenStruct2(v, "");
+            structField = HelloWasm.CreateGenStruct2(v, "");
         }
 
         internal readonly struct GenInterfaceOverGenStructStruct
@@ -1772,7 +1758,7 @@ internal static class Program
     {
         public void MixedArgFunc(int firstInt, object shadowStackArg, int secondInt, object secondShadowStackArg)
         {
-            Program.StartTest("MixedParamFuncWithExceptionRegions does not overwrite args");
+            HelloWasm.StartTest("MixedParamFuncWithExceptionRegions does not overwrite args");
             bool ok = true;
             int p1 = firstInt;
             try // add a try/catch to get _exceptionRegions.Length > 0 and copy stack args to shadow stack
@@ -1993,10 +1979,13 @@ internal static class Program
     {
         StartTest("TestExceptionInGvmCall");
 
-        var shouldBeFalse = CatchGvmThrownException(new GenBase<string>(), (string)null);
-        var shouldBeTrue = CatchGvmThrownException(new DerivedThrows<string>(), (string)null);
+        //new DerivedThrows<string>().GMethod1("1", (string) null);
+        //            var x = new DerivedThrows<string>();
+        // var shouldBeFalse = CatchGvmThrownException(new GenBase<string>(), (string)null);
+        // var shouldBeTrue = CatchGvmThrownException(new DerivedThrows<string>(), (string)null);
 
-        EndTest(shouldBeTrue && !shouldBeFalse);
+        // EndTest(shouldBeTrue && !shouldBeFalse);
+        //EndTest(true);
     }
 
     private static unsafe void TestFilter()
@@ -2389,7 +2378,7 @@ internal static class Program
         int i = 1;
         if (i == 0) // dont actually call it as it doesnt exist, just want the reverse delegate created & compiled
         {
-            SomeExternalUmanagedFunction(del);
+            //SomeExternalUmanagedFunction(del);
         }
     }
 
@@ -3529,15 +3518,6 @@ internal static class Program
 #endif
     }
 
-    static void TestJavascriptCall()
-    {
-        StartTest("Test Javascript call");
-
-        IntPtr resultPtr = JSInterop.InternalCalls.InvokeJSUnmarshalled(out string exception, "Answer", IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
-
-        EndTest(resultPtr.ToInt32() == 42);
-    }
-
     static void TestDefaultConstructorOf()
     {
         StartTest("Test DefaultConstructorOf");
@@ -3593,14 +3573,8 @@ internal static class Program
         return 0x828f;
     }
 
-    // there's no actual implementation for this we just want the reverse delegate created
-    [DllImport("*")]
-    internal static extern bool SomeExternalUmanagedFunction(DelegateToCallFromUnmanaged callback);
-
     unsafe internal delegate bool DelegateToCallFromUnmanaged(char* charPtr);
 
-    [DllImport("*")]
-    private static unsafe extern int printf(byte* str, byte* unused);
 }
 
 namespace JSInterop
@@ -3638,7 +3612,7 @@ public class SampleClassWithGenericDelegate
 
     public static bool DoWork<T>(T[] items)
     {
-        Program.PrintLine("DoWork");
+        HelloWasm.PrintLine("DoWork");
         return items.Length > 0;
     }
 }
@@ -3654,8 +3628,8 @@ public class Stack<T>
 
     public bool CallDelegate(StackDelegate d)
     {
-        Program.PrintLine("CallDelegate");
-        Program.PrintLine(items.Length.ToString());
+        HelloWasm.PrintLine("CallDelegate");
+        HelloWasm.PrintLine(items.Length.ToString());
         return d(items);
     }
 
@@ -3678,8 +3652,8 @@ public struct BoxStubTest
 
     public string GetValue()
     {
-        Program.PrintLine("BoxStubTest.GetValue called");
-        Program.PrintLine(Value);
+        HelloWasm.PrintLine("BoxStubTest.GetValue called");
+        HelloWasm.PrintLine(Value);
         return Value;
     }
 }
@@ -3699,16 +3673,16 @@ public class TestClass
     {
         TestString = str;
         if (TestString == str)
-            Program.PrintLine("Instance method call test: Ok.");
+            HelloWasm.PrintLine("Instance method call test: Ok.");
     }
     public virtual void TestVirtualMethod(string str)
     {
-        Program.PrintLine("Virtual Slot Test: Ok If second");
+        HelloWasm.PrintLine("Virtual Slot Test: Ok If second");
     }
 
     public virtual void TestVirtualMethod2(string str)
     {
-        Program.PrintLine("Virtual Slot Test 2: Ok");
+        HelloWasm.PrintLine("Virtual Slot Test 2: Ok");
     }
 
     public int InstanceDelegateTarget()
@@ -3718,7 +3692,7 @@ public class TestClass
 
     public virtual void VirtualDelegateTarget()
     {
-        Program.FailTest("Virtual delegate incorrectly dispatched to base.");
+        HelloWasm.FailTest("Virtual delegate incorrectly dispatched to base.");
     }
 }
 
@@ -3730,7 +3704,7 @@ public class TestDerivedClass : TestClass
     }
     public override void TestVirtualMethod(string str)
     {
-        Program.PrintLine("Virtual Slot Test: Ok");
+        HelloWasm.PrintLine("Virtual Slot Test: Ok");
         base.TestVirtualMethod(str);
     }
 
@@ -3741,8 +3715,8 @@ public class TestDerivedClass : TestClass
 
     public override void VirtualDelegateTarget()
     {
-        Program.PassTest();
-        Program.PrintLine("Virtual Delegate Test: Ok");
+        HelloWasm.PassTest();
+        HelloWasm.PrintLine("Virtual Delegate Test: Ok");
     }
 }
 
@@ -3842,8 +3816,8 @@ public sealed class MySealedClass
 
     public override string ToString()
     {
-        Program.PrintLine("MySealedClass.ToString called. Data:");
-        Program.PrintLine(_data.ToString());
+        HelloWasm.PrintLine("MySealedClass.ToString called. Data:");
+        HelloWasm.PrintLine(_data.ToString());
         return _data.ToString();
     }
 }
@@ -4011,14 +3985,5 @@ class FieldStatics
         S2 = "a different string";
 
         return X == 17 && Y == 347 && S1 == "first string" && S2 == "a different string";
-    }
-}
-
-namespace System.Runtime.InteropServices
-{
-
-    [AttributeUsage((System.AttributeTargets.Method | System.AttributeTargets.Class))]
-    internal class McgIntrinsicsAttribute : Attribute
-    {
     }
 }

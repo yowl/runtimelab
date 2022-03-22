@@ -17440,7 +17440,7 @@ bool Compiler::impReturnInstruction(int prefixFlags, OPCODE& opcode)
                 retTypeDesc.InitializeStructReturnType(this, retClsHnd, info.compCallConv);
                 unsigned retRegCount = retTypeDesc.GetReturnRegCount();
 
-                fgDispBasicBlocks(true);
+                //fgDispBasicBlocks(true);
                 if (retRegCount != 0)
                 {
                     assert(!iciCall->HasRetBufArg());
