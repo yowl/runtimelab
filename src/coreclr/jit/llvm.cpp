@@ -189,9 +189,9 @@ StructDesc* Llvm::getStructDesc(CORINFO_CLASS_HANDLE structHandle)
             assert(fldOffset < structSize);
 
             CORINFO_CLASS_HANDLE fieldClass;
-            _info.compCompHnd->getFieldType(fieldHandle, &fieldClass);
+            CorInfoType corInfoType = _info.compCompHnd->getFieldType(fieldHandle, &fieldClass);
 
-            unsigned fieldSize = _info.compCompHnd->getClassSize(fieldClass);
+            unsigned fieldSize = getElementSize(fieldClass, corInfoType);
 
             // store the biggest field at the offset for unions
             if (sparseFields[fldOffset] == nullptr || fieldSize > sparseFieldSizes[fldOffset])
@@ -436,9 +436,8 @@ CorInfoType Llvm::toCorInfoType(var_types varType)
             return CorInfoType::CORINFO_TYPE_BYTE;
         case TYP_UBYTE:
             return CorInfoType::CORINFO_TYPE_UBYTE;
-        case TYP_LCLBLK: // TODO: outgoing args space - need to get an example compiling, e.g. https://github.com/dotnet/runtimelab/blob/40f9ff64ae80596bcddcec16a7e1a8f57a0b2cff/src/tests/nativeaot/SmokeTests/HelloWasm/HelloWasm.cs#L3492 to see what's
-            // going on.  CORINFO_TYPE_VALUECLASS is a better mapping but if that is mapped as of now, then canStoreTypeOnLlvmStack will fail compilation for most methods.
-            failFunctionCompilation();
+        case TYP_LCLBLK:
+            return CorInfoType::CORINFO_TYPE_VALUECLASS;
         case TYP_DOUBLE:
             return CorInfoType::CORINFO_TYPE_DOUBLE;
         case TYP_FLOAT:
@@ -656,6 +655,17 @@ Type* Llvm::getLlvmTypeForVarType(var_types type)
     }
 }
 
+Type* Llvm::getLlvmTypeForLclVar(GenTreeLclVar* lclVar)
+{
+    var_types nodeType = lclVar->TypeGet();
+
+    if (nodeType == TYP_STRUCT)
+    {
+        return getLlvmTypeForStruct(_compiler->lvaGetDesc(lclVar)->GetLayout());
+    }
+    return getLlvmTypeForVarType(nodeType);
+}
+
 llvm::Instruction* Llvm::getCast(llvm::Value* source, Type* targetType)
 {
     Type* sourceType = source->getType();
@@ -741,13 +751,6 @@ LlvmArgInfo Llvm::getLlvmArgInfoForArgIx(unsigned int lclNum)
         -1 /* default to not an LLVM arg*/, _sigInfo.hasThis() ? TARGET_POINTER_SIZE : 0U /* this is the first pointer on
                                                                                        the shadow stack */
     };
-
-    if (lclNum == _shadowStackLclNum)
-    {
-        llvmArgInfo.m_argIx = 0;
-        llvmArgInfo.m_shadowStackOffset = 0;
-        return llvmArgInfo;
-    }
 
     if (_compiler->info.compRetBuffArg != BAD_VAR_NUM)
     {
@@ -926,12 +929,9 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
                nodeValue->getType()->getPrimitiveSizeInBits() <= 32 && targetLlvmType->getPrimitiveSizeInBits() <= 32);
         if (nodeValue->getType()->getPrimitiveSizeInBits() < targetLlvmType->getPrimitiveSizeInBits())
         {
-            // Upcast.
-            if (varTypeIsSmall(node))
-            {
-                finalValue = varTypeIsSigned(node) ? _builder.CreateSExt(nodeValue, targetLlvmType)
-                                                   : _builder.CreateZExt(nodeValue, targetLlvmType);
-            }
+            var_types trueNodeType = TYP_UNDEF;
+
+            switch (node->OperGet())
             else if (node->OperIs(GT_LCL_VAR))
             {
                 // implicit upcast i8 -> i32
@@ -942,12 +942,35 @@ Value* Llvm::consumeValue(GenTree* node, Type* targetLlvmType)
                 finalValue = varTypeIsSigned(varDsc->TypeGet()) ? _builder.CreateSExt(nodeValue, targetLlvmType)
                                                    : _builder.CreateZExt(nodeValue, targetLlvmType);
             }
-            else
             {
-                // This is the special case for relops. Ordinary codegen "just knows" they need zero-extension.
-                assert(nodeValue->getType() == Type::getInt1Ty(_llvmContext));
-                finalValue = _builder.CreateZExt(nodeValue, targetLlvmType);
+                case GT_CALL:
+                    trueNodeType = static_cast<var_types>(node->AsCall()->gtReturnType);
+                    break;
+
+                case GT_LCL_VAR:
+                    trueNodeType = _compiler->lvaGetDesc(node->AsLclVarCommon())->TypeGet();
+                    break;
+
+                case GT_EQ:
+                case GT_NE:
+                case GT_LT:
+                case GT_LE:
+                case GT_GE:
+                case GT_GT:
+                    // This is the special case for relops. Ordinary codegen "just knows" they need zero-extension.
+                    assert(nodeValue->getType() == Type::getInt1Ty(_llvmContext));
+                    trueNodeType = TYP_UBYTE;
+                    break;
+
+                default:
+                    trueNodeType = node->TypeGet();
+                    break;
             }
+
+            assert(varTypeIsSmall(trueNodeType));
+
+            finalValue = varTypeIsSigned(trueNodeType) ? _builder.CreateSExt(nodeValue, targetLlvmType)
+                                                       : _builder.CreateZExt(nodeValue, targetLlvmType);
         }
         else
         {
@@ -977,13 +1000,14 @@ llvm::Value* Llvm::buildUserFuncCall(GenTreeCall* call)
 {
     llvm::FunctionCallee llvmFuncCallee;
 
-    if (call->gtCallType == CT_USER_FUNC)
+    if (call->gtCallType == CT_USER_FUNC || call->gtCallType == CT_INDIRECT)
     {
-        if (call->IsVirtualVtable())
+        if (call->IsVirtualVtable() || call->gtCallType == CT_INDIRECT)
         {
             FunctionType* functionType = createFunctionTypeForCall(call);
+            GenTree* calleeNode = call->IsVirtualVtable() ? call->gtControlExpr : call->gtCallAddr;
 
-            Value* funcPtr = castIfNecessary(getGenTreeValue(call->gtControlExpr), functionType->getPointerTo());
+            Value* funcPtr = castIfNecessary(getGenTreeValue(calleeNode), functionType->getPointerTo());
 
             llvmFuncCallee = {functionType, funcPtr};
         }
@@ -1148,7 +1172,8 @@ void Llvm::buildCall(GenTree* node)
     {
         buildHelperFuncCall(call);
     }
-    else if ((call->gtCallType == CT_USER_FUNC) && !call->IsVirtualStub() /* TODO: Virtual stub not implemented */)
+    else if ((call->gtCallType == CT_USER_FUNC || call->gtCallType == CT_INDIRECT) &&
+             !call->IsVirtualStub() /* TODO: Virtual stub not implemented */)
     {
         buildUserFuncCall(call);
     }
@@ -1211,7 +1236,26 @@ void Llvm::buildCnsInt(GenTree* node)
 {
     if (node->gtType == TYP_INT)
     {
-        mapGenTreeToValue(node, _builder.getInt32(node->AsIntCon()->IconValue()));
+        if (node->IsIconHandle())
+        {
+            // TODO-LLVM : consider lowering these to "IND(CLS_VAR_ADDR)"
+            if (node->IsIconHandle(GTF_ICON_TOKEN_HDL) || node->IsIconHandle(GTF_ICON_CLASS_HDL) ||
+                node->IsIconHandle(GTF_ICON_METHOD_HDL) || node->IsIconHandle(GTF_ICON_FIELD_HDL))
+            {
+                const char* symbolName = (*_getMangledSymbolName)(_thisPtr, (void*)(node->AsIntCon()->IconValue()));
+                (*_addCodeReloc)(_thisPtr, (void*)node->AsIntCon()->IconValue());
+                mapGenTreeToValue(node, _builder.CreateLoad(getOrCreateExternalSymbol(symbolName)));
+            }
+            else
+            {
+                //TODO-LLVML: other ICON handle types
+                failFunctionCompilation();
+            }
+        }
+        else
+        {
+            mapGenTreeToValue(node, _builder.getInt32(node->AsIntCon()->IconValue()));
+        }
         return;
     }
     if (node->gtType == TYP_REF)
@@ -1650,15 +1694,31 @@ Value* Llvm::localVar(GenTreeLclVar* lclVar)
     return llvmRef;
 }
 
+void Llvm::buildLocalField(GenTreeLclFld* lclFld)
+{
+    assert(!lclFld->TypeIs(TYP_STRUCT));
+
+    unsigned   lclNum = lclFld->GetLclNum();
+    LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
+    assert(isLlvmFrameLocal(varDsc));
+
+    // TODO-LLVM: if this is an only value type field, or at offset 0, we can optimize.
+    Value* structAddrValue = m_allocas[lclNum];
+    Value* structAddrInt8Ptr = castIfNecessary(structAddrValue, Type::getInt8PtrTy(_llvmContext));
+    Value* fieldAddressValue = _builder.CreateGEP(structAddrInt8Ptr, _builder.getInt16(lclFld->GetLclOffs()));
+    Value* fieldAddressTypedValue =
+        castIfNecessary(fieldAddressValue, getLlvmTypeForVarType(lclFld->TypeGet())->getPointerTo());
+
+    mapGenTreeToValue(lclFld, _builder.CreateLoad(fieldAddressTypedValue));
+}
+
 void Llvm::buildLocalVarAddr(GenTreeLclVarCommon* lclAddr)
 {
     unsigned int lclNum = lclAddr->GetLclNum();
     if (lclAddr->isLclField())
     {
-        GenTreeLclFld* lclFldAddr = lclAddr->AsLclFld();
-
         Value* bytePtr = castIfNecessary(m_allocas[lclNum], Type::getInt8PtrTy(_llvmContext));
-        mapGenTreeToValue(lclAddr, _builder.CreateGEP(bytePtr, _builder.getInt16(lclFldAddr->GetLclOffs())));
+        mapGenTreeToValue(lclAddr, _builder.CreateGEP(bytePtr, _builder.getInt16(lclAddr->GetLclOffs())));
     }
     else
     {
@@ -1684,59 +1744,26 @@ Value* Llvm::zextIntIfNecessary(Value* intValue)
     return intValue;
 }
 
-int Llvm::getLocalOffsetAtIndex(GenTreeLclVar* lclVar)
-{
-    int        offset;
-
-    LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar);
-    if (canStoreLocalOnLlvmStack(varDsc))
-    {
-        offset = -1;
-    }
-    else
-    {
-        offset = 0;
-
-        for (unsigned lclNum = 0; lclNum < lclVar->GetLclNum(); lclNum++)
-        {
-            varDsc = _compiler->lvaGetDesc(lclNum);
-            if (!varDsc->lvIsParam)
-            {
-                CorInfoType corInfoType = toCorInfoType(varDsc->TypeGet());
-                if (!canStoreLocalOnLlvmStack(varDsc))
-                {
-                    offset = padNextOffset(corInfoType, tryGetStructClassHandle(varDsc), offset);
-                }
-            }
-        }
-        offset = padOffset(toCorInfoType(lclVar->TypeGet()), tryGetStructClassHandle(varDsc), offset);
-    }
-
-    return offset;
-}
-
-Value* Llvm::getLocalVarAddress(GenTreeLclVar* lclVar) {
-    //// TODO: 1 - need the address context logic from ILToLLVMImporter when exception blocks are implemented
-    ////       2 - ILToLLVMImporter caches the gep in the prolog, this creates the gep each time which is wasteful - look to copy more of the logic from ILToLLVMImporter.LoadVarAddress
-    unsigned int varOffset = getLocalOffsetAtIndex(lclVar);
-    if (varOffset == -1)
-    {
-        // if these are used in exception handlers, then they need to be stored, for now just fail
-        failFunctionCompilation();
-    }
-    return _builder.CreateGEP(_function->getArg(0), _builder.getInt32(varOffset), "lclVar");
-}
-
 bool Llvm::isLlvmFrameLocal(LclVarDsc* varDsc)
 {
     assert(canStoreLocalOnLlvmStack(varDsc) && (_compiler->fgSsaPassesCompleted >= 1));
-    return !varDsc->lvInSsa && varDsc->lvRefCnt() > 0;
+    return !varDsc->lvInSsa;
 }
 
 void Llvm::storeLocalVar(GenTreeLclVar* lclVar)
 {
-    Type* destLlvmType = getLlvmTypeForVarType(lclVar->TypeGet());
-    Value* localValue = consumeValue(lclVar->gtGetOp1(), destLlvmType);
+    Type*  destLlvmType = getLlvmTypeForLclVar(lclVar);
+    Value* localValue   = nullptr;
+
+    // zero initialization check
+    if (lclVar->TypeIs(TYP_STRUCT) && lclVar->gtGetOp1()->IsIntegralConst(0))
+    {
+        localValue = llvm::Constant::getNullValue(destLlvmType);
+    }
+    else
+    {
+        localValue = consumeValue(lclVar->gtGetOp1(), destLlvmType);
+    }
 
     unsigned lclNum = lclVar->GetLclNum();
     LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar);
@@ -1787,6 +1814,9 @@ void Llvm::visitNode(GenTree* node)
             break;
         case GT_JTRUE:
             buildJTrue(node, getGenTreeValue(node->AsOp()->gtOp1));
+            break;
+        case GT_LCL_FLD:
+            buildLocalField(node->AsLclFld());
             break;
         case GT_LCL_VAR:
             localVar(node->AsLclVar());
@@ -2080,9 +2110,11 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
             case GT_LCL_VAR:
                 indirOper = lclVar->TypeIs(TYP_STRUCT) ? GT_OBJ : GT_IND;
                 break;
-            case GT_LCL_VAR_ADDR:
-                indirOper = GT_NONE;
+            case GT_LCL_FLD:
+                assert(!lclVar->TypeIs(TYP_STRUCT));
+                indirOper = GT_IND;
                 break;
+            case GT_LCL_VAR_ADDR:
             case GT_LCL_FLD_ADDR:
                 indirOper = GT_NONE;
                 break;
@@ -2121,11 +2153,11 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
 // If the return type must be GC tracked, removes the return type
 // and converts to a return slot arg, modifying the call args, and building the necessary IR
 GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
-                                        CORINFO_SIG_INFO* calleeSigInfo,
                                         GenTreeCall::Use* insertAfterArg)
 {
     GenTreeCall::Use* lastArg = insertAfterArg;
     var_types callReturnType = callNode->TypeGet();
+    CORINFO_SIG_INFO* calleeSigInfo = callNode->callSig;
 
     // Some ctors, e.g. strings (and maybe only strings), have a return type in IR so
     // pass the call return type instead of the CORINFO_SIG_INFO return type, which is void in these cases
@@ -2187,22 +2219,18 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
     return lastArg;
 }
 
-void Llvm::failUnsupportedCalls(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeSigInfo)
+void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
 {
     // we can't do these yet
-    if (_isRuntimeImport(_thisPtr, callNode->gtCallMethHnd))
+    if (callNode->gtCallType != CT_INDIRECT && _isRuntimeImport(_thisPtr, callNode->gtCallMethHnd))
     {
         failFunctionCompilation();
     }
 
+    CORINFO_SIG_INFO* calleeSigInfo = callNode->callSig;
     // TODO-LLVM: not attempting to compile generic signatures with context arg via clrjit yet
-    if (calleeSigInfo->hasTypeArg())
-    {
-        failFunctionCompilation();
-    }
-
-    // TODO-LLVM: Can we get these now we have the scanner enabled?
-    if (callNode->gtCallType == CT_INDIRECT)
+    // Investigate which methods do not get callSig set - happens currently with the Generics test
+    if (calleeSigInfo == nullptr || calleeSigInfo->hasTypeArg())
     {
         failFunctionCompilation();
     }
@@ -2216,9 +2244,9 @@ void Llvm::failUnsupportedCalls(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeS
                 // Either of these situations may happen with calls.
                 continue;
             }
-            if (operand == callNode->gtControlExpr)
+            if (operand == callNode->gtControlExpr || operand == callNode->gtCallAddr)
             {
-                // vtable target
+                // vtable target or indirect target
                 continue;
             }
 
@@ -2272,7 +2300,7 @@ GenTree* Llvm::createShadowStackStoreNode(var_types nodeType, GenTree* addr, Gen
 //     in a simple increasing order, matching the signature. We also rewrite returns
 //     that must be on the shadow stack, see "lowerCallReturn".
 //
-void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeSigInfo)
+void Llvm::lowerCallToShadowStack(GenTreeCall* callNode)
 {
     // rewrite the args, adding shadow stack, and moving gc tracked args to the shadow stack
     unsigned shadowStackUseOffest = 0;
@@ -2309,7 +2337,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO* calle
 
     CurrentRange().InsertBefore(callNode, shadowStackVar, offset, calleeShadowStack, calleeShadowStackPutArg);
 
-    lastArg = lowerCallReturn(callNode, calleeSigInfo, insertReturnAfter);
+    lastArg = lowerCallReturn(callNode, insertReturnAfter);
 
     for (unsigned i = 0; i < argCount; i++)
     {
@@ -2319,6 +2347,7 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO* calle
         sortedData[argNum]            = opAndArg;
     }
 
+    CORINFO_SIG_INFO* calleeSigInfo = callNode->callSig;
     // Relies on the fact all arguments not in the signature come before those that are.
     unsigned firstSigArgIx = argCount - calleeSigInfo->numArgs;
 
@@ -2389,6 +2418,47 @@ void Llvm::lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO* calle
     }
 }
 
+void Llvm::lowerStoreLcl(GenTreeLclVarCommon* storeLclNode)
+{
+    LclVarDsc* addrVarDsc = _compiler->lvaGetDesc(storeLclNode->GetLclNum());
+
+    if (storeLclNode->TypeIs(TYP_STRUCT))
+    {
+        GenTree* dataOp = storeLclNode->gtGetOp1();
+        CORINFO_CLASS_HANDLE dataHandle = _compiler->gtGetStructHandleIfPresent(dataOp);
+        if (dataOp->OperIs(GT_IND))
+        {
+            // Special case: "gtGetStructHandleIfPresent" sometimes guesses the handle from
+            // field sequences, but we will always need to transform TYP_STRUCT INDs into OBJs.
+            dataHandle = NO_CLASS_HANDLE;
+        }
+
+        if (addrVarDsc->GetStructHnd() != dataHandle)
+        {
+            if (dataOp->OperIsIndir())
+            {
+                dataOp->SetOper(GT_OBJ);
+                dataOp->AsObj()->SetLayout(addrVarDsc->GetLayout());
+            }
+            else if (dataOp->OperIs(GT_LCL_VAR)) // can get icon 0 here
+            {
+                GenTreeLclVarCommon* dataLcl = dataOp->AsLclVarCommon();
+                LclVarDsc* dataVarDsc = _compiler->lvaGetDesc(dataLcl->GetLclNum());
+
+                dataVarDsc->lvHasLocalAddr = 1;
+
+                GenTree* dataAddrNode = _compiler->gtNewLclVarAddrNode(dataLcl->GetLclNum());
+
+                dataLcl->ChangeOper(GT_OBJ);
+                dataLcl->AsObj()->SetAddr(dataAddrNode);
+                dataLcl->AsObj()->SetLayout(addrVarDsc->GetLayout());
+
+                CurrentRange().InsertBefore(dataLcl, dataAddrNode);
+            }
+        }
+    }
+}
+
 void Llvm::lowerToShadowStack()
 {
     for (BasicBlock* _currentBlock : _compiler->Blocks())
@@ -2396,7 +2466,7 @@ void Llvm::lowerToShadowStack()
         _currentRange = &LIR::AsRange(_currentBlock);
         for (GenTree* node : CurrentRange())
         {
-            if (node->OperIs(GT_STORE_LCL_VAR, GT_LCL_VAR, GT_LCL_VAR_ADDR))
+            if (node->OperIs(GT_STORE_LCL_VAR, GT_LCL_VAR, GT_LCL_FLD, GT_LCL_VAR_ADDR, GT_LCL_FLD_ADDR))
             {
                 ConvertShadowStackLocalNode(node->AsLclVarCommon());
             }
@@ -2410,12 +2480,9 @@ void Llvm::lowerToShadowStack()
                     continue;
                 }
 
-                CORINFO_SIG_INFO calleeSigInfo;
-                _compiler->eeGetMethodSig(callNode->gtCallMethHnd, &calleeSigInfo);
+                failUnsupportedCalls(callNode);
 
-                failUnsupportedCalls(callNode, &calleeSigInfo);
-
-                lowerCallToShadowStack(callNode, &calleeSigInfo);
+                lowerCallToShadowStack(callNode);
             }
             else if (node->OperIs(GT_RETURN) && _retAddressLclNum != BAD_VAR_NUM)
             {
@@ -2440,10 +2507,15 @@ void Llvm::lowerToShadowStack()
 
                 CurrentRange().InsertBefore(node, retAddressLocal, storeNode);
             }
-            if (node->OperIsLocalAddr())
+
+            if (node->OperIsLocalAddr() || node->OperIsLocalField())
             {
                 // Indicates that this local is to live on the LLVM frame, and will not participate in SSA.
                 _compiler->lvaGetDesc(node->AsLclVarCommon())->lvHasLocalAddr = 1;
+            }
+            else if (node->OperIs(GT_STORE_LCL_VAR))
+            {
+                lowerStoreLcl(node->AsLclVarCommon());
             }
         }
     }
@@ -2504,17 +2576,18 @@ void Llvm::createAllocasForLocalsWithAddrOp()
 
     for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
     {
+        // TODO-LLVM: Consider turning off FEATURE_FIXED_OUT_ARGS.
+        if(_compiler->lvaOutgoingArgSpaceVar == lclNum)
+        {
+            continue;
+        }
+
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
 
-        // TODO-LLVM LCLBLK - outgoing arg space.  Consider turning off FEATURE_FIXED_OUT_ARGS 
-        if (varDsc->lvType != TYP_LCLBLK && canStoreLocalOnLlvmStack(varDsc) && isLlvmFrameLocal(varDsc))
+        if (canStoreLocalOnLlvmStack(varDsc) && isLlvmFrameLocal(varDsc))
         {
             CORINFO_CLASS_HANDLE classHandle = tryGetStructClassHandle(varDsc);
             Type* llvmType = getLlvmTypeForCorInfoType(toCorInfoType(varDsc->TypeGet()), classHandle);
-            if (llvmType->isIntegerTy() && llvmType->getIntegerBitWidth() < 32)
-            {
-                llvmType = Type::getInt32Ty(_llvmContext);
-            }
             Value* allocaValue = _prologBuilder.CreateAlloca(llvmType);
             m_allocas[lclNum] = allocaValue;
 

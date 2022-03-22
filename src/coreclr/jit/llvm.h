@@ -164,7 +164,7 @@ private:
     void emitDoNothingCall();
     void endImportingBasicBlock(BasicBlock* block);
     [[noreturn]] void   failFunctionCompilation();
-    void failUnsupportedCalls(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeSigInfo);
+    void failUnsupportedCalls(GenTreeCall* callNode);
     void fillPhis();
     llvm::Instruction* getCast(llvm::Value* source, Type* targetType);
     void generateProlog();
@@ -174,15 +174,15 @@ private:
     Value* getGenTreeValue(GenTree* node);
     LlvmArgInfo getLlvmArgInfoForArgIx(unsigned int lclNum);
     llvm::BasicBlock* getLLVMBasicBlockForBlock(BasicBlock* block);
-    Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
-    Type* getLlvmTypeForParameterType(CORINFO_CLASS_HANDLE classHnd);
 
     Type* getLlvmTypeForStruct(ClassLayout* classLayout);
     Type* getLlvmTypeForStruct(CORINFO_CLASS_HANDLE structHandle);
 
     Type* getLlvmTypeForVarType(var_types type);
-    int getLocalOffsetAtIndex(GenTreeLclVar* lclVar);
-    Value* getLocalVarAddress(GenTreeLclVar* lclVar);
+    Type* getLlvmTypeForLclVar(GenTreeLclVar* lclVar);
+    Type* getLlvmTypeForCorInfoType(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
+    Type* getLlvmTypeForParameterType(CORINFO_CLASS_HANDLE classHnd);
+
     struct DebugMetadata getOrCreateDebugMetadata(const char* documentFileName);
     llvm::Function* getOrCreateLlvmFunction(const char* symbolName, GenTreeCall* call);
     Value* getShadowStackForCallee();
@@ -198,9 +198,10 @@ private:
     Value* localVar(GenTreeLclVar* lclVar);
     void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);
 
-    GenTreeCall::Use* lowerCallReturn(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeSigInfo, GenTreeCall::Use* lastArg);
-    void lowerCallToShadowStack(GenTreeCall* callNode, CORINFO_SIG_INFO* calleeSigInfo);
+    GenTreeCall::Use* lowerCallReturn(GenTreeCall* callNode, GenTreeCall::Use* lastArg);
+    void lowerCallToShadowStack(GenTreeCall* callNode);
     void lowerToShadowStack();
+    void lowerStoreLcl(GenTreeLclVarCommon* storeLclNode);
 
     Value* mapGenTreeToValue(GenTree* genTree, Value* valueRef);
     bool needsReturnStackSlot(CorInfoType corInfoType, CORINFO_CLASS_HANDLE classHnd);
@@ -216,6 +217,7 @@ private:
     Value* zextIntIfNecessary(Value* intValue);
     StructDesc* getStructDesc(CORINFO_CLASS_HANDLE structHandle);
     unsigned buildMemCpy(Value* baseAddress, unsigned startOffset, unsigned endOffset, Value* srcAddress);
+    void buildLocalField(GenTreeLclFld* lclFld);
     void buildLocalVarAddr(GenTreeLclVarCommon* lclVar);
     bool isLlvmFrameLocal(LclVarDsc* varDsc);
 
