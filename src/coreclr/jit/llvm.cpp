@@ -535,10 +535,9 @@ bool Llvm::canStoreArgOnLlvmStack(CorInfoType corInfoType, CORINFO_CLASS_HANDLE 
     // structs with no GC pointers can go on LLVM stack.
     if (corInfoType == CorInfoType::CORINFO_TYPE_VALUECLASS)
     {
-        // Use getClassAtribs over typGetObjLayout because EETypePtr has CORINFO_FLG_GENERIC_TYPE_VARIABLE? which fails with typGetObjLayout
-        uint32_t classAttribs = _info.compCompHnd->getClassAttribs(classHnd);
+        ClassLayout* classLayout = _compiler->typGetObjLayout(classHnd);
 
-        return (classAttribs & (CORINFO_FLG_CONTAINS_GC_PTR | CORINFO_FLG_CONTAINS_STACK_PTR)) == 0;
+        return !classLayout->HasGCPtr();
     }
 
     if (corInfoType == CorInfoType::CORINFO_TYPE_BYREF || corInfoType == CorInfoType::CORINFO_TYPE_CLASS ||

@@ -134,9 +134,14 @@ namespace ILCompiler
 
             try
             {
+                var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
+                // if (mangledName == "HelloWasm_Program__TestGenericStructHandling")
+                // {
+                // }
+
                 if (GetMethodIL(method).GetExceptionRegions().Length == 0)
                 {
-                    var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
+                    // var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
                     if (mangledName == "HelloWasm_Program__TestGenericStructHandling")
                     {
                     var sig = method.Signature;
