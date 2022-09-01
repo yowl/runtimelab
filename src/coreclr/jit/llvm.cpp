@@ -1083,7 +1083,25 @@ llvm::Value* Llvm::buildUserFuncCall(GenTreeCall* call)
     for (GenTreeCall::Use& use : call->Args())
     {
         lastArg = use.GetNode()->AsPutArgType();
-        argVec.push_back(consumeValue(lastArg->gtGetOp1(), getLlvmTypeForCorInfoType(lastArg->GetCorInfoType(), lastArg->GetClsHnd())));
+
+        if (lastArg->gtGetOp1()->OperIs(GT_FIELD_LIST))
+        {
+            assert(lastArg->GetCorInfoType() == CorInfoType::CORINFO_TYPE_VALUECLASS);
+
+            // alloca a type using the lastArg type
+            Type* argLlvmType = getLlvmTypeForCorInfoType(lastArg->GetCorInfoType(), lastArg->GetClsHnd());
+            Value* allocaValue = _builder.CreateAlloca(argLlvmType);
+
+            // populate LLVM struct type
+
+            Value* loadStruct  = _builder.CreateLoad(allocaValue);
+            argVec.push_back(loadStruct);
+        }
+        else
+        {
+            argVec.push_back(consumeValue(lastArg->gtGetOp1(),
+                                          getLlvmTypeForCorInfoType(lastArg->GetCorInfoType(), lastArg->GetClsHnd())));
+        }
     }
 
     Value* llvmCall = _builder.CreateCall(llvmFuncCallee, ArrayRef<Value*>(argVec));
@@ -1985,6 +2003,8 @@ void Llvm::visitNode(GenTree* node)
         case GT_CNS_INT:
             buildCnsInt(node);
             break;
+        case GT_FIELD_LIST:
+            break;
         case GT_IL_OFFSET:
             _currentOffset = node->AsILOffset()->gtStmtILoffsx;
             _currentOffsetDiLocation = nullptr;
@@ -2435,7 +2455,7 @@ void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
 
             fgArgTabEntry* curArgTabEntry = _compiler->gtArgEntryByNode(callNode, operand);
             regNumber      argReg         = curArgTabEntry->GetRegNum();
-            if (argReg == REG_STK) // TODO-LLVM: out args
+            if (argReg == REG_STK && !operand->OperIs(GT_FIELD_LIST)) // TODO-LLVM: out args
             {
                 failFunctionCompilation();
             }

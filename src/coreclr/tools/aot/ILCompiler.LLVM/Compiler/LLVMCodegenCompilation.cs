@@ -149,6 +149,7 @@ namespace ILCompiler
                     var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
                     if (mangledName == "S_P_CoreLib_System_DateTimeOffset___cctor")
                     {
+
                     var sig = method.Signature;
                     corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile,
                         Module.Target,
