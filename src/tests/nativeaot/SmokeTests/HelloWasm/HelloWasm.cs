@@ -29,31 +29,31 @@ internal static class Program
     {
         var _dict = new Dictionary<int, string>();
         // 10000 is not enough
-        for (int i = 0; i < 50000; ++i)
+        for (int i = 0; i < 100000; ++i)
         {
             _dict[i] = "some random " + DateTime.Now + i.ToString();
         }
         GC.Collect();
         PrintLine("collect 1");
 
-        // for (int i = 0; i < 100000; ++i)
-        // {
-        //     if (i % 1000 == 0)
-        //     {
-        //         PrintLine(i.ToString());
-        //         GC.Collect();
-        //         PrintLine("collect 2");
-        //     }
-        //
-        //     object obj = i;
-        //     var b = (int)obj;
-        //
-        //     _dict.TryGetValue(i, out var s);
-        //     // GC.Collect();
-        //     // PrintLine("collect 3");
-        // }
-        // GC.Collect();
-        // PrintLine("collect 4");
+        for (int i = 0; i < 100000; ++i)
+        {
+            if (i % 1000 == 0)
+            {
+                PrintLine(i.ToString());
+                GC.Collect();
+                PrintLine("collect 2");
+            }
+        
+            object obj = i;
+            var b = (int)obj;
+        
+            _dict.TryGetValue(i, out var s);
+            // GC.Collect();
+            // PrintLine("collect 3");
+        }
+        GC.Collect();
+        PrintLine("collect 4");
 
         GC.Collect();
         var arrayType = GetArrayType();
