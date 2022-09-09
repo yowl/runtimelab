@@ -25,6 +25,10 @@ namespace ILCompiler.DependencyAnalysis
 
         public ScannedMethodNode(MethodDesc method)
         {
+            if (method.ToString().Contains("GC") && method.ToString().Contains("cctor"))
+            {
+
+            }
             Debug.Assert(!method.IsAbstract);
             Debug.Assert(method.GetCanonMethodTarget(CanonicalFormKind.Specific) == method);
             _method = method;

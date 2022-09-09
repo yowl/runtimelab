@@ -10,6 +10,9 @@ using System.Collections;
 using System.Reflection;
 using System.Diagnostics;
 using System.Collections.Specialized;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+//using JsonTest;
 
 #if TARGET_WINDOWS
 using CpObj;
@@ -24,6 +27,42 @@ internal static class Program
     internal static bool Success;
     private static unsafe int Main(string[] args)
     {
+        var _dict = new Dictionary<int, string>();
+        // 10000 is not enough
+        for (int i = 0; i < 50000; ++i)
+        {
+            _dict[i] = "some random " + DateTime.Now + i.ToString();
+        }
+        GC.Collect();
+        PrintLine("collect 1");
+
+        // for (int i = 0; i < 100000; ++i)
+        // {
+        //     if (i % 1000 == 0)
+        //     {
+        //         PrintLine(i.ToString());
+        //         GC.Collect();
+        //         PrintLine("collect 2");
+        //     }
+        //
+        //     object obj = i;
+        //     var b = (int)obj;
+        //
+        //     _dict.TryGetValue(i, out var s);
+        //     // GC.Collect();
+        //     // PrintLine("collect 3");
+        // }
+        // GC.Collect();
+        // PrintLine("collect 4");
+
+        GC.Collect();
+        var arrayType = GetArrayType();
+        PrintLine("collect 4a");
+        GC.Collect();
+
+        // var vec = GC.AllocateUninitializedArray<byte>(1_000_000);
+        // vec.AsSpan().Fill(1);
+
         var x = new StructWithObjRefs
         {
             C1 = null,
@@ -31,15 +70,26 @@ internal static class Program
         };
         Success = true;
         PrintLine("Starting " + 1);
+        GC.Collect();
+        PrintLine("collect 5");
 
         TestBox();
+        GC.Collect();
+        PrintLine("collect 6");
 
         TestSByteExtend();
+        GC.Collect();
+        PrintLine("collect 7");
         TestMetaData();
+        GC.Collect();
+        PrintLine("collect 8");
 
         TestGC();
+        GC.Collect();
+        PrintLine("collect 9");
 
         Add(1, 2);
+        GC.Collect();
         PrintLine("Hello from C#!");
         int tempInt = 0;
         int tempInt2 = 0;
@@ -381,6 +431,8 @@ internal static class Program
 
         TestJitUseStruct();
 
+        // TestJson();
+
         // This test should remain last to get other results before stopping the debugger
         PrintLine("Debugger.Break() test: Ok if debugger is open and breaks.");
         System.Diagnostics.Debugger.Break();
@@ -438,6 +490,13 @@ internal static class Program
 
         EndTest((o.aShort & o.aByte) == 2);
     }
+
+    //private static void TestJson()
+    //{
+    //    var toSerialize = new JsonTest.JsonTestClass();
+    //    var jsonString = JsonSerializer.Serialize(
+    //        toSerialize, SourceGenerationContext.Default.JsonTestClass);
+    //}
 
     [StructLayout(LayoutKind.Explicit, Size = 8)]
     struct ExplicitStructNoGCPtr
@@ -1312,6 +1371,8 @@ internal static class Program
             }
             else PassTest();
         }
+        GC.Collect();
+        PrintLine("collect tm1");
 
         StartTest("Simple struct metadata test (typeof(Char))");
         var typeofChar = typeof(Char);
@@ -1328,6 +1389,8 @@ internal static class Program
             else PassTest();
         }
 
+        GC.Collect();
+        PrintLine("collect tm2");
         var gentT = new Gen<int>();
         var genParamType = gentT.TestTypeOf();
         StartTest("type of generic parameter");
@@ -1339,8 +1402,14 @@ internal static class Program
         {
             PassTest();
         }
+        GC.Collect();
+        PrintLine("collect tm3");
 
-        var arrayType = typeof(object[]);
+        GC.Collect();
+        PrintLine("collect tm3aa");
+        var arrayType = GetArrayType();
+        GC.Collect();
+        PrintLine("collect tm3a");
         StartTest("type of array");
         if (arrayType.FullName != "System.Object[]")
         {
@@ -1350,6 +1419,8 @@ internal static class Program
         {
             PassTest();
         }
+        GC.Collect();
+        PrintLine("collect tm4");
 
         var genericType = typeof(List<object>);
         StartTest("type of generic");
@@ -1361,6 +1432,8 @@ internal static class Program
         {
             PassTest();
         }
+        GC.Collect();
+        PrintLine("collect tm5");
 
         StartTest("Type GetFields length");
         var x = new ClassForMetaTests();
@@ -1372,6 +1445,8 @@ internal static class Program
         PrintLine(fields.Length.ToString());
         EndTest(fields.Length == 4);
 
+        GC.Collect();
+        PrintLine("collect tm6");
         StartTest("Type get string field via reflection");
         var stringFieldInfo = classForMetaTestsType.GetField("StringField");
         EndTest((string)stringFieldInfo.GetValue(x) == s);
@@ -1391,6 +1466,8 @@ internal static class Program
         StartTest("Type set int field via reflection");
         intFieldInfo.SetValue(x, 456);
         EndTest(x.IntField == 456);
+        GC.Collect();
+        PrintLine("collect tm7");
 
         StartTest("Type set static int field via reflection");
         staticIntFieldInfo.SetValue(x, 987);
@@ -1418,11 +1495,18 @@ internal static class Program
         ClassForMetaTests.ReturnsParam(null); // force method output
 
         NewMethod(classForMetaTestsType, instance);
+        GC.Collect();
+        PrintLine("collect tm8");
 
         StartTest("Class get+invoke static method with ref param via reflection");
         var staticMtd = classForMetaTestsType.GetMethod("ReturnsParam");
         var retVal = (ClassForMetaTests)staticMtd.Invoke(null, new object[] { instance });
         EndTest(Object.ReferenceEquals(retVal, instance));
+    }
+
+    private static Type GetArrayType()
+    {
+        return typeof(object[]);
     }
 
     private static void NewMethod(Type classForMetaTestsType, ClassForMetaTests instance)
@@ -4022,6 +4106,25 @@ class FieldStatics
         return X == 17 && Y == 347 && S1 == "first string" && S2 == "a different string";
     }
 }
+
+//namespace JsonTest
+//{
+//    class JsonTestClass
+//    {
+//        public int A { get; set; }
+//        public string[] AnArrayOfString { get; set; }
+//    }
+
+//    [JsonSourceGenerationOptions(
+//        WriteIndented = true,
+//        GenerationMode = JsonSourceGenerationMode.Serialization,
+//        IncludeFields = false)]
+//    [JsonSerializable(typeof(JsonTestClass))]
+//    [JsonSerializable(typeof(System.Collections.Generic.List<JsonTestClass>))]
+//    partial class SourceGenerationContext : JsonSerializerContext
+//    {
+//    }
+//}
 
 namespace System.Runtime.InteropServices
 {

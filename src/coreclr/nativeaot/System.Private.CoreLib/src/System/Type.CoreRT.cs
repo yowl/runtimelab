@@ -20,7 +20,19 @@ namespace System
         public bool IsInterface => (GetAttributeFlagsImpl() & TypeAttributes.ClassSemanticsMask) == TypeAttributes.Interface;
 
         [Intrinsic]
-        public static Type GetTypeFromHandle(RuntimeTypeHandle handle) => handle.IsNull ? null : GetTypeFromEETypePtr(handle.ToEETypePtr());
+        public static Type GetTypeFromHandle(RuntimeTypeHandle handle)
+        {
+            if (handle.IsNull)
+            {
+                return null;
+            }
+            else
+            {
+                var p = handle.ToEETypePtr();
+                //GC.Collect();
+                return GetTypeFromEETypePtr(p);
+            }
+        }
 
         internal static Type GetTypeFromEETypePtr(EETypePtr eeType)
         {

@@ -16,6 +16,10 @@ namespace ILCompiler.DependencyAnalysis
         {
             Debug.Assert(!type.IsCanonicalDefinitionType(CanonicalFormKind.Any));
             CheckCanGenerateConstructedEEType(factory, type);
+            if (type.ToString().EndsWith("GC"))
+            {
+
+            }
         }
 
         protected override string GetName(NodeFactory factory) => this.GetMangledName(factory.NameMangler) + " constructed";

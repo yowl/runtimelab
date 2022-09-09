@@ -593,6 +593,84 @@ public:
         return chunkListHead != NULL && (!curWriteChunk || curWriteChunk->IsValid ());
     }
 
+        static const char* gcStartRelocateMsg()
+    {
+        return "---- Relocate phase on heap %d -----";
+    }
+
+    static const char* gcEndRelocateMsg()
+    {
+        return "---- End of Relocate phase on heap %d ----";
+    }
+
+    static const char* gcMemCopyMsg()
+    {
+        return " mc: [%Ix->%Ix, %Ix->%Ix[";
+    }
+
+    static const char* gcDesiredNewAllocationMsg()
+    {
+        return "h%d g%d surv: %Id current: %Id alloc: %Id (%d%%) f: %d%% new-size: %Id new-alloc: %Id";
+    }
+
+        static const char* gcStartBgcThread()
+    {
+        return "beginning of bgc on heap %d: gen2 FL: %d, FO: %d, frag: %d";
+    }
+
+	   static const char* gcStartCompactMsg()
+    {
+        return "---- Compact Phase on heap %d: %Ix(%Ix)----";
+    }
+
+    static const char* gcEndCompactMsg()
+    {
+        return "---- End of Compact phase on heap %d ----";
+    }
+
+        static const char* gcDetailedStartMsg()
+    {
+        return "*GC* %d(gen0:%d)(%d)(alloc: %Id)(%s)(%d)";
+    }
+
+    static const char* gcDetailedEndMsg()
+    {
+        return "*EGC* %Id(gen0:%Id)(%Id)(%d)(%s)(%s)(%s)(ml: %d->%d)";
+    }
+
+
+        static const char* gcMakeUnusedArrayMsg()
+    {
+        return "Making unused array [%Ix, %Ix[";
+    }
+
+
+        static const char* gcRelocateReferenceMsg()
+    {
+        return "Relocating reference *(%p) from %p to %p";
+    }
+
+        static const char* gcPlanPinnedPlugMsg()
+    {
+        return "(%Ix)PP: [%Ix, %Ix[%Ix](m:%d)";
+    }
+
+
+        static const char* gcPlanPlugMsg()
+    {
+        return "(%Ix)[%Ix->%Ix, NA: [%Ix(%Id), %Ix[: %Ix(%d), x: %Ix (%s)";
+    }
+
+        static const char* gcStartPlanMsg()
+    {
+        return "---- Plan Phase on heap %d ---- Condemned generation %d, promotion: %d";
+    }
+
+        static const char* gcStartMarkMsg()
+    {
+        return "---- Mark Phase on heap %d condemning %d ----";
+    }
+
     static const char* gcStartMsg()
     {
         return "{ =========== BEGINGC %d, (requested generation = %lu, collect_classes = %lu) ==========\n";

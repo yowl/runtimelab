@@ -252,6 +252,10 @@ namespace ILCompiler.DependencyAnalysisFramework
                         _newDynamicDependenciesMayHaveAppeared = true;
                     }
 
+                    if (currentNode.GetNameInternal(_dependencyContext) == "__MethodTable_S_P_CoreLib_System_GC constructed")
+                    {
+
+                    }
                     // Add all static dependencies to the mark stack
                     GetStaticDependencies(currentNode);
 

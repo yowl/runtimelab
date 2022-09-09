@@ -32,4 +32,10 @@
       ]]>
     </NativeAotProjectLines>
   </PropertyGroup>
+
+<PropertyGroup>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <RunAnalyzersDuringBuild>true</RunAnalyzersDuringBuild>
+    <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
+  </PropertyGroup>
 </Project>

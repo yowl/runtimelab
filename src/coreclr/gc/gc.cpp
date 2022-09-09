@@ -21580,6 +21580,7 @@ void gc_heap::garbage_collect_pm_full_gc()
 
 void gc_heap::garbage_collect (int n)
 {
+printf("garbage_collect\n");
     //reset the number of alloc contexts
     alloc_contexts_used = 0;
 
@@ -27325,7 +27326,8 @@ void gc_heap::plan_phase (int condemned_gen_number)
         _sort (&mark_list[0], mark_list_index - 1, 0);
 #endif //USE_VXSORT
 
-        dprintf (3, ("using mark list at GC #%d", settings.gc_index));
+        dprintf (3, ("using mark list at GC settings.gc_index not printed due to Volatiled"));
+        //dprintf (3, ("using mark list at GC #%d", settings.gc_index));
         //verify_qsort_array (&mark_list[0], mark_list_index-1);
 #endif //!MULTIPLE_HEAPS
         use_mark_list = TRUE;
@@ -42074,6 +42076,7 @@ void gc_heap::leave_gc_lock_for_verify_heap()
 void gc_heap::verify_heap (BOOL begin_gc_p)
 {
     int heap_verify_level = static_cast<int>(GCConfig::GetHeapVerifyLevel());
+	    printf("verify_heap %d\n",heap_verify_level); 
 
 #ifdef MULTIPLE_HEAPS
     t_join* current_join = &gc_t_join;
