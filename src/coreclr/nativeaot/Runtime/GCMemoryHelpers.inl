@@ -164,6 +164,11 @@ FORCEINLINE void InlineWriteBarrier(void * dst, void * ref)
         if (*pCardByte != 0xFF)
             *pCardByte = 0xFF;
     }
+    if (((uint8_t*)dst < g_lowest_address) || ((uint8_t*)dst >= g_highest_address))
+    {
+        printf("InlineWriteBarrier dst %p outside heap limits %p %p\n", dst, g_lowest_address, g_highest_address);
+        ASSERT(0);
+    }
 }
 
 #ifdef FEATURE_MANUALLY_MANAGED_CARD_BUNDLES

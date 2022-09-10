@@ -1130,7 +1130,11 @@ namespace Internal.IL
         {
             if (withGCBarrier && targetType.IsGCPointer)
             {
-                CallRuntime(_method.Context, "InternalCalls", "RhpAssignRef", new StackEntry[]
+                if (_mangledName == "S_P_CoreLib_System_Threading_LockHolder__Hold")
+                {
+
+                }
+                CallRuntime(_method.Context, "InternalCalls", "RhpCheckedAssignRef", new StackEntry[]
                 {
                     new ExpressionEntry(StackValueKind.Int32, "address", address), value
                 });
@@ -1184,7 +1188,11 @@ namespace Internal.IL
                         // single field IL structs are not LLVM structs
                         fieldValue = llvmValue;
                     }
-                    CallRuntime(_method.Context, "InternalCalls", "RhpAssignRef",
+                    if (_mangledName == "S_P_TypeLoader_Internal_NativeFormat_NativeHashtable_Enumerator___ctor")
+                    {
+
+                    }
+                    CallRuntime(_method.Context, "InternalCalls", "RhpCheckedAssignRef",
                         new StackEntry[]
                         {
                             new ExpressionEntry(StackValueKind.Int32, "targetAddress", targetAddress),
@@ -1825,6 +1833,11 @@ namespace Internal.IL
         {
             MethodDesc runtimeDeterminedMethod = (MethodDesc)_methodIL.GetObject(token);
             MethodDesc callee = (MethodDesc)_canonMethodIL.GetObject(token);
+            bool isTestCall = false;
+            if (callee.ToString().Contains("xHelloWasm_Program__GetArrayType"))
+            {
+                isTestCall = true;
+            }
             _compilation.NodeFactory.MetadataManager.GetDependenciesDueToAccess(ref _dependencies, _compilation.NodeFactory, _canonMethodIL, callee);
 
             if (callee.IsIntrinsic)
@@ -1850,10 +1863,14 @@ namespace Internal.IL
                 }
             }
 
-            if (callee.IsRawPInvoke() || IsInternalRuntimeImport(callee))
+            if (!isTestCall)
             {
-                ImportRawPInvoke(callee);
-                return;
+                if (callee.IsRawPInvoke() || IsInternalRuntimeImport(callee))
+                {
+                    ImportRawPInvoke(callee);
+                    return;
+                }
+
             }
 
             TypeDesc localConstrainedType = _constrainedType;
@@ -2073,6 +2090,10 @@ namespace Internal.IL
                 if (!_compilation.NodeFactory.TypeSystemContext.IsSpecialUnboxingThunkTargetMethod(canonMethod))
                 {
                     hasHiddenParam = canonMethod.RequiresInstArg() || canonMethod.IsArrayAddressMethod();
+                }
+                if (callee.ToString().Contains("xHelloWasm_Program__GetArrayType"))
+                {
+                    return GetOrCreateLLVMFunction("xHelloWasm_Program__GetArrayType", canonMethod.Signature, hasHiddenParam);
                 }
                 AddMethodReference(canonMethod);
                 string physicalName = _compilation.NodeFactory.MethodEntrypoint(canonMethod).GetMangledName(_compilation.NameMangler);
@@ -3687,7 +3708,11 @@ namespace Internal.IL
             }
             if (requireWriteBarrier)
             {
-                CallRuntime(_method.Context, "InternalCalls", "RhpAssignRef", new StackEntry[]
+                if (_mangledName == "S_P_Reflection_Metadata_Internal_NativeFormat_NativeReader__DecodeString")
+                {
+
+                }
+                CallRuntime(_method.Context, "InternalCalls", "RhpCheckedAssignRef", new StackEntry[]
                 {
                     new ExpressionEntry(StackValueKind.Int32, "typedPointer", typedPointer), value
                 });

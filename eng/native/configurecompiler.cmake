@@ -334,7 +334,6 @@ if (NOT(MSVC))
   add_compile_options(-Wno-unused-variable)
   add_compile_options(-Wno-unused-value)
   add_compile_options(-Wno-unused-function)
-  add_compile_options(-Wno-format)
   add_compile_options(-Wno-tautological-compare)
  
   #These seem to indicate real issues

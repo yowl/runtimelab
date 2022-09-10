@@ -24,6 +24,9 @@ internal static class Program
     [ThreadStatic]
     private static int threadStaticInt;
 
+    [System.Runtime.InteropServices.DllImport("*")]
+    private static extern Type xHelloWasm_Program__GetArrayType();
+
     internal static bool Success;
     private static unsafe int Main(string[] args)
     {
@@ -55,9 +58,20 @@ internal static class Program
         GC.Collect();
         PrintLine("collect 4");
 
+        TwoByteStr curCharStr = new TwoByteStr();
+
+
         GC.Collect();
-        var arrayType = GetArrayType();
         PrintLine("collect 4a");
+        GC.Collect();
+        PrintLine("collect 4b");
+        GC.Collect();
+
+        //xHelloWasm_Program__GetArrayType();
+        GetArrayType();
+
+        curCharStr.first = (byte)('X');
+        printf((byte*)&curCharStr, null);
         GC.Collect();
 
         // var vec = GC.AllocateUninitializedArray<byte>(1_000_000);

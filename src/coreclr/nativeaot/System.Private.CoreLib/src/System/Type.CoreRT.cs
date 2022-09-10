@@ -41,6 +41,7 @@ namespace System
             // unifier's hash table.
             if (Internal.Runtime.MethodTable.SupportsWritableData)
             {
+                System.GC.Collect();
                 ref GCHandle handle = ref eeType.GetWritableData<GCHandle>();
                 if (handle.IsAllocated)
                 {
