@@ -1833,11 +1833,6 @@ namespace Internal.IL
         {
             MethodDesc runtimeDeterminedMethod = (MethodDesc)_methodIL.GetObject(token);
             MethodDesc callee = (MethodDesc)_canonMethodIL.GetObject(token);
-            bool isTestCall = false;
-            if (callee.ToString().Contains("xHelloWasm_Program__GetArrayType"))
-            {
-                isTestCall = true;
-            }
             _compilation.NodeFactory.MetadataManager.GetDependenciesDueToAccess(ref _dependencies, _compilation.NodeFactory, _canonMethodIL, callee);
 
             if (callee.IsIntrinsic)
@@ -1863,14 +1858,10 @@ namespace Internal.IL
                 }
             }
 
-            if (!isTestCall)
+            if (callee.IsRawPInvoke() || IsInternalRuntimeImport(callee))
             {
-                if (callee.IsRawPInvoke() || IsInternalRuntimeImport(callee))
-                {
-                    ImportRawPInvoke(callee);
-                    return;
-                }
-
+                ImportRawPInvoke(callee);
+                return;
             }
 
             TypeDesc localConstrainedType = _constrainedType;
@@ -2090,10 +2081,6 @@ namespace Internal.IL
                 if (!_compilation.NodeFactory.TypeSystemContext.IsSpecialUnboxingThunkTargetMethod(canonMethod))
                 {
                     hasHiddenParam = canonMethod.RequiresInstArg() || canonMethod.IsArrayAddressMethod();
-                }
-                if (callee.ToString().Contains("xHelloWasm_Program__GetArrayType"))
-                {
-                    return GetOrCreateLLVMFunction("xHelloWasm_Program__GetArrayType", canonMethod.Signature, hasHiddenParam);
                 }
                 AddMethodReference(canonMethod);
                 string physicalName = _compilation.NodeFactory.MethodEntrypoint(canonMethod).GetMangledName(_compilation.NameMangler);
