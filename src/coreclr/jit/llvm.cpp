@@ -2463,11 +2463,11 @@ void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
             }
 
             fgArgTabEntry* curArgTabEntry = _compiler->gtArgEntryByNode(callNode, operand);
-            regNumber      argReg         = curArgTabEntry->GetRegNum();
-            if (argReg == REG_STK && !operand->OperIs(GT_FIELD_LIST)) // TODO-LLVM: out args
-            {
-                failFunctionCompilation();
-            }
+            //regNumber      argReg         = curArgTabEntry->GetRegNum();
+            //if (argReg == REG_STK && !operand->OperIs(GT_FIELD_LIST)) // TODO-LLVM: out args
+            //{
+            //    failFunctionCompilation();
+            //}
             if (curArgTabEntry->nonStandardArgKind == NonStandardArgKind::VirtualStubCell)
             {
                 failFunctionCompilation();
