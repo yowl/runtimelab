@@ -1059,8 +1059,23 @@ namespace Internal.IL
             var storeLocation = builder.BuildGEP(basePtr,
                 new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, offset, false) },
                 String.Empty);
-            var typedStoreLocation = CastIfNecessary(builder, storeLocation, LLVMTypeRef.CreatePointer(valueType, 0), "TypedStore" + (name ?? ""));
-            builder.BuildStore(typedToStore, typedStoreLocation);
+            var typedStoreLocation = CastIfNecessary(builder, storeLocation, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), "TypedStore" + (name ?? ""));
+
+            AssignOrStore(builder, typedToStore, typedStoreLocation);
+            // LLVMValueRef rhpCheckedAssignRefFunc = Module.GetNamedFunction("RhpCheckedAssignRef");
+            // if (rhpCheckedAssignRefFunc.Handle == IntPtr.Zero)
+            // {
+            //     rhpCheckedAssignRefFunc = Module.AddFunction("RhpCheckedAssignRef", LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }, false));
+            // }
+            //
+            // if (typedToStore.TypeOf.Kind == LLVMTypeKind.LLVMPointerTypeKind)
+            // {
+            //     builder.BuildCall(rhpCheckedAssignRefFunc, new LLVMValueRef[] {typedStoreLocation, typedToStore}, "");
+            // }
+            // else
+            // {
+            //     builder.BuildStore(typedToStore, typedStoreLocation);
+            // }
         }
 
         private LLVMValueRef CastToRawPointer(LLVMValueRef source, string name = null)
@@ -1097,8 +1112,33 @@ namespace Internal.IL
                 }
                 else
                 {
-                    _builder.BuildStore(llvmValue, typedStoreLocation);
+                    AssignOrStore(_builder, llvmValue, typedStoreLocation);
                 }
+            }
+        }
+
+        void AssignOrStore(LLVMBuilderRef builder, LLVMValueRef llvmValue, LLVMValueRef typedStoreLocation)
+        {
+            if (llvmValue.TypeOf.Kind == LLVMTypeKind.LLVMPointerTypeKind)
+            {
+                LLVMValueRef rhpCheckedAssignRefFunc = Module.GetNamedFunction("RhpCheckedAssignRef");
+                if (rhpCheckedAssignRefFunc.Handle == IntPtr.Zero)
+                {
+                    rhpCheckedAssignRefFunc = Module.AddFunction("RhpCheckedAssignRef",
+                        LLVMTypeRef.CreateFunction(LLVMTypeRef.Void,
+                            new LLVMTypeRef[]
+                            {
+                                LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0),
+                                LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)
+                            }, false));
+                }
+
+                builder.BuildCall(rhpCheckedAssignRefFunc, new LLVMValueRef[] { CastIfNecessary(builder, typedStoreLocation, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)),
+                    CastIfNecessary(builder, llvmValue, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0))}, "");
+            }
+            else
+            {
+                builder.BuildStore(llvmValue, CastIfNecessary(builder, typedStoreLocation, LLVMTypeRef.CreatePointer(llvmValue.TypeOf, 0)));
             }
         }
 
@@ -1146,7 +1186,15 @@ namespace Internal.IL
             }
             if (!childStruct)
             {
-                _builder.BuildStore(llvmValue, typedStoreLocation); // just copy all the fields again for simplicity, if all the fields were set using RhpCheckedAssignRef then a possible optimisation would be to skip this line
+                AssignOrStore(_builder, llvmValue, typedStoreLocation);
+                // LLVMValueRef rhpCheckedAssignRefFunc = Module.GetNamedFunction("RhpCheckedAssignRef");
+                // if (rhpCheckedAssignRefFunc.Handle == IntPtr.Zero)
+                // {
+                //     rhpCheckedAssignRefFunc = Module.AddFunction("RhpCheckedAssignRef", LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }, false));
+                // }
+                // _builder.BuildCall(rhpCheckedAssignRefFunc, new LLVMValueRef[] { typedStoreLocation, llvmValue }, "");
+                //
+                // _builder.BuildStore(llvmValue, typedStoreLocation); // just copy all the fields again for simplicity, if all the fields were set using RhpCheckedAssignRef then a possible optimisation would be to skip this line
             }
         }
 
@@ -2220,7 +2268,18 @@ namespace Internal.IL
             var dictPtrPtr = _builder.BuildGEP(CastIfNecessary(_builder, gep,
                     LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), 0), "castDictPtrPtr"),
                 new [] {BuildConstInt32(1)}, "dictPtrPtr");
-            _builder.BuildStore(dictPtrPtr, dictPtrPtrStore);
+
+            AssignOrStore(_builder, dictPtrPtr, dictPtrPtrStore);
+            // LLVMValueRef rhpCheckedAssignRefFunc = Module.GetNamedFunction("RhpCheckedAssignRef");
+            // if (rhpCheckedAssignRefFunc.Handle == IntPtr.Zero)
+            // {
+            //     rhpCheckedAssignRefFunc = Module.AddFunction("RhpCheckedAssignRef", LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }, false));
+            // }
+            // // LLVMValueRef RhpPInvoke2 = GetOrCreateLLVMFunction("RhpCheckedAssignRef", pInvokeFunctionType);
+            // _builder.BuildCall(rhpCheckedAssignRefFunc, new LLVMValueRef[] { dictPtrPtrStore, dictPtrPtr }, "");
+
+            //        _builder.BuildStore(dictPtrPtr, dictPtrPtrStore);
+
             _builder.BuildBr(endifBlock);
 
             // not fat
@@ -3627,17 +3686,26 @@ namespace Internal.IL
                 typedValue = value.ValueAsInt32(_builder, false);
                 requireWriteBarrier = (value is ExpressionEntry) && !((ExpressionEntry)value).RawLLVMValue.IsNull && value.Type.IsGCPointer;
             }
-            if (requireWriteBarrier)
-            {
-                CallRuntime(_method.Context, "InternalCalls", "RhpCheckedAssignRef", new StackEntry[]
-                {
-                    new ExpressionEntry(StackValueKind.Int32, "typedPointer", typedPointer), value
-                });
-            }
-            else
-            {
-                _builder.BuildStore(typedValue, typedPointer);
-            }
+            // if (requireWriteBarrier)
+            // {
+            AssignOrStore(_builder, typedValue, typedPointer);
+            // LLVMValueRef rhpCheckedAssignRefFunc = Module.GetNamedFunction("RhpCheckedAssignRef");
+            // if (rhpCheckedAssignRefFunc.Handle == IntPtr.Zero)
+            // {
+            //     rhpCheckedAssignRefFunc = Module.AddFunction("RhpCheckedAssignRef", LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }, false));
+            // }
+            // // LLVMValueRef RhpPInvoke2 = GetOrCreateLLVMFunction("RhpCheckedAssignRef", pInvokeFunctionType);
+            // _builder.BuildCall(rhpCheckedAssignRefFunc, new LLVMValueRef[] { CastIfNecessary(_builder, typedPointer, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)), typedValue }, "");
+
+            // CallRuntime(_method.Context, "InternalCalls", "RhpCheckedAssignRef", new StackEntry[]
+            //     {
+            //         new ExpressionEntry(StackValueKind.Int32, "typedPointer", typedPointer), value
+            //     });
+            // }
+            // else
+            // {
+            // _builder.BuildStore(typedValue, typedPointer);
+            // }
         }
 
         private void ImportBinaryOperation(ILOpcode opcode)
@@ -4199,7 +4267,16 @@ namespace Internal.IL
 
             var value = _builder.BuildLoad(src.ValueAsType(pointerType, _builder), "cpobj.load");
 
-            _builder.BuildStore(value, dest.ValueAsType(pointerType, _builder));
+            AssignOrStore(_builder, value, dest.ValueAsType(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), _builder));
+            // LLVMValueRef rhpCheckedAssignRefFunc = Module.GetNamedFunction("RhpCheckedAssignRef");
+            // if (rhpCheckedAssignRefFunc.Handle == IntPtr.Zero)
+            // {
+            //     rhpCheckedAssignRefFunc = Module.AddFunction("RhpCheckedAssignRef", LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }, false));
+            // }
+            // // LLVMValueRef RhpPInvoke2 = GetOrCreateLLVMFunction("RhpCheckedAssignRef", pInvokeFunctionType);
+            // _builder.BuildCall(rhpCheckedAssignRefFunc, new LLVMValueRef[] { dest.ValueAsType(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), _builder), value }, "");
+
+            // _builder.BuildStore(value, dest.ValueAsType(pointerType, _builder));
         }
 
         private void ImportUnbox(int token, ILOpcode opCode)
