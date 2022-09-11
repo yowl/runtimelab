@@ -1400,6 +1400,11 @@ void Llvm::buildCnsInt(GenTree* node)
     failFunctionCompilation();
 }
 
+void Llvm::buildCnsLng(GenTree* node)
+{
+    mapGenTreeToValue(node, _builder.getInt64(node->AsLngCon()->LngValue()));
+}
+
 void Llvm::buildInd(GenTree* node, Value* ptr)
 {
     // cast the pointer to create the correct load instructions
@@ -1787,7 +1792,8 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
         {
             if (fieldDesc->isGcPointer())
             {
-                _builder.CreateCall(getOrCreateRhpAssignRef(),
+                // we can't be sure the address is on the heap, it could be the result of pointer arithmetic on a local var
+                _builder.CreateCall(getOrCreateRhpCheckedAssignRef(),
                                     ArrayRef<Value*>{address,
                                                      castIfNecessary(fieldData, Type::getInt8PtrTy(_llvmContext))});
                 bytesStored += TARGET_POINTER_SIZE;
@@ -2002,6 +2008,9 @@ void Llvm::visitNode(GenTree* node)
             break;
         case GT_CNS_INT:
             buildCnsInt(node);
+            break;
+        case GT_CNS_LNG:
+            buildCnsLng(node);
             break;
         case GT_FIELD_LIST:
             break;
