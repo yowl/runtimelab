@@ -1374,6 +1374,7 @@ namespace Internal.IL
             _thisType = GetWellKnownType(WellKnownType.Void);
             _pointerSize = compilation.NodeFactory.Target.PointerSize;
             _exceptionRegions = new ExceptionRegion[0];
+            _handlerRegionsForOffsetLookup = new ExceptionRegion[0];
         }
 
         internal void OutputCodeForTriggerCctor(TypeDesc type, LLVMValueRef staticBaseValueRef)
