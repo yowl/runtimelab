@@ -27,6 +27,7 @@
 #include "gcenv.ee.h"
 #include "volatile.h"
 
+
 #define MAX_LONGPATH 1024
 
 #ifdef _MSC_VER

@@ -144,7 +144,7 @@ namespace ILCompiler
                     return;
                 }
 
-                if (methodIL.GetExceptionRegions().Length == 0 && !_disableRyuJit)
+                if (methodIL.GetExceptionRegions().Length == -1 && !_disableRyuJit)
                 {
                     var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
                     var sig = method.Signature;

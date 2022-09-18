@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 using System.Collections.Generic;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Reflection;
 using System.Diagnostics;
 using System.Collections.Specialized;
@@ -15,6 +16,112 @@ using System.Collections.Specialized;
 using CpObj;
 using CkFinite;
 #endif
+
+class QueuedPool<T> where T : class, new()
+{
+    private readonly Action<T> _on_pickup;
+    private readonly System.Collections.Generic.Stack<T> _pool;
+
+
+    public QueuedPool(int size/*, Action<T> onpickup = null*/)
+    {
+        Console.WriteLine("creating {0} | typeof: {1}", size, typeof(T));
+        MaxSize = size;
+        _pool = new System.Collections.Generic.Stack<T>(size);
+        // _on_pickup = onpickup;
+        
+        for (int i = 0; i < size; i++)
+        {
+            // if (i % 100000 == 0)
+            // {
+            //     Program.PrintLine("collect");
+            //     GC.Collect(1);
+            // }
+            var inst = new T();
+            _pool.Push(inst);
+            // _pool.Push(null);
+        }
+        //
+        // Console.WriteLine("done");
+    }
+
+
+    public int MaxSize { get; }
+
+    public int Remains => MaxSize - _pool.Count;
+
+    public T GetOne()
+    {
+        T result;
+
+        if (_pool.Count != 0)
+        {
+            result = _pool.Pop();
+        }
+        else
+        {
+            result = new T();
+        }
+
+        _on_pickup?.Invoke(result);
+
+        return result;
+    }
+
+    public void ReturnOne(T obj)
+    {
+        if (obj != null)
+        {
+            _pool.Push(obj);
+        }
+    }
+
+    public void Clear()
+    {
+        _pool.Clear();
+    }
+}
+
+abstract class BaseBaseClass
+{
+
+}
+abstract class BaseClass : BaseBaseClass
+{
+    protected BaseClass(uint x)
+    {
+        X = x;
+    }
+
+    public uint X;
+
+    public int XX;
+}
+
+class NormalClass : BaseClass
+{
+    static QueuedPool<NormalClass> _pool = new QueuedPool<NormalClass>(500000/*, s => {
+        s.XX = 123;
+    }*/);
+
+    public static NormalClass Create(uint s)
+    {
+        var o = _pool.GetOne();
+        o.X = s;
+        return o;
+    }
+
+    public NormalClass() : base(0)
+    {
+
+    }
+
+    public NormalClass(uint x) : base(x)
+    {
+
+    }
+}
+
 internal static class Program
 {
     private static int staticInt;
@@ -24,6 +131,23 @@ internal static class Program
     internal static bool Success;
     private static unsafe int Main(string[] args)
     {
+        var _pool = new QueuedPool<NormalClass>(500000/*, s => {
+            s.XX = 123;
+        }*/);
+        PrintLine("created pool");
+        ConcurrentDictionary<int, string> _dict = new ConcurrentDictionary<int, string>();
+
+        for (int i3 = 0; i3 < 50_000; ++i3)
+        {
+            _dict[i3] = "some random " + DateTime.Now + i3.ToString();
+            // GC.Collect(1);
+        }
+
+        for (uint i = 0; i < 5000; ++i)
+        {
+            var p = NormalClass.Create(i);
+        }
+
         var x = new StructWithObjRefs
         {
             C1 = null,

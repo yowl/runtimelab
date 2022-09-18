@@ -52,13 +52,13 @@ namespace System.Runtime.CompilerServices
         public static unsafe void EnsureClassConstructorRun(StaticClassConstructionContext* pContext)
         {
             IntPtr pfnCctor = pContext->cctorMethodAddress;
-            NoisyLog("EnsureClassConstructorRun, cctor={0}, thread={1}", pfnCctor, CurrentManagedThreadId);
+            // NoisyLog("EnsureClassConstructorRun, cctor={0}, thread={1}", pfnCctor, CurrentManagedThreadId);
 
             // If we were called from MRT, this check is redundant but harmless. This is in case someone within classlib
             // (cough, Reflection) needs to call this explicitly.
             if (pContext->initialized == 1)
             {
-                NoisyLog("Cctor already run, cctor={0}, thread={1}", pfnCctor, CurrentManagedThreadId);
+                // NoisyLog("Cctor already run, cctor={0}, thread={1}", pfnCctor, CurrentManagedThreadId);
                 return;
             }
 
@@ -493,13 +493,41 @@ namespace System.Runtime.CompilerServices
             s_cctorGlobalLock = new Lock();
         }
 
-        [Conditional("ENABLE_NOISY_CCTOR_LOG")]
+        [DllImport("*")]
+        private static unsafe extern int printf(byte* str, byte* unused);
+
+        public struct TwoByteStr
+        {
+            public byte first;
+            public byte second;
+        }
+        private static unsafe void PrintString(string s)
+        {
+            int length = s.Length;
+            fixed (char* curChar = s)
+            {
+                for (int i = 0; i < length; i++)
+                {
+                    TwoByteStr curCharStr = new TwoByteStr();
+                    curCharStr.first = (byte)(*(curChar + i));
+                    printf((byte*)&curCharStr, null);
+                }
+            }
+        }
+        static void PrintLine(string s)
+        {
+            PrintString(s);
+            PrintString("\n");
+        }
+
+        // [Conditional("ENABLE_NOISY_CCTOR_LOG")]
         private static void NoisyLog(string format, IntPtr cctorMethod, int threadId)
         {
             // We cannot utilize any of the typical number formatting code because it triggers globalization code to run
             // and this cctor code is layered below globalization.
 #if DEBUG
-            Debug.WriteLine(format, ToHexString(cctorMethod), ToHexString(threadId));
+            PrintLine(format);
+//            Debug.WriteLine(format, ToHexString(cctorMethod), ToHexString(threadId));
 #endif // DEBUG
         }
 

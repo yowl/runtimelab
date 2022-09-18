@@ -241,6 +241,8 @@ namespace Internal.IL
             {
                 _pinvokeMap.Add(nativeName, method);
             }
+            LLVMTypeRef llprintfType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new[] { LLVMTypeRef.Int8 });
+            LLVMValueRef llprintf = GetOrCreateLLVMFunction(LLVMCodegenCompilation.Module, "llprintf", llprintfType);
 
             LLVMTypeRef[] llvmParams = new LLVMTypeRef[method.Signature.Length];
             for (int i = 0; i < llvmParams.Length; i++)
@@ -267,12 +269,17 @@ namespace Internal.IL
 
             builder.PositionAtEnd(allocateShadowStackBlock);
 
+            builder.BuildCall(llprintf, new[] {LLVMValueRef.CreateConstInt(LLVMTypeRef.Int8, 65)});
+
             LLVMValueRef newShadowStack = builder.BuildArrayMalloc(LLVMTypeRef.Int8, BuildConstInt32(1000000), "NewShadowStack");
             builder.BuildStore(newShadowStack, shadowStackPtr);
             builder.BuildStore(newShadowStack, ShadowStackTop);
+            // builder.BuildUnreachable();
             builder.BuildBr(managedCallBlock);
 
             builder.PositionAtEnd(managedCallBlock);
+            builder.BuildCall(llprintf, new[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int8, 66) });
+
             LLVMTypeRef reversePInvokeFrameType = LLVMTypeRef.CreateStruct(new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }, false);
             LLVMValueRef reversePInvokeFrame = default(LLVMValueRef);
             LLVMTypeRef reversePInvokeFunctionType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(reversePInvokeFrameType, 0) }, false);

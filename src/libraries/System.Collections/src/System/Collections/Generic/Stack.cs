@@ -12,11 +12,46 @@
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using Internal;
 
 namespace System.Collections.Generic
 {
     // A simple stack of objects.  Internally it is implemented as an array,
     // so Push can be O(n).  Pop is O(1).
+    internal static class X
+    {
+
+        internal struct TwoByteStr
+        {
+            public byte first;
+            public byte second;
+        }
+
+        [DllImport("*")]
+        internal static unsafe extern int printf(byte* str, byte* unused);
+
+        private static unsafe void PrintString(string s)
+        {
+            int length = s.Length;
+            fixed (char* curChar = s)
+            {
+                for (int i = 0; i < length; i++)
+                {
+                    TwoByteStr curCharStr;
+                    curCharStr.first = (byte)(*(curChar + i));
+                    printf((byte*)&curCharStr, null);
+                }
+            }
+        }
+
+        internal static void PrintLine(string s)
+        {
+            PrintString(s);
+            PrintString("\n");
+        }
+
+    }
 
     [DebuggerTypeProxy(typeof(StackDebugView<>))]
     [DebuggerDisplay("Count = {Count}")]
@@ -278,10 +313,13 @@ namespace System.Collections.Generic
             }
         }
 
+
         // Non-inline from Stack.Push to improve its code quality as uncommon path
-        [MethodImpl(MethodImplOptions.NoInlining)]
+            [MethodImpl(MethodImplOptions.NoInlining)]
         private void PushWithResize(T item)
         {
+            X.PrintLine(_size.ToString());
+            X.PrintLine(_array.Length.ToString());
             Debug.Assert(_size == _array.Length);
             Grow(_size + 1);
             _array[_size] = item;

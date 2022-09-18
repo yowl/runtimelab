@@ -251,7 +251,13 @@ namespace ILCompiler.DependencyAnalysis
                 Module.AddFunction("RhpReversePInvoke2", LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(reversePInvokeFrameType, 0) }, false));
             }
 
-            var shadowStackBottom = Module.AddGlobal(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), "t_pShadowStackBottom");
+            var shadowStackBottom = Module.GetNamedGlobal("t_pShadowStackBottom");
+            if (shadowStackBottom.Handle == IntPtr.Zero)
+            {
+                shadowStackBottom = Module.AddGlobal(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), "t_pShadowStackBottom");
+            }
+
+            // var shadowStackBottom = Module.AddGlobal(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), "t_pShadowStackBottom");
             shadowStackBottom.Linkage = LLVMLinkage.LLVMExternalLinkage;
             shadowStackBottom.Initializer = LLVMValueRef.CreateConstPointerNull(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0));
             shadowStackBottom.ThreadLocalMode = LLVMThreadLocalMode.LLVMLocalDynamicTLSModel;
@@ -266,7 +272,7 @@ namespace ILCompiler.DependencyAnalysis
 
         private void EmitNativeMain(LLVMContextRef context)
         {
-            LLVMValueRef shadowStackTop = Module.GetNamedGlobal("t_pShadowStackTop");
+            LLVMValueRef shadowStackTopGlobal = Module.GetNamedGlobal("t_pShadowStackTop");
 
             LLVMBuilderRef builder = context.CreateBuilder();
             var mainSignature = LLVMTypeRef.CreateFunction(LLVMTypeRef.Int32, new LLVMTypeRef[] { LLVMTypeRef.Int32, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }, false);
@@ -285,12 +291,7 @@ namespace ILCompiler.DependencyAnalysis
 
             builder.BuildCall(rhpReversePInvoke2, new LLVMValueRef[] { reversePinvokeFrame }, "");
 
-            var shadowStack = builder.BuildMalloc(LLVMTypeRef.CreateArray(LLVMTypeRef.Int8, 1000000), String.Empty);
-            var castShadowStack = builder.BuildPointerCast(shadowStack, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), String.Empty);
-            builder.BuildStore(castShadowStack, shadowStackTop);
-
-            var shadowStackBottom = Module.GetNamedGlobal("t_pShadowStackBottom");
-            builder.BuildStore(castShadowStack, shadowStackBottom);
+            LLVMValueRef shadowStackTop = builder.BuildLoad(shadowStackTopGlobal); // allocated and set in InitializeModules
 
             // Pass on main arguments
             LLVMValueRef argc = mainFunc.GetParam(0);
@@ -298,7 +299,7 @@ namespace ILCompiler.DependencyAnalysis
 
             LLVMValueRef mainReturn = builder.BuildCall(managedMain, new LLVMValueRef[]
             {
-                castShadowStack,
+                shadowStackTop,
                 argc,
                 argv,
             },
