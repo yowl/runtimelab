@@ -25285,6 +25285,7 @@ void gc_heap::mark_phase (int condemned_gen_number, BOOL mark_only_p)
 inline
 void gc_heap::pin_object (uint8_t* o, uint8_t** ppObject)
 {
+    printf ("Pinning %p->%p\n", ppObject, o);
     dprintf (3, ("Pinning %Ix->%Ix", (size_t)ppObject, (size_t)o));
     set_pinned (o);
 
@@ -43450,7 +43451,6 @@ void GCHeap::Relocate (Object** ppObject, ScanContext* sc,
                        uint32_t flags)
 {
     UNREFERENCED_PARAMETER(sc);
-
     uint8_t* object = (uint8_t*)(Object*)(*ppObject);
 
     THREAD_NUMBER_FROM_CONTEXT;
@@ -43460,6 +43460,7 @@ void GCHeap::Relocate (Object** ppObject, ScanContext* sc,
 
     if (!object || !((object >= g_gc_lowest_address) && (object < g_gc_highest_address)))
         return;
+
 
     gc_heap* hp = gc_heap::heap_of (object);
 
@@ -43505,6 +43506,7 @@ void GCHeap::Relocate (Object** ppObject, ScanContext* sc,
             ptrdiff_t ref_offset = object - pheader;
             hp->relocate_address(&pheader THREAD_NUMBER_ARG);
             *ppObject = (Object*)(pheader + ref_offset);
+            printf("relocated (GC_CALL_INTERIOR) object %p ppObject at %p (%p)\n", object, ppObject, *ppObject);
             return;
         }
     }
@@ -43514,6 +43516,7 @@ void GCHeap::Relocate (Object** ppObject, ScanContext* sc,
         hp->relocate_address(&pheader THREAD_NUMBER_ARG);
         *ppObject = (Object*)pheader;
     }
+    printf("relocated object %p ppObject at %p (%p)\n", object, ppObject, *ppObject);
 
     STRESS_LOG_ROOT_RELOCATE(ppObject, object, pheader, ((!(flags & GC_CALL_INTERIOR)) ? ((Object*)object)->GetGCSafeMethodTable() : 0));
 }

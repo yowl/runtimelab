@@ -151,6 +151,7 @@ void GcBulkEnumObjects(PTR_PTR_Object pObjs, uint32_t cObjs, EnumGcRefCallbackFu
 // non-interior will cause the GC to make assumptions and crash quite quickly.
 void GcEnumObjectsConservatively(PTR_PTR_Object ppLowerBound, PTR_PTR_Object ppUpperBound, EnumGcRefCallbackFunc * fnGcEnumRef, EnumGcRefScanContext * pSc)
 {
+	    printf("GcEnumObjectsConservatively limits %p -> %p\n", ppLowerBound, ppUpperBound);
     // Only report potential references in the promotion phase. Since we report everything as pinned there
     // should be no work to do in the relocation phase.
     if (pSc->promotion)

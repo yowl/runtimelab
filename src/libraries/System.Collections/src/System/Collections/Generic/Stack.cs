@@ -51,6 +51,31 @@ namespace System.Collections.Generic
             PrintString("\n");
         }
 
+        private static TwoByteStr tbs;
+
+        public static unsafe void PrintByte(byte b)
+        {
+            fixed (TwoByteStr* s = &tbs)
+            {
+                var nib = (b & 0xf0) >> 4;
+                tbs.first = (byte)((nib <= 9 ? '0' : 'A') + (nib <= 9 ? nib : nib - 10));
+                printf((byte*)s, null);
+                nib = (b & 0xf);
+                tbs.first = (byte)((nib <= 9 ? '0' : 'A') + (nib <= 9 ? nib : nib - 10));
+                printf((byte*)s, null);
+            }
+        }
+
+        public static unsafe void PrintUint(int l)
+        {
+            PrintByte((byte)((l >> 24) & 0xff));
+            PrintByte((byte)((l >> 16) & 0xff));
+            PrintByte((byte)((l >> 8) & 0xff));
+            PrintByte((byte)(l & 0xff));
+
+            PrintString("\n");
+
+        }
     }
 
     [DebuggerTypeProxy(typeof(StackDebugView<>))]
@@ -69,6 +94,7 @@ namespace System.Collections.Generic
 
         public Stack()
         {
+            X.PrintUint(0);
             _array = Array.Empty<T>();
         }
 
@@ -318,8 +344,8 @@ namespace System.Collections.Generic
             [MethodImpl(MethodImplOptions.NoInlining)]
         private void PushWithResize(T item)
         {
-            X.PrintLine(_size.ToString());
-            X.PrintLine(_array.Length.ToString());
+            // X.PrintLine(_size.ToString());
+            // X.PrintLine(_array.Length.ToString());
             Debug.Assert(_size == _array.Length);
             Grow(_size + 1);
             _array[_size] = item;

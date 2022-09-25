@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 #include <stdint.h>
+#include <stdio.h>
 
 #if defined HOST_WASM
 #include <exception>
@@ -187,10 +188,11 @@ extern "C" uint32_t RhpCallFilterFunclet(void* exceptionObj, void * pHandlerIP, 
 {
     return LlvmFilterFunclet(pHandlerIP, shadowStack);
 }
-extern "C" void LlvmFinallyFunclet(void *finallyHandler, void *shadowStack);
-extern "C" void RhpCallFinallyFunclet(void *finallyHandler, void *shadowStack)
+extern "C" void LlvmFinallyFunclet(void *finallyHandler, void *shadowStack, uint32_t usedSSBytes);
+extern "C" void RhpCallFinallyFuncletWasm(void *finallyHandler, void *shadowStack, uint32_t usedSSBytes)
 {
-    LlvmFinallyFunclet(finallyHandler, shadowStack);
+	printf("finally with used %d\n", usedSSBytes);
+    LlvmFinallyFunclet(finallyHandler, shadowStack, usedSSBytes);
 }
 extern "C" void* RtRHeaderWrapper();
 #endif // HOST_WASM

@@ -105,13 +105,16 @@ namespace System.Runtime
             return false;
         }
 
-        private static void InvokeSecondPassWasm(uint idxStart, uint idxTryLandingStart /* we do dont have the PC, so use the start of the block */, ref EHClauseIterator clauseIter, uint idxLimit, void* shadowStack)
+        private static void InvokeSecondPassWasm(uint idxStart, uint idxTryLandingStart /* we do dont have the PC, so use the start of the block */, ref EHClauseIterator clauseIter, uint idxLimit, void* shadowStack, uint usedSSBytes)
         {
+            PrintLine("InvokeSecondPassWasm");
+            PrintLine(usedSSBytes.ToString());
             // Search the clauses for one that contains the current offset.
             RhEHClauseWasm ehClause = new RhEHClauseWasm();
             for (uint curIdx = 0; clauseIter.Next(ref ehClause) && curIdx < idxLimit; curIdx++)
             {
-
+                //PrintLine("InvokeSecondPassWasm for");
+                //PrintLine(curIdx.ToString());
                 if (curIdx > idxStart)
                 {
                     break; // these blocks are after the catch
@@ -122,6 +125,8 @@ namespace System.Runtime
                 if ((clauseKind != EHClauseIterator.RhEHClauseKindWasm.RH_EH_CLAUSE_FAULT)
                     || !ehClause.ContainsCodeOffset(idxTryLandingStart))
                 {
+                    //PrintLine("continue - not fault or not in ehClause");
+
                     continue;
                 }
 
@@ -139,9 +144,42 @@ namespace System.Runtime
                 // method will no longer get any more GC callbacks.
 
                 byte* pFinallyHandler = ehClause._handlerAddress;
+                //PrintLine("Calling handler for curIdx");
+                //PrintLine(curIdx.ToString());
+                InternalCalls.RhpCallFinallyFuncletWasm(pFinallyHandler, shadowStack, usedSSBytes);
+            }
+            //PrintLine("Second Pass End");
 
-                InternalCalls.RhpCallFinallyFunclet(pFinallyHandler, shadowStack);
+        }
+
+        internal struct TwoByteStr
+        {
+            public byte first;
+            public byte second;
+        }
+
+        [DllImport("*")]
+        internal static unsafe extern int printf(byte* str, byte* unused);
+
+        private static unsafe void PrintString(string s)
+        {
+            int length = s.Length;
+            fixed (char* curChar = s)
+            {
+                for (int i = 0; i < length; i++)
+                {
+                    TwoByteStr curCharStr = new TwoByteStr();
+                    curCharStr.first = (byte)(*(curChar + i));
+                    printf((byte*)&curCharStr, null);
+                }
             }
         }
+
+        internal static void PrintLine(string s)
+        {
+            PrintString(s);
+            PrintString("\n");
+        }
+
     } // static class EH
 }

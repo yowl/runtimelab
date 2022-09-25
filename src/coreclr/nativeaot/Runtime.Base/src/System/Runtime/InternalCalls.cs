@@ -227,6 +227,12 @@ namespace System.Runtime
         internal static extern unsafe IntPtr RhpCallCatchFunclet(
             object exceptionObj, byte* pHandlerIP, void* pvRegDisplay, ref EH.ExInfo exInfo);
 
+#if TARGET_WASM
+        [RuntimeImport(Redhawk.BaseName, "RhpCallFinallyFuncletWasm")]
+        [MethodImpl(MethodImplOptions.InternalCall)]
+        internal static extern unsafe void RhpCallFinallyFuncletWasm(byte* pHandlerIP, void* pvRegDisplay, uint usedSSBytes);
+#endif //TARGET_WASM
+
         [RuntimeImport(Redhawk.BaseName, "RhpCallFinallyFunclet")]
         [MethodImpl(MethodImplOptions.InternalCall)]
         internal static extern unsafe void RhpCallFinallyFunclet(byte* pHandlerIP, void* pvRegDisplay);

@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.IL">
+    <PropertyGroup>
+        <!--<TargetFramework>netstandard2.0</TargetFramework>-->
+        <!--<MicrosoftNetCoreIlasmPackageVersion>3.0.0-preview-27318-01</MicrosoftNetCoreIlasmPackageVersion>-->
+   <NoExplicitReferenceToStdLib>true</NoExplicitReferenceToStdLib>
+    <AddAdditionalExplicitAssemblyReferences>false</AddAdditionalExplicitAssemblyReferences>
+    <ExcludeMscorlibFacade>true</ExcludeMscorlibFacade>
+    </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="ILHelpers.il" />
+    <PackageReference Include="Microsoft.NET.Sdk.IL" Version="6.0.0">
+    </PackageReference>
+  </ItemGroup>
+  
+</Project>

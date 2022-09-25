@@ -23,7 +23,6 @@
         return "    IGCHeap::Promote: Promote GC Root *%p = %p MT = %pT\n";
     }
 
-asdfadf
     static const char* gcPlugMoveMsg()
     {
         STATIC_CONTRACT_LEAF;

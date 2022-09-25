@@ -9,6 +9,8 @@ using System.Runtime.InteropServices;
 
 using Internal.Runtime;
 using Internal.Runtime.CompilerHelpers;
+using Internal.Runtime.CompilerServices;
+using Internal;
 
 namespace System.Runtime.CompilerServices
 {
@@ -127,6 +129,69 @@ namespace System.Runtime.CompilerServices
             NoisyLog("EnsureClassConstructorRun complete, cctor={0}, thread={1}", pfnCctor, CurrentManagedThreadId);
         }
 
+        internal struct TwoByteStr
+        {
+            public byte first;
+            public byte second;
+        }
+
+        [DllImport("*")]
+        internal static unsafe extern int printf(byte* str, byte* unused);
+
+        private static unsafe void PrintString(string s)
+        {
+            int length = s.Length;
+            fixed (char* curChar = s)
+            {
+                for (int i = 0; i < length; i++)
+                {
+                    TwoByteStr curCharStr = new TwoByteStr();
+                    curCharStr.first = (byte)(*(curChar + i));
+                    printf((byte*)&curCharStr, null);
+                }
+            }
+        }
+        static TwoByteStr tbs;
+
+        public static unsafe void PrintUintNoNL(uint l)
+        {
+            PrintByte((byte)((l >> 24) & 0xff));
+            PrintByte((byte)((l >> 16) & 0xff));
+            PrintByte((byte)((l >> 8) & 0xff));
+            PrintByte((byte)(l & 0xff));
+        }
+
+        public static unsafe void PrintUint(uint l)
+        {
+            PrintByte((byte)((l >> 24) & 0xff));
+            PrintByte((byte)((l >> 16) & 0xff));
+            PrintByte((byte)((l >> 8) & 0xff));
+            PrintByte((byte)(l & 0xff));
+
+            PrintString("\n");
+        }
+
+        public static unsafe void PrintByte(byte b)
+        {
+            tbs.second = 0;
+            fixed (TwoByteStr* s = &tbs)
+            {
+                var nib = (b & 0xf0) >> 4;
+                tbs.first = (byte)((nib <= 9 ? '0' : 'A') + (nib <= 9 ? nib : nib - 10));
+                printf((byte*)s, null);
+                nib = (b & 0xf);
+                tbs.first = (byte)((nib <= 9 ? '0' : 'A') + (nib <= 9 ? nib : nib - 10));
+                printf((byte*)s, null);
+            }
+        }
+
+
+        internal static void PrintLine(string s)
+        {
+            PrintString(s);
+            PrintString("\n");
+        }
+
         //=========================================================================================================
         // Return value:
         //   true   - lock acquired.
@@ -141,7 +206,13 @@ namespace System.Runtime.CompilerServices
 
             int cctorIndex = cctor.Index;
             Cctor[] cctors = cctor.Array;
+            PrintString("cctors index, cctor.Array state ");
+            PrintUintNoNL((uint)cctorIndex);
+            PrintString(" ");
+            PrintUintNoNL(ClassConstructorRunner.Cctor.GetAddr(cctors));
+            PrintString(" ");
             Lock lck = cctors[cctorIndex].Lock;
+            PrintUint((uint)lck._state);
             if (lck.IsAcquired)
                 return false;     // Thread recursively triggered the same cctor.
 
@@ -252,7 +323,7 @@ namespace System.Runtime.CompilerServices
         // the class constructor has been successfully initialized, we reclaim this structure. The structure is long-
         // lived only if the class constructor threw an exception.
         //==============================================================================================================
-        private unsafe struct Cctor
+        internal unsafe struct Cctor
         {
             public Lock Lock;
             public TypeInitializationException Exception;
@@ -342,7 +413,13 @@ namespace System.Runtime.CompilerServices
 
                         Debug.Assert(resultArray[resultIndex]._pContext == default(StaticClassConstructionContext*));
                         resultArray[resultIndex]._pContext = pContext;
-                        resultArray[resultIndex].Lock = new Lock();
+                        var l = new Lock();
+                        PrintString("Lock address ");
+                        var objAddr = GetAddr(l); //ILHelpers.ILHelpersTest.AddrOf(l);
+                        PrintUintNoNL(objAddr);
+                        PrintString(" ");
+                        PrintUint((uint)l._state);
+                        resultArray[resultIndex].Lock = l;
                         s_count++;
                     }
 
@@ -351,6 +428,10 @@ namespace System.Runtime.CompilerServices
                 }
             }
 
+            public static uint GetAddr(object o)
+            {
+                return 0;
+            }
             public static int Count
             {
                 get
@@ -378,7 +459,7 @@ namespace System.Runtime.CompilerServices
             }
         }
 
-        private struct CctorHandle
+        internal struct CctorHandle
         {
             public CctorHandle(Cctor[] array, int index)
             {
@@ -493,41 +574,14 @@ namespace System.Runtime.CompilerServices
             s_cctorGlobalLock = new Lock();
         }
 
-        [DllImport("*")]
-        private static unsafe extern int printf(byte* str, byte* unused);
 
-        public struct TwoByteStr
-        {
-            public byte first;
-            public byte second;
-        }
-        private static unsafe void PrintString(string s)
-        {
-            int length = s.Length;
-            fixed (char* curChar = s)
-            {
-                for (int i = 0; i < length; i++)
-                {
-                    TwoByteStr curCharStr = new TwoByteStr();
-                    curCharStr.first = (byte)(*(curChar + i));
-                    printf((byte*)&curCharStr, null);
-                }
-            }
-        }
-        static void PrintLine(string s)
-        {
-            PrintString(s);
-            PrintString("\n");
-        }
-
-        // [Conditional("ENABLE_NOISY_CCTOR_LOG")]
+        [Conditional("ENABLE_NOISY_CCTOR_LOG")]
         private static void NoisyLog(string format, IntPtr cctorMethod, int threadId)
         {
             // We cannot utilize any of the typical number formatting code because it triggers globalization code to run
             // and this cctor code is layered below globalization.
 #if DEBUG
-            PrintLine(format);
-//            Debug.WriteLine(format, ToHexString(cctorMethod), ToHexString(threadId));
+            Debug.WriteLine(format, ToHexString(cctorMethod), ToHexString(threadId));
 #endif // DEBUG
         }
 

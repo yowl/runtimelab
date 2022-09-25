@@ -4,6 +4,7 @@
 using System.Diagnostics;
 using System.Runtime;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace System.Threading
 {
@@ -38,7 +39,7 @@ namespace System.Threading
 
         private const int Uncontended = 0;
 
-        private volatile int _state;
+        internal volatile int _state;
 
         private uint _recursionCount;
         private IntPtr _owningThreadId;
@@ -175,6 +176,7 @@ namespace System.Threading
                     // we'd need to have about 1 billion waiting threads, which is inconceivable anytime in the
                     // forseeable future.
                     //
+                    PrintLine("WaiterCountIncrement");
                     int newState = (oldState + WaiterCountIncrement) & ~WaiterWoken;
                     if (Interlocked.CompareExchange(ref _state, newState, oldState) == oldState)
                         break;
@@ -212,7 +214,7 @@ namespace System.Threading
                         // The lock is available, try to get it.
                         newState |= Locked;
                         newState -= WaiterCountIncrement;
-
+                        PrintLine("-= WaiterCountIncrement");
                         if (Interlocked.CompareExchange(ref _state, newState, oldState) == oldState)
                             goto GotTheLock;
                     }
@@ -241,7 +243,61 @@ namespace System.Threading
             return true;
         }
 
-        public bool IsAcquired
+        public struct TwoByteStr
+        {
+            public byte first;
+            public byte second;
+        }
+
+        static TwoByteStr tbs;
+
+        [DllImport("*")]
+        private static unsafe extern int printf(byte* str, byte* unused);
+        private static unsafe void PrintString(string s)
+        {
+            int length = s.Length;
+            fixed (char* curChar = s)
+            {
+                for (int i = 0; i < length; i++)
+                {
+                    TwoByteStr curCharStr = new TwoByteStr();
+                    curCharStr.first = (byte)(*(curChar + i));
+                    printf((byte*)&curCharStr, null);
+                }
+            }
+        }
+
+        public static void PrintLine(string s)
+        {
+            PrintString(s);
+            PrintString("\n");
+        }
+
+        public static unsafe void PrintUint(int l)
+        {
+            PrintByte((byte)((l >> 24) & 0xff));
+            PrintByte((byte)((l >> 16) & 0xff));
+            PrintByte((byte)((l >> 8) & 0xff));
+            PrintByte((byte)(l & 0xff));
+
+            PrintString("\n");
+        }
+
+        public static unsafe void PrintByte(byte b)
+        {
+            tbs.second = 0;
+            fixed (TwoByteStr* s = &tbs)
+            {
+                var nib = (b & 0xf0) >> 4;
+                tbs.first = (byte)((nib <= 9 ? '0' : 'A') + (nib <= 9 ? nib : nib - 10));
+                printf((byte*)s, null);
+                nib = (b & 0xf);
+                tbs.first = (byte)((nib <= 9 ? '0' : 'A') + (nib <= 9 ? nib : nib - 10));
+                printf((byte*)s, null);
+            }
+        }
+
+        public unsafe bool IsAcquired
         {
             get
             {
@@ -267,7 +323,17 @@ namespace System.Threading
                 IntPtr currentThreadId = CurrentNativeThreadId;
                 bool acquired = (currentThreadId == _owningThreadId);
                 if (acquired)
+                {
+                    if ((_state & Locked) == 0)
+                    {
+                        PrintLine("Lock assert");
+                        PrintUint((int)ClassConstructorRunner.Cctor.GetAddr(this));
+                        PrintUint(_state);
+                        PrintUint(Locked);
+                    }
+
                     Debug.Assert((_state & Locked) != 0);
+                }
                 return acquired;
             }
         }

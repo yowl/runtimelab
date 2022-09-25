@@ -11,35 +11,67 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using System.Diagnostics;
 using System.Collections.Specialized;
+using Microsoft.Diagnostics.Tracing.Parsers.IIS_Trace;
 
 #if TARGET_WINDOWS
 using CpObj;
 using CkFinite;
 #endif
 
+// class QueuedPoolO
+// {
+//     private readonly System.Collections.Generic.Stack<object> _pool;
+//
+//     public QueuedPoolO(int size /*, Action<T> onpickup = null*/)
+//     {
+//         Console.WriteLine("O creating {0} | typeof: {1}", size, typeof(object));
+//         _pool = new System.Collections.Generic.Stack<object>(size);
+//         // _on_pickup = onpickup;
+//
+//         for (int i = 0; i < size; i++)
+//         {
+//             if (i % 500 == 0)
+//             {
+//                 Program.PrintLine("collect");
+//                 //     GC.Collect(1);
+//             }
+//
+//             var inst = new object();
+//             _pool.Push(inst);
+//             // _pool.Push(o);
+//         }
+//         //
+//         // Console.WriteLine("done");
+//     }
+// }
+
 class QueuedPool<T> where T : class, new()
 {
     private readonly Action<T> _on_pickup;
-    private readonly System.Collections.Generic.Stack<T> _pool;
+    private static System.Collections.Generic.Stack<T> _pool;
 
 
-    public QueuedPool(int size/*, Action<T> onpickup = null*/)
+    public QueuedPool(int size /*, Action<T> onpickup = null*/)
     {
         Console.WriteLine("creating {0} | typeof: {1}", size, typeof(T));
         MaxSize = size;
         _pool = new System.Collections.Generic.Stack<T>(size);
         // _on_pickup = onpickup;
-        
+        var o = new object();
         for (int i = 0; i < size; i++)
         {
-            // if (i % 100000 == 0)
-            // {
-            //     Program.PrintLine("collect");
+            if (i % 500 == 0)
+            {
+                Program.PrintLine("ctor 500");
             //     GC.Collect(1);
-            // }
+            }
+            var o2 = new object();
+
             var inst = new T();
             _pool.Push(inst);
-            // _pool.Push(null);
+            // var x = _pool.Peek();
+            // Program.PrintLine(x.GetType().ToString());
+            // _pool.Push(o);
         }
         //
         // Console.WriteLine("done");
@@ -100,15 +132,16 @@ abstract class BaseClass : BaseBaseClass
 
 class NormalClass : BaseClass
 {
-    static QueuedPool<NormalClass> _pool = new QueuedPool<NormalClass>(500000/*, s => {
-        s.XX = 123;
-    }*/);
-
+    // static QueuedPool<NormalClass> _pool = new QueuedPool<NormalClass>(500000/*, s => {
+    //     s.XX = 123;
+    // }*/);
+    //
     public static NormalClass Create(uint s)
     {
-        var o = _pool.GetOne();
-        o.X = s;
-        return o;
+        // var o = _pool.GetOne();
+        // o.X = s;
+        // return o;
+        return null;
     }
 
     public NormalClass() : base(0)
@@ -131,7 +164,11 @@ internal static class Program
     internal static bool Success;
     private static unsafe int Main(string[] args)
     {
-        var _pool = new QueuedPool<NormalClass>(500000/*, s => {
+        // var _poolO = new QueuedPoolO(50000/*, s => {
+        //     s.XX = 123;
+        // }*/);
+
+        var _pool = new QueuedPool<object>(100000/*, s => {
             s.XX = 123;
         }*/);
         PrintLine("created pool");
@@ -143,10 +180,10 @@ internal static class Program
             // GC.Collect(1);
         }
 
-        for (uint i = 0; i < 5000; ++i)
-        {
-            var p = NormalClass.Create(i);
-        }
+        // for (uint i = 0; i < 5000; ++i)
+        // {
+        //     var p = NormalClass.Create(i);
+        // }
 
         var x = new StructWithObjRefs
         {
@@ -2041,7 +2078,7 @@ internal static class Program
         }
         finally
         {
-            clauseExceution += "F";
+            clauseExceution = "F";
         }
     }
 

@@ -84,6 +84,8 @@ namespace System.Runtime
 
         internal bool Next(ref EH.RhEHClauseWasm pEHClause)
         {
+            System.Runtime.EH.PrintLine("Next total clauese");
+            System.Runtime.EH.PrintLine(_totalClauses.ToString());
             if (_currentClause >= _totalClauses) return false;
 
             _currentClause++;
