@@ -53,6 +53,14 @@ namespace System.Runtime.CompilerServices
 
         public static unsafe void EnsureClassConstructorRun(StaticClassConstructionContext* pContext)
         {
+            if (pContext->initialized != 1)
+            {
+                PrintString("EnsureClassConstructorRun pContext != 1 ");
+                PrintUintNoNL((uint)pContext);
+                PrintString(" initialized ");
+                PrintUint((uint)pContext->initialized);
+            }
+
             IntPtr pfnCctor = pContext->cctorMethodAddress;
             // NoisyLog("EnsureClassConstructorRun, cctor={0}, thread={1}", pfnCctor, CurrentManagedThreadId);
 
@@ -70,6 +78,10 @@ namespace System.Runtime.CompilerServices
             try
             {
                 Lock cctorLock = cctors[cctorIndex].Lock;
+                // PrintString("before DeadlockAwareAcquire lock _state ");
+                // PrintUintNoNL(Cctor.GetAddr(cctorLock));
+                // PrintString(" ");
+                // PrintUint((uint)cctorLock._state);
                 if (DeadlockAwareAcquire(cctor, pfnCctor))
                 {
                     int currentManagedThreadId = CurrentManagedThreadId;
@@ -87,7 +99,11 @@ namespace System.Runtime.CompilerServices
                             {
                                 NoisyLog("Calling cctor, cctor={0}, thread={1}", pfnCctor, currentManagedThreadId);
 
+                                // PrintString("before cctor _state ");
+                                // PrintUint((uint)cctorLock._state);
                                 ((delegate*<void>)pfnCctor)();
+                                // PrintString("after cctor _state ");
+                                // PrintUint((uint)cctorLock._state);
 
                                 // Insert a memory barrier here to order any writes executed as part of static class
                                 // construction above with respect to the initialized flag update we're about to make
@@ -99,6 +115,10 @@ namespace System.Runtime.CompilerServices
                                 NoisyLog("Set type inited, cctor={0}, thread={1}", pfnCctor, currentManagedThreadId);
 
                                 pContext->initialized = 1;
+                                PrintString("EnsureClassConstructorRun setting initialized ");
+                                PrintUintNoNL((uint)pContext);
+                                PrintString(" initialized ");
+                                PrintUint((uint)pContext->initialized);
                             }
                             catch (Exception e)
                             {
@@ -206,13 +226,15 @@ namespace System.Runtime.CompilerServices
 
             int cctorIndex = cctor.Index;
             Cctor[] cctors = cctor.Array;
-            PrintString("cctors index, cctor.Array state ");
-            PrintUintNoNL((uint)cctorIndex);
-            PrintString(" ");
-            PrintUintNoNL(ClassConstructorRunner.Cctor.GetAddr(cctors));
-            PrintString(" ");
+            // PrintString("DeadlockAwareAcquire cctors index, cctor.Array lock state ");
+            // PrintUintNoNL((uint)cctorIndex);
+            // PrintString(" ");
+            // PrintUintNoNL(ClassConstructorRunner.Cctor.GetAddr(cctors));
+            // PrintString(" ");
             Lock lck = cctors[cctorIndex].Lock;
-            PrintUint((uint)lck._state);
+            // PrintUintNoNL(ClassConstructorRunner.Cctor.GetAddr(lck));
+            // PrintString(" ");
+            // PrintUint((uint)lck._state);
             if (lck.IsAcquired)
                 return false;     // Thread recursively triggered the same cctor.
 

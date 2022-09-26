@@ -85,7 +85,7 @@ namespace Internal.IL
 
             if (_compilation.TargetArchIsWasm())
             {
-                methodIL = ReplaceStubbedWasmMethods(method, methodIL);
+                methodIL = ReplaceStubbedWasmMethods(method, methodIL, null);
 
                 // TODO-LLVM: delete when all IL->LLVM module is gone
                 // ThrowNullReferenceException is added at various places in the IL->LLVM compilation, just add it

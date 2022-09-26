@@ -179,7 +179,7 @@ namespace Internal.IL
         public void Import()
         {
             FindBasicBlocks();
-            if (_mangledName == "S_P_CoreLib_System_Threading_Lock___ctor")
+            if (_mangledName == "wasm_HelloWorld_PacketHandlers__Add")
             {
 
             }
@@ -5251,7 +5251,7 @@ namespace Internal.IL
             StackEntry index = _stack.Pop();
             StackEntry arrayReference = _stack.Pop();
             var nullSafeElementType = elementType ?? GetWellKnownType(WellKnownType.Object);
-            PushLoadExpression(GetStackValueKind(nullSafeElementType), $"{arrayReference.Name()}Element", GetElementAddress(index.ValueAsInt32(_builder, true), arrayReference.ValueAsType(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), _builder), nullSafeElementType), nullSafeElementType);
+            PushLoadExpression(GetStackValueKind(nullSafeElementType), $"{arrayReference.Name()}Element", GetElementAddress(index.ValueAsInt32(_builder, false), arrayReference.ValueAsType(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), _builder), nullSafeElementType), nullSafeElementType);
         }
 
         private void ImportStoreElement(int token)
@@ -5265,7 +5265,7 @@ namespace Internal.IL
             StackEntry index = _stack.Pop();
             StackEntry arrayReference = _stack.Pop();
             var nullSafeElementType = elementType ?? GetWellKnownType(WellKnownType.Object);
-            LLVMValueRef elementAddress = GetElementAddress(index.ValueAsInt32(_builder, true), arrayReference.ValueAsType(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), _builder), nullSafeElementType);
+            LLVMValueRef elementAddress = GetElementAddress(index.ValueAsInt32(_builder, false), arrayReference.ValueAsType(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), _builder), nullSafeElementType);
             CastingStore(elementAddress, value, nullSafeElementType, true);
         }
 

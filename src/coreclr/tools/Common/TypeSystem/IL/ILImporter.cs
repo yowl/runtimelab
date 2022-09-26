@@ -951,7 +951,7 @@ namespace Internal.IL
         }
 
         // TODO-LLVM: look for a WASI random function; investigate ICU and EnumCalendarInfo
-        public static MethodIL ReplaceStubbedWasmMethods(MethodDesc method, MethodIL methodIL)
+        public static MethodIL ReplaceStubbedWasmMethods(MethodDesc method, MethodIL methodIL, string mangledName)
         {
             // stubs for Unix calls which are not available to this target yet
             if ((method.OwningType as EcmaType)?.Name == "Interop" && method.Name == "GetRandomBytes")
@@ -963,6 +963,11 @@ namespace Internal.IL
             {
                 // just return false 
                 return new ILStubMethodIL(method, new byte[] { (byte)ILOpcode.ldc_i4_0, (byte)ILOpcode.ret }, Array.Empty<LocalVariableDefinition>(), null);
+            }
+
+            if (mangledName == "S_P_CoreLib_System_Runtime_CompilerServices_ClassConstructorRunner_Cctor__GetAddr" || mangledName == "wasm_HelloWorld_GameClass__GetAddr")
+            {
+                return new ILStubMethodIL(method, new byte[] { (byte)ILOpcode.ldarg_0, (byte)ILOpcode.ret }, Array.Empty<LocalVariableDefinition>(), null);
             }
 
             return methodIL;
