@@ -53,13 +53,13 @@ namespace System.Runtime.CompilerServices
 
         public static unsafe void EnsureClassConstructorRun(StaticClassConstructionContext* pContext)
         {
-            if (pContext->initialized != 1)
-            {
-                PrintString("EnsureClassConstructorRun pContext != 1 ");
-                PrintUintNoNL((uint)pContext);
-                PrintString(" initialized ");
-                PrintUint((uint)pContext->initialized);
-            }
+            //if (pContext->initialized != 1)
+            //{
+            //    PrintString("EnsureClassConstructorRun pContext != 1 ");
+            //    PrintUintNoNL((uint)pContext);
+            //    PrintString(" initialized ");
+            //    PrintUint((uint)pContext->initialized);
+            //}
 
             IntPtr pfnCctor = pContext->cctorMethodAddress;
             // NoisyLog("EnsureClassConstructorRun, cctor={0}, thread={1}", pfnCctor, CurrentManagedThreadId);
@@ -115,10 +115,10 @@ namespace System.Runtime.CompilerServices
                                 NoisyLog("Set type inited, cctor={0}, thread={1}", pfnCctor, currentManagedThreadId);
 
                                 pContext->initialized = 1;
-                                PrintString("EnsureClassConstructorRun setting initialized ");
-                                PrintUintNoNL((uint)pContext);
-                                PrintString(" initialized ");
-                                PrintUint((uint)pContext->initialized);
+                                //PrintString("EnsureClassConstructorRun setting initialized ");
+                                //PrintUintNoNL((uint)pContext);
+                                //PrintString(" initialized ");
+                                //PrintUint((uint)pContext->initialized);
                             }
                             catch (Exception e)
                             {
@@ -173,23 +173,23 @@ namespace System.Runtime.CompilerServices
         }
         static TwoByteStr tbs;
 
-        public static unsafe void PrintUintNoNL(uint l)
-        {
-            PrintByte((byte)((l >> 24) & 0xff));
-            PrintByte((byte)((l >> 16) & 0xff));
-            PrintByte((byte)((l >> 8) & 0xff));
-            PrintByte((byte)(l & 0xff));
-        }
+        //public static unsafe void PrintUintNoNL(uint l)
+        //{
+        //    PrintByte((byte)((l >> 24) & 0xff));
+        //    PrintByte((byte)((l >> 16) & 0xff));
+        //    PrintByte((byte)((l >> 8) & 0xff));
+        //    PrintByte((byte)(l & 0xff));
+        //}
 
-        public static unsafe void PrintUint(uint l)
-        {
-            PrintByte((byte)((l >> 24) & 0xff));
-            PrintByte((byte)((l >> 16) & 0xff));
-            PrintByte((byte)((l >> 8) & 0xff));
-            PrintByte((byte)(l & 0xff));
+        //public static unsafe void PrintUint(uint l)
+        //{
+        //    PrintByte((byte)((l >> 24) & 0xff));
+        //    PrintByte((byte)((l >> 16) & 0xff));
+        //    PrintByte((byte)((l >> 8) & 0xff));
+        //    PrintByte((byte)(l & 0xff));
 
-            PrintString("\n");
-        }
+        //    PrintString("\n");
+        //}
 
         public static unsafe void PrintByte(byte b)
         {
@@ -436,11 +436,11 @@ namespace System.Runtime.CompilerServices
                         Debug.Assert(resultArray[resultIndex]._pContext == default(StaticClassConstructionContext*));
                         resultArray[resultIndex]._pContext = pContext;
                         var l = new Lock();
-                        PrintString("Lock address ");
+                        // PrintString("Lock address ");
                         var objAddr = GetAddr(l); //ILHelpers.ILHelpersTest.AddrOf(l);
-                        PrintUintNoNL(objAddr);
-                        PrintString(" ");
-                        PrintUint((uint)l._state);
+                        // PrintUintNoNL(objAddr);
+                        // PrintString(" ");
+                        // PrintUint((uint)l._state);
                         resultArray[resultIndex].Lock = l;
                         s_count++;
                     }

@@ -191,7 +191,6 @@ extern "C" uint32_t RhpCallFilterFunclet(void* exceptionObj, void * pHandlerIP, 
 extern "C" void LlvmFinallyFunclet(void *finallyHandler, void *shadowStack, uint32_t usedSSBytes);
 extern "C" void RhpCallFinallyFuncletWasm(void *finallyHandler, void *shadowStack, uint32_t usedSSBytes)
 {
-	printf("finally with used %d\n", usedSSBytes);
     LlvmFinallyFunclet(finallyHandler, shadowStack, usedSSBytes);
 }
 extern "C" void* RtRHeaderWrapper();

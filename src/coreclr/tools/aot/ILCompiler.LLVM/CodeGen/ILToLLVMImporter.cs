@@ -3222,7 +3222,7 @@ namespace Internal.IL
                 llvmArguments[i] = arguments[i].ValueAsType(GetLLVMTypeForTypeDesc(signatureType), _builder);
             }
             LLVMTypeRef llprintfType = LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new[] { LLVMTypeRef.Int8 });
-            LLVMValueRef llprintf = GetOrCreateLLVMFunction(LLVMCodegenCompilation.Module, "llprintf", llprintfType);
+            //LLVMValueRef llprintf = GetOrCreateLLVMFunction(LLVMCodegenCompilation.Module, "llprintf", llprintfType);
             // builder.BuildCall(llprintf, new[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int8, 67) });
 
             _builder.BuildStore(_builder.BuildLoad(GetAddressCacheForFunclet(_currentFunclet).EndOfUsedShadowStackPtr), ShadowStackTop);
@@ -5180,32 +5180,8 @@ namespace Internal.IL
                     LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), 0));
                 thisPtr = _builder.BuildLoad(typedAddress, "loadThis");
 
-                if (p)
-                {
-                    // thisPtr
-                    _builder.BuildCall(
-                        GetOrCreateLLVMFunction("System_Collections_System_Collections_Generic_X__PrintUint",
-                            LLVMTypeRef.CreateFunction(LLVMTypeRef.Void,
-                                new[] {LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), LLVMTypeRef.Int32})),
-                        new LLVMValueRef[]
-                        {
-                            GetShadowStack(_builder), _builder.BuildPtrToInt(thisPtr, LLVMTypeRef.Int32)
-                        });
-                }
 
                 var methodtable =  _builder.BuildLoad( thisPtr, "methodTablePtrRef");
-                if (p)
-                {
-                    _builder.BuildCall(
-                        GetOrCreateLLVMFunction("System_Collections_System_Collections_Generic_X__PrintUint",
-                            LLVMTypeRef.CreateFunction(LLVMTypeRef.Void,
-                                new[] {LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), LLVMTypeRef.Int32})),
-                        new LLVMValueRef[]
-                        {
-                            GetShadowStack(_builder), _builder.BuildPtrToInt(methodtable, LLVMTypeRef.Int32)
-                        });
-                }
-
                 return methodtable;
             }
             // if the function has exception regions, the generic context is stored in a local, otherwise get it from the parameters

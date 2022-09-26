@@ -66,16 +66,16 @@ namespace System.Collections.Generic
             }
         }
 
-        public static unsafe void PrintUint(int l)
-        {
-            PrintByte((byte)((l >> 24) & 0xff));
-            PrintByte((byte)((l >> 16) & 0xff));
-            PrintByte((byte)((l >> 8) & 0xff));
-            PrintByte((byte)(l & 0xff));
+        //public static unsafe void PrintUint(int l)
+        //{
+        //    PrintByte((byte)((l >> 24) & 0xff));
+        //    PrintByte((byte)((l >> 16) & 0xff));
+        //    PrintByte((byte)((l >> 8) & 0xff));
+        //    PrintByte((byte)(l & 0xff));
 
-            PrintString("\n");
+        //    PrintString("\n");
 
-        }
+        //}
     }
 
     [DebuggerTypeProxy(typeof(StackDebugView<>))]
@@ -94,7 +94,7 @@ namespace System.Collections.Generic
 
         public Stack()
         {
-            X.PrintUint(0);
+            // X.PrintUint(0);
             _array = Array.Empty<T>();
         }
 

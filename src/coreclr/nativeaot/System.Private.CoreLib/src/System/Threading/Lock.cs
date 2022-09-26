@@ -273,15 +273,15 @@ namespace System.Threading
             PrintString("\n");
         }
 
-        public static unsafe void PrintUint(int l)
-        {
-            PrintByte((byte)((l >> 24) & 0xff));
-            PrintByte((byte)((l >> 16) & 0xff));
-            PrintByte((byte)((l >> 8) & 0xff));
-            PrintByte((byte)(l & 0xff));
+        //public static unsafe void PrintUint(int l)
+        //{
+        //    PrintByte((byte)((l >> 24) & 0xff));
+        //    PrintByte((byte)((l >> 16) & 0xff));
+        //    PrintByte((byte)((l >> 8) & 0xff));
+        //    PrintByte((byte)(l & 0xff));
 
-            PrintString("\n");
-        }
+        //    PrintString("\n");
+        //}
 
         public static unsafe void PrintByte(byte b)
         {
@@ -324,14 +324,6 @@ namespace System.Threading
                 bool acquired = (currentThreadId == _owningThreadId);
                 if (acquired)
                 {
-                    if ((_state & Locked) == 0)
-                    {
-                        PrintLine("Lock assert");
-                        PrintUint((int)ClassConstructorRunner.Cctor.GetAddr(this));
-                        PrintUint(_state);
-                        PrintUint(Locked);
-                    }
-
                     Debug.Assert((_state & Locked) != 0);
                 }
                 return acquired;
