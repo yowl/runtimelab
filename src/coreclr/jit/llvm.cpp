@@ -1133,7 +1133,9 @@ void Llvm::buildHelperFuncCall(GenTreeCall* call)
     if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_GENERIC_HANDLE) ||
         call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_GENERIC_STATIC_BASE) ||
         call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_GVMLOOKUP_FOR_SLOT) || /* generates an extra parameter in the signature */
-        call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_DELEGATE_CTOR))
+        call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_DELEGATE_CTOR) ||
+        call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_THROW_PLATFORM_NOT_SUPPORTED)
+        )
     {
         // TODO-LLVM
         failFunctionCompilation();
@@ -1728,7 +1730,7 @@ void Llvm::buildNullCheck(GenTreeUnOp* nullCheckNode)
         builder.CreateRetVoid();
     }
 
-    buildLlvmCallOrInvoke(_nullCheckFunction, {getShadowStackForCallee(), getGenTreeValue(nullCheckNode->gtGetOp1())});
+    buildLlvmCallOrInvoke(_nullCheckFunction, {getShadowStackForCallee(), consumeValue(nullCheckNode->gtGetOp1(),  Type::getInt8PtrTy(_llvmContext))});
 }
 
 void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc)
