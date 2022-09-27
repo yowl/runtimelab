@@ -2088,7 +2088,7 @@ internal static class Program
         }
         finally
         {
-            clauseExceution = "F";
+            clauseExceution += "F";
         }
     }
 

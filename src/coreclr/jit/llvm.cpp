@@ -1125,7 +1125,9 @@ bool Llvm::helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd)
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_LMUL_OVF) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_ULMUL_OVF) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_ULDIV) ||
-           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_ULMOD);
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_ULMOD) ||
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_THROW_PLATFORM_NOT_SUPPORTED)
+        ;
 }
 
 void Llvm::buildHelperFuncCall(GenTreeCall* call)

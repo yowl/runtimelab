@@ -5636,6 +5636,13 @@ namespace Internal.IL
             }
 #endif
 
+#if DEBUG
+            for (int i = 0; i < _exceptionRegions.Length; i++)
+            {
+                Debug.Assert(_exceptionRegions[i].Marked);
+            }
+#endif
+
                 return builder.ToObjectData();
         }
 
