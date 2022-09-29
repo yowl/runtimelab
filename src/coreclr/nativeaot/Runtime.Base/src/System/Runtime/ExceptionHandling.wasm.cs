@@ -107,14 +107,10 @@ namespace System.Runtime
 
         private static void InvokeSecondPassWasm(uint idxStart, uint idxTryLandingStart /* we do dont have the PC, so use the start of the block */, ref EHClauseIterator clauseIter, uint idxLimit, void* shadowStack, uint usedSSBytes)
         {
-            PrintLine("InvokeSecondPassWasm");
-            PrintLine(usedSSBytes.ToString());
             // Search the clauses for one that contains the current offset.
             RhEHClauseWasm ehClause = new RhEHClauseWasm();
             for (uint curIdx = 0; clauseIter.Next(ref ehClause) && curIdx < idxLimit; curIdx++)
             {
-                //PrintLine("InvokeSecondPassWasm for");
-                //PrintLine(curIdx.ToString());
                 if (curIdx > idxStart)
                 {
                     break; // these blocks are after the catch
