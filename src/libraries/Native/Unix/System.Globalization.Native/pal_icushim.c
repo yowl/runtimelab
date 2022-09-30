@@ -29,7 +29,6 @@ FOR_ALL_ICU_FUNCTIONS
 #define SYMBOL_NAME_SIZE (128 + SYMBOL_CUSTOM_SUFFIX_SIZE)
 #define MaxICUVersionStringWithSuffixLength (MaxICUVersionStringLength + SYMBOL_CUSTOM_SUFFIX_SIZE)
 
-
 #if defined(TARGET_WINDOWS) || defined(TARGET_OSX) || defined(TARGET_ANDROID)
 
 #define MaxICUVersionStringLength 33
@@ -39,6 +38,7 @@ FOR_ALL_ICU_FUNCTIONS
 static void* libicuuc = NULL;
 static void* libicui18n = NULL;
 ucol_setVariableTop_func ucol_setVariableTop_ptr = NULL;
+ucol_safeClone_func ucol_safeClone_ptr = NULL;
 
 #if defined (TARGET_UNIX)
 
@@ -368,7 +368,7 @@ static int FindICULibs(const char* versionPrefix, char* symbolName, char* symbol
 
 #endif
 
-static void ValidateICUDataCanLoad()
+static void ValidateICUDataCanLoad(void)
 {
     UVersionInfo version;
     UErrorCode err = U_ZERO_ERROR;
@@ -377,6 +377,30 @@ static void ValidateICUDataCanLoad()
     if (U_FAILURE(err))
     {
         fprintf(stderr, "Could not load ICU data. UErrorCode: %d\n", err);
+        abort();
+    }
+}
+
+static void InitializeUColClonePointers(char* symbolVersion)
+{
+    if (ucol_clone_ptr != NULL)
+    {
+        return;
+    }
+
+#if defined(TARGET_WINDOWS)
+    char symbolName[SYMBOL_NAME_SIZE];
+    sprintf_s(symbolName, SYMBOL_NAME_SIZE, "ucol_safeClone%s", symbolVersion);
+    ucol_safeClone_ptr = (ucol_safeClone_func)GetProcAddress((HMODULE)libicui18n, symbolName);
+#else
+    char symbolName[SYMBOL_NAME_SIZE];
+    sprintf(symbolName, "ucol_safeClone%s", symbolVersion);
+    ucol_safeClone_ptr = (ucol_safeClone_func)dlsym(libicui18n, symbolName);
+#endif // defined(TARGET_WINDOWS)
+
+    if (ucol_safeClone_ptr == NULL)
+    {
+        fprintf(stderr, "Cannot get the symbols of ICU APIs ucol_safeClone or ucol_clone.\n");
         abort();
     }
 }
@@ -413,7 +437,7 @@ static void InitializeVariableMaxAndTopPointers(char* symbolVersion)
 // This method get called from the managed side during the globalization initialization.
 // This method shouldn't get called at all if we are running in globalization invariant mode
 // return 0 if failed to load ICU and 1 otherwise
-int32_t GlobalizationNative_LoadICU()
+int32_t GlobalizationNative_LoadICU(void)
 {
     char symbolName[SYMBOL_NAME_SIZE];
     char symbolVersion[MaxICUVersionStringLength + 1]="";
@@ -444,6 +468,7 @@ int32_t GlobalizationNative_LoadICU()
     ValidateICUDataCanLoad();
 
     InitializeVariableMaxAndTopPointers(symbolVersion);
+    InitializeUColClonePointers(symbolVersion);
 
     return true;
 }
@@ -506,7 +531,7 @@ void GlobalizationNative_InitICUFunctions(void* icuuc, void* icuin, const char* 
 
 // GlobalizationNative_GetICUVersion
 // return the current loaded ICU version
-int32_t GlobalizationNative_GetICUVersion()
+int32_t GlobalizationNative_GetICUVersion(void)
 {
     if (u_getVersion_ptr == NULL)
         return 0;

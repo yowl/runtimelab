@@ -321,7 +321,24 @@ static UCollator* CloneCollatorWithOptions(const UCollator* pCollator, int32_t o
 
     if (customRuleLength == 0)
     {
+#if !defined(STATIC_ICU)
+        if (ucol_clone_ptr != NULL)
+        {
+            pClonedCollator = ucol_clone(pCollator, pErr);
+        }
+        else
+        {
+            pClonedCollator = ucol_safeClone_ptr(pCollator, NULL, NULL, pErr);
+        }
+#else // !defined(STATIC_ICU)
+
+#if HAVE_UCOL_CLONE
+        pClonedCollator = ucol_clone(pCollator, pErr);
+#else
         pClonedCollator = ucol_safeClone(pCollator, NULL, NULL, pErr);
+#endif // HAVE_UCOL_CLONE
+
+#endif // !defined(STATIC_ICU)
     }
     else
     {
@@ -542,7 +559,7 @@ static UChar* s_breakIteratorRules = NULL;
 // We are customizing the break iterator to exclude the CRxLF rule which don't allow breaking between CR and LF.
 // The general rules syntax explained in the doc https://unicode-org.github.io/icu/userguide/boundaryanalysis/break-rules.html.
 // The ICU latest rules definition exist here https://github.com/unicode-org/icu/blob/main/icu4c/source/data/brkitr/rules/char.txt.
-static UBreakIterator* CreateCustomizedBreakIterator()
+static UBreakIterator* CreateCustomizedBreakIterator(void)
 {
     static UChar emptyString[1];
     UBreakIterator* breaker;
