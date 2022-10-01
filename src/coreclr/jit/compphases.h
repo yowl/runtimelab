@@ -107,7 +107,7 @@ CompPhaseNameMacro(PHASE_POST_EMIT,              "Post-Emit",                   
 
 #ifdef TARGET_WASM
 CompPhaseNameMacro(PHASE_SHDWSTK_SETUP,          "LLVM Shadow Stack Setup",        "SHDWSTK-SETUP", false, -1, false)
-CompPhaseNameMacro(PHASE_LOWER_PROMOTED_FIELDS,  "LLVM Lower Promoted Fielsd",     "LOWER_PROMOTED_FLDS", false, -1, false)
+CompPhaseNameMacro(PHASE_LOWER_PROMOTED_FIELDS,  "LLVM Lower Promoted Fields",     "LOWER_PROMOTED_FLDS", false, -1, false)
 CompPhaseNameMacro(PHASE_BUILD_LLVM,             "Build LLVM",                     "BUILD-LLVM", false, -1, false)
 #endif
 

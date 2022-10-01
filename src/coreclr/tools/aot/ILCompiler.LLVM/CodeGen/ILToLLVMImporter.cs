@@ -2251,7 +2251,7 @@ namespace Internal.IL
             return asFunc;
         }
 
-        private ExpressionEntry AllocateObject(StackEntry eeType, TypeDesc forcedReturnType = null) 
+        private ExpressionEntry AllocateObject(StackEntry eeType, TypeDesc forcedReturnType = null)
         {
             //TODO: call GetNewObjectHelperForType from JitHelper.cs (needs refactoring)
             return CallRuntime(_compilation.TypeSystemContext, RuntimeExport, "RhNewObject", new StackEntry[] { eeType }, forcedReturnType);

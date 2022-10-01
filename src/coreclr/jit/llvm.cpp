@@ -2489,11 +2489,6 @@ void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
             }
 
             fgArgTabEntry* curArgTabEntry = _compiler->gtArgEntryByNode(callNode, operand);
-            //regNumber      argReg         = curArgTabEntry->GetRegNum();
-            //if (argReg == REG_STK && !operand->OperIs(GT_FIELD_LIST)) // TODO-LLVM: out args
-            //{
-            //    failFunctionCompilation();
-            //}
             if (curArgTabEntry->nonStandardArgKind == NonStandardArgKind::VirtualStubCell)
             {
                 failFunctionCompilation();
@@ -2783,56 +2778,6 @@ void Llvm::LowerPromotedFields()
                     parentVarDsc->incLvRefCnt(1);
                 }
             }
-            //else if (node->IsCall())
-            //{
-            //    GenTreeCall* callNode = node->AsCall();
-
-            //    if (callNode->IsHelperCall())
-            //    {
-            //        // helper calls are built differently
-            //        continue;
-            //    }
-
-            //    failUnsupportedCalls(callNode);
-
-            //    lowerCallToShadowStack(callNode);
-            //}
-            //else if (node->OperIs(GT_RETURN) && _retAddressLclNum != BAD_VAR_NUM)
-            //{
-            //    var_types originalReturnType = node->TypeGet();
-            //    if (node->TypeIs(TYP_VOID))
-            //    {
-            //        /* TODO-LLVM: retbuf .   compHasRetBuffArg doesn't seem to have an implementation */
-            //        failFunctionCompilation();
-            //    }
-
-            //    LclVarDsc* retAddressVarDsc = _compiler->lvaGetDesc(_retAddressLclNum);
-            //    retAddressVarDsc->lvIsParam = 1;
-            //    retAddressVarDsc->lvType    = TYP_I_IMPL;
-
-            //    GenTreeLclVar* retAddressLocal = _compiler->gtNewLclvNode(_retAddressLclNum, TYP_I_IMPL);
-            //    GenTree*       storeNode =
-            //        createShadowStackStoreNode(originalReturnType, retAddressLocal, node->AsOp()->gtGetOp1(),
-            //                                   originalReturnType == TYP_STRUCT
-            //                                       ? _compiler->typGetObjLayout(_sigInfo.retTypeClass)
-            //                                       : nullptr);
-
-            //    GenTreeOp* retNode = node->AsOp();
-            //    retNode->gtOp1     = nullptr;
-            //    node->ChangeType(TYP_VOID);
-
-            //    CurrentRange().InsertBefore(node, retAddressLocal, storeNode);
-            //}
-
-            //if (node->OperIsLocalAddr() || node->OperIsLocalField())
-            //{
-            //    // Indicates that this local is to live on the LLVM frame, and will not participate in SSA.
-            //    _compiler->lvaGetDesc(node->AsLclVarCommon())->lvHasLocalAddr = 1;
-            //}
-            //else if (node->OperIs(GT_STORE_LCL_VAR))
-            //{
-            //    lowerStoreLcl(node->AsLclVarCommon());
-            //}
         }
     }
 }
