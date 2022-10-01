@@ -229,6 +229,8 @@ internal static class Program
         PrintLine(((BoxStubTest[])arrayCastingTest)[2].Value);
         EndTest(!(arrayCastingTest is CastingTestClass[]));
 
+        CastByteForIndex();
+
         ldindTest();
 
         InterfaceDispatchTest();
@@ -1123,6 +1125,15 @@ class ShortAndByte { internal short aShort; internal byte aByte; }
         string intString = 42.ToString();
         PrintLine(intString);
         EndTest(intString == "42");
+    }
+
+    private static void CastByteForIndex()
+    {
+        StartTest("Implicit casting of byte for an index");
+        int[] someInts = new int[0xff];
+        byte byteIndex = 0xFF;
+        someInts[byteIndex] = 123;
+        EndTest(someInts[0xff] == 123, "Expected 123 at index 0xff but didn't get it");
     }
 
     private unsafe static void ldindTest()
