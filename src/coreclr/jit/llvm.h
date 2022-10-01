@@ -204,6 +204,7 @@ private:
     bool helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd);
     void buildStoreInd(GenTreeStoreInd* storeIndOp);
     void buildStoreObj(GenTreeObj* indirOp);
+    bool isIndependentPromotedLocal(LclVarDsc* varDsc);
     Value* localVar(GenTreeLclVar* lclVar);
     void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);
     void buildStoreBlk(GenTreeBlk* blockOp);
@@ -241,6 +242,7 @@ public:
     static bool needsReturnStackSlot(Compiler* compiler, GenTreeCall* callee);
 
     void PlaceAndConvertShadowStackLocals();
+    void LowerPromotedFields();
     void Compile();
 };
 

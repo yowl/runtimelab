@@ -1857,6 +1857,13 @@ void Llvm::buildStoreObj(GenTreeObj* storeOp)
     }
 }
 
+bool Llvm::isIndependentPromotedLocal(LclVarDsc* varDsc)
+{
+    // TODO-LLVM: what happens when lvParentLcl == 0
+    return _compiler->lvaGetPromotionType(varDsc->lvParentLcl) ==
+           Compiler::lvaPromotionType::PROMOTION_TYPE_INDEPENDENT;
+}
+
 Value* Llvm::localVar(GenTreeLclVar* lclVar)
 {
     Value*       llvmRef;
@@ -1881,6 +1888,10 @@ Value* Llvm::localVar(GenTreeLclVar* lclVar)
             llvmRef = _function->getArg(varDsc->lvLlvmArgNum);
             _localsMap->insert({{lclNum, ssaNum}, llvmRef});
         }
+        //else if (isIndependentPromotedLocal(varDsc))
+        //{
+        //    llvmRef = nullptr;
+        //}
         else
         {
             // unhandled scenario, local is not defined already, and is not a parameter
@@ -2739,6 +2750,70 @@ void Llvm::lowerToShadowStack()
             {
                 lowerStoreLcl(node->AsLclVarCommon());
             }
+        }
+    }
+}
+
+void Llvm::LowerPromotedFields()
+{
+    for (BasicBlock* _currentBlock : _compiler->Blocks())
+    {
+        _currentRange = &LIR::AsRange(_currentBlock);
+        for (GenTree* node : CurrentRange())
+        {
+            if (node->OperIs(GT_LCL_VAR) && isIndependentPromotedLocal(_compiler->lvaGetDesc(node->AsLclVarCommon())))
+            {
+            }
+            //else if (node->IsCall())
+            //{
+            //    GenTreeCall* callNode = node->AsCall();
+
+            //    if (callNode->IsHelperCall())
+            //    {
+            //        // helper calls are built differently
+            //        continue;
+            //    }
+
+            //    failUnsupportedCalls(callNode);
+
+            //    lowerCallToShadowStack(callNode);
+            //}
+            //else if (node->OperIs(GT_RETURN) && _retAddressLclNum != BAD_VAR_NUM)
+            //{
+            //    var_types originalReturnType = node->TypeGet();
+            //    if (node->TypeIs(TYP_VOID))
+            //    {
+            //        /* TODO-LLVM: retbuf .   compHasRetBuffArg doesn't seem to have an implementation */
+            //        failFunctionCompilation();
+            //    }
+
+            //    LclVarDsc* retAddressVarDsc = _compiler->lvaGetDesc(_retAddressLclNum);
+            //    retAddressVarDsc->lvIsParam = 1;
+            //    retAddressVarDsc->lvType    = TYP_I_IMPL;
+
+            //    GenTreeLclVar* retAddressLocal = _compiler->gtNewLclvNode(_retAddressLclNum, TYP_I_IMPL);
+            //    GenTree*       storeNode =
+            //        createShadowStackStoreNode(originalReturnType, retAddressLocal, node->AsOp()->gtGetOp1(),
+            //                                   originalReturnType == TYP_STRUCT
+            //                                       ? _compiler->typGetObjLayout(_sigInfo.retTypeClass)
+            //                                       : nullptr);
+
+            //    GenTreeOp* retNode = node->AsOp();
+            //    retNode->gtOp1     = nullptr;
+            //    node->ChangeType(TYP_VOID);
+
+            //    CurrentRange().InsertBefore(node, retAddressLocal, storeNode);
+            //}
+
+            //if (node->OperIsLocalAddr() || node->OperIsLocalField())
+            //{
+            //    // Indicates that this local is to live on the LLVM frame, and will not participate in SSA.
+            //    _compiler->lvaGetDesc(node->AsLclVarCommon())->lvHasLocalAddr = 1;
+            //}
+            //else if (node->OperIs(GT_STORE_LCL_VAR))
+            //{
+            //    lowerStoreLcl(node->AsLclVarCommon());
+            //}
         }
     }
 }

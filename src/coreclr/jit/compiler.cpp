@@ -5263,6 +5263,14 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     fgResetForSsa();
     DoPhase(this, PHASE_BUILD_SSA, &Compiler::fgSsaBuild);
 
+    if (opts.OptimizationEnabled())
+    {
+        auto lowerPromotedFieldsPhase = [llvm]() {
+            llvm->LowerPromotedFields();
+        };
+        DoPhase(this, PHASE_LOWER_PROMOTED_FIELDS, lowerPromotedFieldsPhase);
+    }
+
     auto buildLlvmPhase = [llvm]() {
         llvm->Compile();
     };
