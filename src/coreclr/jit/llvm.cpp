@@ -749,6 +749,11 @@ llvm::Instruction* Llvm::getCast(llvm::Value* source, Type* targetType)
                 {
                     return new llvm::TruncInst(source, targetType, "TruncInt");
                 }
+                // allow just the specific case of bools being represented in LLVM as i8
+                else if (sourceType == Type::getInt1Ty(_llvmContext) && targetType == Type::getInt8Ty(_llvmContext))
+                {
+                    return new llvm::ZExtInst(source, targetType, "BitToByte");
+                }
             default:
                 failFunctionCompilation();
         }
@@ -2761,8 +2766,22 @@ void Llvm::LowerPromotedFields()
         _currentRange = &LIR::AsRange(_currentBlock);
         for (GenTree* node : CurrentRange())
         {
-            if (node->OperIs(GT_LCL_VAR) && isIndependentPromotedLocal(_compiler->lvaGetDesc(node->AsLclVarCommon())))
+            if (node->OperIs(GT_LCL_VAR))
             {
+                LclVarDsc* varDsc = _compiler->lvaGetDesc(node->AsLclVarCommon());
+                if (isIndependentPromotedLocal(varDsc))
+                {
+                    unsigned int parentLcNum = varDsc->lvParentLcl;
+
+                    node->ChangeOper(GT_LCL_FLD);
+                    GenTreeLclFld* lclFld = node->AsLclFld();
+                    lclFld->SetLclNum(parentLcNum);
+                    varDsc->lvIsParam = false;
+                    // the offest should already be set
+
+                    LclVarDsc* parentVarDsc = _compiler->lvaGetDesc(parentLcNum);
+                    parentVarDsc->incLvRefCnt(1);
+                }
             }
             //else if (node->IsCall())
             //{
