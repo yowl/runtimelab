@@ -1862,10 +1862,10 @@ void Llvm::buildStoreObj(GenTreeObj* storeOp)
     }
 }
 
-bool Llvm::isIndependentPromotedLocal(LclVarDsc* varDsc)
+bool Llvm::isIndependentPromotedStrucField(LclVarDsc* varDsc)
 {
     // TODO-LLVM: what happens when lvParentLcl == 0
-    return _compiler->lvaGetPromotionType(varDsc->lvParentLcl) ==
+    return varDsc->lvIsStructField && _compiler->lvaGetPromotionType(varDsc->lvParentLcl) ==
            Compiler::lvaPromotionType::PROMOTION_TYPE_INDEPENDENT;
 }
 
@@ -2769,7 +2769,7 @@ void Llvm::LowerPromotedFields()
             if (node->OperIs(GT_LCL_VAR))
             {
                 LclVarDsc* varDsc = _compiler->lvaGetDesc(node->AsLclVarCommon());
-                if (isIndependentPromotedLocal(varDsc))
+                if (isIndependentPromotedStrucField(varDsc))
                 {
                     unsigned int parentLcNum = varDsc->lvParentLcl;
 
