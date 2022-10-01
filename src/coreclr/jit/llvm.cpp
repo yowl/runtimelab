@@ -597,7 +597,8 @@ FunctionType* Llvm::getFunctionType()
     for (unsigned i = 0; i < _compiler->lvaCount; i++)
     {
         LclVarDsc* varDsc = _compiler->lvaGetDesc(i);
-        if (varDsc->lvIsParam)
+        if (varDsc->lvIsParam && (varDsc->lvPromotedStruct() || varDsc->lvParentLcl == 0)) // not a field in a promoted
+                                                                                           // struct
         {
             assert(varDsc->lvLlvmArgNum != BAD_LLVM_ARG_NUM);
 

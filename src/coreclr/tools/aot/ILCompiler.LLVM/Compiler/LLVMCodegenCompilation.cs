@@ -147,7 +147,7 @@ namespace ILCompiler
                 if (methodIL.GetExceptionRegions().Length == 0 && !_disableRyuJit)
                 {
                     var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
-                    if (mangledName == "S_P_CoreLib_System_ValueType__GetHashCode")
+                    if (mangledName == "S_P_CoreLib_System_Collections_Generic_GenericEqualityComparer_1<S_P_CoreLib_System_DateTime>__Equals")
                     {
 
                     var sig = method.Signature;

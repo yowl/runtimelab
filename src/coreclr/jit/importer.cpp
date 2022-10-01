@@ -17459,7 +17459,24 @@ bool Compiler::impReturnInstruction(int prefixFlags, OPCODE& opcode)
                     }
                 }
                 else
+#elif defined(TARGET_WASM)
+                assert(!iciCall->HasRetBufArg());
+
+                if (fgNeedReturnSpillTemp())
+                {
+                    if (!impInlineInfo->retExpr)
+                    {
+                        // The inlinee compiler has figured out the type of the temp already. Use it here.
+                        impInlineInfo->retExpr =
+                            gtNewLclvNode(lvaInlineeReturnSpillTemp, lvaTable[lvaInlineeReturnSpillTemp].lvType);
+                    }
+                }
+                else
+                {
+                    impInlineInfo->retExpr = op2;
+                }
 #endif // defined(TARGET_ARM64)
+#if !defined (TARGET_WASM)
                 {
                     assert(iciCall->HasRetBufArg());
                     GenTree* dest = gtCloneExpr(iciCall->gtCallArgs->GetNode());
@@ -17479,6 +17496,7 @@ bool Compiler::impReturnInstruction(int prefixFlags, OPCODE& opcode)
                         impInlineInfo->retExpr = impAssignStructPtr(dest, op2, retClsHnd, (unsigned)CHECK_SPILL_ALL);
                     }
                 }
+#endif // !defined TARGET_WASM
             }
 
             if (impInlineInfo->retExpr != nullptr)
