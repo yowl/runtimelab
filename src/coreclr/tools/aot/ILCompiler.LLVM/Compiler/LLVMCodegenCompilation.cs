@@ -155,7 +155,9 @@ namespace ILCompiler
                 if (methodIL.GetExceptionRegions().Length == 0 && !_disableRyuJit)
                 {
                     var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
-                    var sig = method.Signature;
+                   if (mangledName == "S_P_CoreLib_System_Collections_Generic_GenericEqualityComparer_1<Int64>__GetHashCode_0")
+                   {
+                   var sig = method.Signature;
                     corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile,
                         Module.Target,
                         Module.DataLayout);
@@ -169,6 +171,8 @@ namespace ILCompiler
                     ILImporter.GenerateRuntimeExportThunk(this, method, externFunc);
 
                     ryuJitMethodCount++;
+                    }
+                    else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
                 }
                 else ILImporter.CompileMethod(this, methodCodeNodeNeedingCode);
             }
