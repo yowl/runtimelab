@@ -1253,10 +1253,6 @@ void Llvm::buildHelperFuncCall(GenTreeCall* call)
         }
         // TODO-LLVM: If the block has a handler, this will need to be an invoke.  E.g. create a CallOrInvoke as per ILToLLVMImporter
         mapGenTreeToValue(call, _builder.CreateCall(llvmFunc, llvm::ArrayRef<Value*>(argVec)));
-        if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_THROW))
-        {
-            _builder.CreateUnreachable();
-        }
     }
 }
 
@@ -2136,6 +2132,11 @@ void Llvm::endImportingBasicBlock(BasicBlock* block)
     if ((block->bbJumpKind == BBjumpKinds::BBJ_ALWAYS) && block->bbJumpDest != nullptr)
     {
         _builder.CreateBr(getLLVMBasicBlockForBlock(block->bbJumpDest));
+        return;
+    }
+    if ((block->bbJumpKind == BBjumpKinds::BBJ_THROW))
+    {
+        _builder.CreateUnreachable();
         return;
     }
     //TODO: other jump kinds
