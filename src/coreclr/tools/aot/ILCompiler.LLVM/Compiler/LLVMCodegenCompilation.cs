@@ -154,10 +154,11 @@ namespace ILCompiler
 
                 if (methodIL.GetExceptionRegions().Length == 0 && !_disableRyuJit)
                 {
+                    //
                     var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
-                   if (mangledName == "S_P_CoreLib_System_Collections_Generic_GenericEqualityComparer_1<Int64>__GetHashCode_0")
-                   {
-                   var sig = method.Signature;
+                    if (mangledName == "S_P_CoreLib_System_Array_1<System___Canon>__get_Count")
+                    {
+                    var sig = method.Signature;
                     corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile,
                         Module.Target,
                         Module.DataLayout);

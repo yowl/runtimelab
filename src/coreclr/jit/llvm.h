@@ -150,6 +150,7 @@ private:
     void buildCnsDouble(GenTreeDblCon* node);
     void buildCnsInt(GenTree* node);
     void buildCnsLng(GenTree* node);
+    void buildFieldList(GenTreeFieldList* fieldList);
     void buildHelperFuncCall(GenTreeCall* call);
     llvm::FunctionType* buildHelperLlvmFunctionType(GenTreeCall* call, bool withShadowStack);
     void buildInd(GenTree* node, Value* ptr);
@@ -204,7 +205,6 @@ private:
     bool helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd);
     void buildStoreInd(GenTreeStoreInd* storeIndOp);
     void buildStoreObj(GenTreeObj* indirOp);
-    bool isIndependentPromotedStrucField(LclVarDsc* varDsc);
     Value* localVar(GenTreeLclVar* lclVar);
     void storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* structDesc);
     void buildStoreBlk(GenTreeBlk* blockOp);
@@ -240,8 +240,7 @@ public:
     static void llvmShutdown();
     static bool needsReturnStackSlot(Compiler* compiler, GenTreeCall* callee);
 
-    void PlaceAndConvertShadowStackLocals();
-    void LowerPromotedFields();
+    void Lower();
     void Compile();
 };
 

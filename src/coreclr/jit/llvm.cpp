@@ -597,8 +597,7 @@ FunctionType* Llvm::getFunctionType()
     for (unsigned i = 0; i < _compiler->lvaCount; i++)
     {
         LclVarDsc* varDsc = _compiler->lvaGetDesc(i);
-        if (varDsc->lvIsParam && (varDsc->lvPromotedStruct() || varDsc->lvParentLcl == 0)) // not a field in a promoted
-                                                                                           // struct
+        if (varDsc->lvIsParam)
         {
             assert(varDsc->lvLlvmArgNum != BAD_LLVM_ARG_NUM);
 
@@ -1049,6 +1048,10 @@ Function* Llvm::getOrCreateLlvmFunction(const char* symbolName, GenTreeCall* cal
 
     if (llvmFunc == nullptr)
     {
+        if (strcmp(symbolName, "S_P_CoreLib_Internal_Runtime_CompilerHelpers_ThrowHelpers__ThrowOverflowException") == 0)
+        {
+            int i = 0;
+        }
         // assume ExternalLinkage, if the function is defined in the clrjit module, then it is replaced and an
         // extern added to the Ilc module
         llvmFunc =
@@ -1149,7 +1152,10 @@ bool Llvm::helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd)
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_LMUL_OVF) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_ULMUL_OVF) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_ULDIV) ||
-           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_ULMOD);
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_ULMOD) ||
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_OVERFLOW) ||
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPE) ||
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_THROW_PLATFORM_NOT_SUPPORTED);
 }
 
 void Llvm::buildHelperFuncCall(GenTreeCall* call)
@@ -1157,6 +1163,7 @@ void Llvm::buildHelperFuncCall(GenTreeCall* call)
     if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_GENERIC_HANDLE) ||
         call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_GENERIC_STATIC_BASE) ||
         call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_GVMLOOKUP_FOR_SLOT) || /* generates an extra parameter in the signature */
+        call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPE) || /* misses an arg in the signature somewhere, not the shadow stack */
         call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_DELEGATE_CTOR))
     {
         // TODO-LLVM
@@ -1204,6 +1211,11 @@ void Llvm::buildHelperFuncCall(GenTreeCall* call)
         Function* llvmFunc = _module->getFunction(symbolName);
         if (llvmFunc == nullptr)
         {
+            if (strcmp(symbolName,
+                       "S_P_CoreLib_Internal_Runtime_CompilerHelpers_LdTokenHelpers__GetRuntimeType") == 0)
+            {
+                int i = 0;
+            }
             llvmFunc = Function::Create(buildHelperLlvmFunctionType(call, requiresShadowStack), Function::ExternalLinkage, 0U, symbolName, _module);
         }
 
@@ -1409,6 +1421,19 @@ void Llvm::buildCnsInt(GenTree* node)
 void Llvm::buildCnsLng(GenTree* node)
 {
     mapGenTreeToValue(node, _builder.getInt64(node->AsLngCon()->LngValue()));
+}
+
+void Llvm::buildFieldList(GenTreeFieldList* fieldList)
+{
+    failFunctionCompilation();
+
+    //if (!fieldList->TypeIs(TYP_STRUCT))
+    //{
+    //    failFunctionCompilation();
+    //}
+
+    //Value* alloca =_builder.CreateAlloca(getLlvmTypeForStruct((ClassLayout*)nullptr));
+    //mapGenTreeToValue(fieldList, alloca);
 }
 
 void Llvm::buildInd(GenTree* node, Value* ptr)
@@ -1644,6 +1669,11 @@ void Llvm::buildReturn(GenTree* node)
         case TYP_UINT:
         case TYP_LONG:
         case TYP_ULONG:
+            if (node->gtGetOp1()->TypeIs(TYP_FLOAT))
+            {
+                //TODO-LLVM: remove this case by lowering see https://github.com/dotnet/runtimelab/pull/2007#issuecomment-1264715441
+                failFunctionCompilation();
+            }
             _builder.CreateRet(consumeValue(node->gtGetOp1(), getLlvmTypeForCorInfoType(_sigInfo.retType, _sigInfo.retTypeClass)));
             return;
         case TYP_VOID:
@@ -1706,6 +1736,11 @@ void Llvm::buildThrowException(llvm::IRBuilder<>& builder, const char* helperCla
 
     if (llvmFunc == nullptr)
     {
+        if (strcmp(mangledName, "S_P_CoreLib_Internal_Runtime_CompilerHelpers_ThrowHelpers__ThrowOverflowException") ==
+            0)
+        {
+            int i = 0;
+        }
         // assume ExternalLinkage, if the function is defined in the clrjit module, then it is replaced and an
         // extern added to the Ilc module
         llvmFunc = Function::Create(FunctionType::get(Type::getVoidTy(_llvmContext), {Type::getInt8PtrTy(_llvmContext)},
@@ -1862,13 +1897,6 @@ void Llvm::buildStoreObj(GenTreeObj* storeOp)
     }
 }
 
-bool Llvm::isIndependentPromotedStrucField(LclVarDsc* varDsc)
-{
-    // TODO-LLVM: what happens when lvParentLcl == 0
-    return varDsc->lvIsStructField && _compiler->lvaGetPromotionType(varDsc->lvParentLcl) ==
-           Compiler::lvaPromotionType::PROMOTION_TYPE_INDEPENDENT;
-}
-
 Value* Llvm::localVar(GenTreeLclVar* lclVar)
 {
     Value*       llvmRef;
@@ -1893,10 +1921,6 @@ Value* Llvm::localVar(GenTreeLclVar* lclVar)
             llvmRef = _function->getArg(varDsc->lvLlvmArgNum);
             _localsMap->insert({{lclNum, ssaNum}, llvmRef});
         }
-        //else if (isIndependentPromotedLocal(varDsc))
-        //{
-        //    llvmRef = nullptr;
-        //}
         else
         {
             // unhandled scenario, local is not defined already, and is not a parameter
@@ -2018,6 +2042,7 @@ void Llvm::visitNode(GenTree* node)
             buildCnsLng(node);
             break;
         case GT_FIELD_LIST:
+            buildFieldList(node->AsFieldList());
             break;
         case GT_IL_OFFSET:
             _currentOffset = node->AsILOffset()->gtStmtILoffsx;
@@ -2331,7 +2356,13 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
                 indirOper = lclVar->TypeIs(TYP_STRUCT) ? GT_OBJ : GT_IND;
                 break;
             case GT_LCL_FLD:
-                assert(!lclVar->TypeIs(TYP_STRUCT));
+                if (lclVar->TypeIs(TYP_STRUCT))
+                {
+                    //TODO-LLVM: eg. S_P_CoreLib_System_DateTimeParse__Parse
+                    // a struct in a struct?
+                    //[000026]-- -- -- -- -- --t26 = LCL_FLD struct V03 loc0[+72] Fseq[parsedDate] $83
+                    failFunctionCompilation();
+                }
                 indirOper = GT_IND;
                 break;
             case GT_LCL_VAR_ADDR:
@@ -2442,7 +2473,7 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
 void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
 {
     // we can't do these yet
-    if (callNode->gtCallType != CT_INDIRECT && _isRuntimeImport(_thisPtr, callNode->gtCallMethHnd))
+    if ((callNode->gtCallType != CT_INDIRECT && _isRuntimeImport(_thisPtr, callNode->gtCallMethHnd)) || callNode->IsTailCall())
     {
         failFunctionCompilation();
     }
@@ -2736,40 +2767,13 @@ void Llvm::lowerToShadowStack()
     }
 }
 
-void Llvm::LowerPromotedFields()
-{
-    for (BasicBlock* _currentBlock : _compiler->Blocks())
-    {
-        _currentRange = &LIR::AsRange(_currentBlock);
-        for (GenTree* node : CurrentRange())
-        {
-            if (node->OperIs(GT_LCL_VAR))
-            {
-                LclVarDsc* varDsc = _compiler->lvaGetDesc(node->AsLclVarCommon());
-                if (isIndependentPromotedStrucField(varDsc))
-                {
-                    unsigned int parentLcNum = varDsc->lvParentLcl;
-
-                    node->ChangeOper(GT_LCL_FLD);
-                    GenTreeLclFld* lclFld = node->AsLclFld();
-                    lclFld->SetLclNum(parentLcNum);
-                    varDsc->lvIsParam = false;
-                    // the offest should already be set
-
-                    LclVarDsc* parentVarDsc = _compiler->lvaGetDesc(parentLcNum);
-                    parentVarDsc->incLvRefCnt(1);
-                }
-            }
-        }
-    }
-}
 
 //------------------------------------------------------------------------
 // Convert GT_STORE_LCL_VAR and GT_LCL_VAR to use the shadow stack when the local needs to be GC tracked,
 // rewrite calls that returns GC types to do so via a store to a passed in address on the shadow stack.
 // Likewise, store the returned value there if required.
 //
-void Llvm::PlaceAndConvertShadowStackLocals()
+void Llvm::Lower()
 {
     populateLlvmArgNums();
 
@@ -2777,8 +2781,9 @@ void Llvm::PlaceAndConvertShadowStackLocals()
 
     std::vector<LclVarDsc*> locals;
     unsigned localsParamCount = 0;
+    unsigned lvaCount = _compiler->lvaCount;
 
-    for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
+    for (unsigned lclNum = 0; lclNum < lvaCount; lclNum++)
     {
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
         if (!canStoreLocalOnLlvmStack(varDsc))
@@ -2789,6 +2794,42 @@ void Llvm::PlaceAndConvertShadowStackLocals()
                 localsParamCount++;
                 varDsc->lvIsParam = false;
             }
+        }
+
+        if (varDsc->lvIsParam &&
+            (_compiler->lvaGetPromotionType(varDsc) == Compiler::lvaPromotionType::PROMOTION_TYPE_DEPENDENT))
+        {
+            failFunctionCompilation(); // TODO-LLVM
+        }
+
+        if (varDsc->lvIsParam && (_compiler->lvaGetPromotionType(varDsc) == Compiler::lvaPromotionType::PROMOTION_TYPE_INDEPENDENT))
+        {
+            for (unsigned index = 0; index < varDsc->lvFieldCnt; index++)
+            {
+                unsigned   fieldLclNum = varDsc->lvFieldLclStart + index;
+                LclVarDsc* fieldVarDsc = _compiler->lvaGetDesc(fieldLclNum);
+                if (fieldVarDsc->lvRefCnt(RCS_NORMAL) != 0)
+                {
+                    // TODO-LLVM: is this required, maybe its in a later version of Compiler?
+                    // _compiler->fgEnsureFirstBBIsScratch();
+                    LIR::Range& firstBlockRange = LIR::AsRange(_compiler->fgFirstBB);
+
+                    GenTree* fieldValue =
+                        _compiler->gtNewLclFldNode(lclNum, fieldVarDsc->TypeGet(), fieldVarDsc->lvFldOffset);
+
+                    GenTree* fieldStore = _compiler->gtNewStoreLclVar(fieldLclNum, fieldValue);
+                    firstBlockRange.InsertAtBeginning(fieldStore);
+                    firstBlockRange.InsertAtBeginning(fieldValue);
+                }
+
+                fieldVarDsc->lvIsStructField = false;
+                fieldVarDsc->lvParentLcl     = BAD_VAR_NUM;
+                fieldVarDsc->lvIsParam       = false;
+            }
+
+            varDsc->lvPromoted   = false;
+            varDsc->lvFieldLclStart = BAD_VAR_NUM;
+            varDsc->lvFieldCnt   = 0;
         }
     }
 

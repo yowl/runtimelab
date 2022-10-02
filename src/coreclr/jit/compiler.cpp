@@ -5253,23 +5253,15 @@ void Compiler::compCompile(void** methodCodePtr, uint32_t* methodCodeSize, JitFl
     }
 
     Llvm* llvm = new Llvm(this);
-    auto placeAndConvertShadowStackLocalsPhase = [llvm]() {
-        llvm->PlaceAndConvertShadowStackLocals();
+    auto  lowerPhase = [llvm]() {
+        llvm->Lower();
     };
-    DoPhase(this, PHASE_SHDWSTK_SETUP, placeAndConvertShadowStackLocalsPhase);
+    DoPhase(this, PHASE_LOWER_LLVM, lowerPhase);
 
     lvaMarkLocalVars();  // For SSA.
 
     fgResetForSsa();
     DoPhase(this, PHASE_BUILD_SSA, &Compiler::fgSsaBuild);
-
-    if (opts.OptimizationEnabled())
-    {
-        auto lowerPromotedFieldsPhase = [llvm]() {
-            llvm->LowerPromotedFields();
-        };
-        DoPhase(this, PHASE_LOWER_PROMOTED_FIELDS, lowerPromotedFieldsPhase);
-    }
 
     auto buildLlvmPhase = [llvm]() {
         llvm->Compile();
