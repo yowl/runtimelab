@@ -156,8 +156,13 @@ namespace ILCompiler
                 {
                     //
                     var mangledName = NodeFactory.NameMangler.GetMangledMethodName(method).ToString();
-                    if (mangledName == "S_P_CoreLib_System_ValueTuple_2<Int32__Int32>__Equals")
-                    {
+                    // !mangledName.Contains("S_P_TypeLoader") fails
+                    // !mangledName.Contains("S_P") works
+                    // !!mangledName.Contains("S_P_TypeLoader") && !mangledName.Contains("S_P_Reflection") fails
+                    // !mangledName.Contains("S_P_TypeLoader") && !mangledName.Contains("S_P_Reflection") && !mangledName.Contains("S_P_CoreLib") works
+                    // if (!mangledName.Contains("S_P_TypeLoader") && !mangledName.Contains("S_P_Reflection") && !mangledName.Contains("S_P_CoreLib_System_Threading")) fails
+                    if (!mangledName.Contains("S_P_TypeLoader") && !mangledName.Contains("S_P_Reflection") && !mangledName.Contains("S_P_CoreLib_System_Threading") && !mangledName.Contains("S_P_CoreLib_Internal"))
+                     {
                     var sig = method.Signature;
                     corInfo.RegisterLlvmCallbacks((IntPtr)Unsafe.AsPointer(ref corInfo), _outputFile,
                         Module.Target,
