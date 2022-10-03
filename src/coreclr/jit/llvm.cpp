@@ -1048,7 +1048,7 @@ Function* Llvm::getOrCreateLlvmFunction(const char* symbolName, GenTreeCall* cal
 
     if (llvmFunc == nullptr)
     {
-        if (strcmp(symbolName, "S_P_CoreLib_Internal_Runtime_CompilerHelpers_ThrowHelpers__ThrowOverflowException") == 0)
+        if (strcmp(symbolName, "RhUnbox2") == 0)
         {
             int i = 0;
         }
@@ -1212,7 +1212,7 @@ void Llvm::buildHelperFuncCall(GenTreeCall* call)
         if (llvmFunc == nullptr)
         {
             if (strcmp(symbolName,
-                       "S_P_CoreLib_Internal_Runtime_CompilerHelpers_LdTokenHelpers__GetRuntimeType") == 0)
+                       "RhUnbox2") == 0)
             {
                 int i = 0;
             }
@@ -2252,7 +2252,8 @@ void Llvm::llvmShutdown()
 
     if (_outputFileName == nullptr) return; // nothing generated
 
-#ifdef DEBUG
+    //TODO-LLVM: when things are more stable, reinstate the #ifdef
+//#ifdef DEBUG
     char* txtFileName = (char*)malloc(strlen(_outputFileName) + 2); // .txt is longer than .bc
     strcpy(txtFileName, _outputFileName);
     strcpy(txtFileName + strlen(_outputFileName) - 2, "txt");
@@ -2262,7 +2263,7 @@ void Llvm::llvmShutdown()
 
     // verifyModule returns true when its broken, so invert
     assert(!llvm::verifyModule(*_module, &llvm::errs()));
-#endif //DEBUG
+//#endif //DEBUG
 
     llvm::raw_fd_ostream OS(_outputFileName, ec);
     llvm::WriteBitcodeToFile(*_module, OS);
