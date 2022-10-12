@@ -1083,7 +1083,25 @@ llvm::Value* Llvm::buildUserFuncCall(GenTreeCall* call)
     for (GenTreeCall::Use& use : call->Args())
     {
         lastArg = use.GetNode()->AsPutArgType();
-        argVec.push_back(consumeValue(lastArg->gtGetOp1(), getLlvmTypeForCorInfoType(lastArg->GetCorInfoType(), lastArg->GetClsHnd())));
+
+        if (lastArg->gtGetOp1()->OperIs(GT_FIELD_LIST))
+        {
+            assert(lastArg->GetCorInfoType() == CorInfoType::CORINFO_TYPE_VALUECLASS);
+
+            // alloca a type using the lastArg type
+            Type* argLlvmType = getLlvmTypeForCorInfoType(lastArg->GetCorInfoType(), lastArg->GetClsHnd());
+            Value* allocaValue = _builder.CreateAlloca(argLlvmType);
+
+            // TODO-LLVM: store LLVM struct type or GetClsHnd somewhere to facilitate compiling the GT_FIELD_LIST
+
+            Value* loadStruct  = _builder.CreateLoad(allocaValue);
+            argVec.push_back(loadStruct);
+        }
+        else
+        {
+            argVec.push_back(consumeValue(lastArg->gtGetOp1(),
+                                          getLlvmTypeForCorInfoType(lastArg->GetCorInfoType(), lastArg->GetClsHnd())));
+        }
     }
 
     Value* llvmCall = _builder.CreateCall(llvmFuncCallee, ArrayRef<Value*>(argVec));
@@ -1126,8 +1144,9 @@ bool Llvm::helperRequiresShadowStack(CORINFO_METHOD_HANDLE corinfoMethodHnd)
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_ULMUL_OVF) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_ULDIV) ||
            corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_ULMOD) ||
-           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_THROW_PLATFORM_NOT_SUPPORTED)
-        ;
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_OVERFLOW) ||
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPE) ||
+           corinfoMethodHnd == _compiler->eeFindHelper(CORINFO_HELP_THROW_PLATFORM_NOT_SUPPORTED);
 }
 
 void Llvm::buildHelperFuncCall(GenTreeCall* call)
@@ -1135,6 +1154,7 @@ void Llvm::buildHelperFuncCall(GenTreeCall* call)
     if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_GENERIC_HANDLE) ||
         call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_GENERIC_STATIC_BASE) ||
         call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_GVMLOOKUP_FOR_SLOT) || /* generates an extra parameter in the signature */
+        call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_TYPEHANDLE_TO_RUNTIMETYPE) || /* misses an arg in the signature somewhere, not the shadow stack */
         call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_READYTORUN_DELEGATE_CTOR) ||
         call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_THROW_PLATFORM_NOT_SUPPORTED)
         )
@@ -1221,10 +1241,6 @@ void Llvm::buildHelperFuncCall(GenTreeCall* call)
         }
         // TODO-LLVM: If the block has a handler, this will need to be an invoke.  E.g. create a CallOrInvoke as per ILToLLVMImporter
         mapGenTreeToValue(call, _builder.CreateCall(llvmFunc, llvm::ArrayRef<Value*>(argVec)));
-        if (call->gtCallMethHnd == _compiler->eeFindHelper(CORINFO_HELP_THROW))
-        {
-            _builder.CreateUnreachable();
-        }
     }
 }
 
@@ -1389,6 +1405,20 @@ void Llvm::buildCnsInt(GenTree* node)
 void Llvm::buildCnsLng(GenTree* node)
 {
     mapGenTreeToValue(node, _builder.getInt64(node->AsLngCon()->LngValue()));
+}
+
+void Llvm::buildFieldList(GenTreeFieldList* fieldList)
+{
+    failFunctionCompilation();
+
+    // TODO-LLVM: something along these lines...
+    //if (!fieldList->TypeIs(TYP_STRUCT))
+    //{
+    //    failFunctionCompilation();
+    //}
+
+    //Value* alloca =_builder.CreateAlloca(getLlvmTypeForStruct((ClassLayout*)store in GenTreeFieldList?));
+    //mapGenTreeToValue(fieldList, alloca);
 }
 
 void Llvm::buildInd(GenTree* node, Value* ptr)
@@ -1624,7 +1654,13 @@ void Llvm::buildReturn(GenTree* node)
         case TYP_UINT:
         case TYP_LONG:
         case TYP_ULONG:
-            _builder.CreateRet(castIfNecessary(getGenTreeValue(node->gtGetOp1()), getLlvmTypeForCorInfoType(_sigInfo.retType, _sigInfo.retTypeClass)));
+            if (node->gtGetOp1()->TypeIs(TYP_FLOAT))
+            {
+                // TODO-LLVM: remove this case by lowering see
+                // https://github.com/dotnet/runtimelab/pull/2007#issuecomment-1264715441
+                failFunctionCompilation();
+            }
+            _builder.CreateRet(consumeValue(node->gtGetOp1(), getLlvmTypeForCorInfoType(_sigInfo.retType, _sigInfo.retTypeClass)));
             return;
         case TYP_VOID:
             _builder.CreateRetVoid();
@@ -1802,19 +1838,14 @@ void Llvm::storeObjAtAddress(Value* baseAddress, Value* data, StructDesc* struct
     }
 }
 
-void Llvm::buildStoreObj(GenTreeObj* storeOp)
+void Llvm::buildStoreBlk(GenTreeBlk* blockOp)
 {
-    if (!storeOp->OperIsBlk())
-    {
-        failFunctionCompilation(); // cant get struct handle. TODO-LLVM: try as an assert
-    }
+    ClassLayout* structLayout = blockOp->GetLayout();
 
-    ClassLayout* structLayout = storeOp->GetLayout();
-
-    Value* baseAddressValue = getGenTreeValue(storeOp->Addr());
+    Value* baseAddressValue = getGenTreeValue(blockOp->Addr());
 
     // zero initialization  check
-    GenTree* dataOp = storeOp->Data();
+    GenTree* dataOp = blockOp->Data();
     if (dataOp->IsIntegralConst(0))
     {
         _builder.CreateMemSet(baseAddressValue, _builder.getInt8(0), _builder.getInt32(structLayout->GetSize()), {});
@@ -1823,16 +1854,16 @@ void Llvm::buildStoreObj(GenTreeObj* storeOp)
 
     CORINFO_CLASS_HANDLE structClsHnd  = structLayout->GetClassHandle();
     StructDesc*          structDesc    = getStructDesc(structClsHnd);
-    bool targetNotHeap = ((storeOp->gtFlags & GTF_IND_TGT_NOT_HEAP) != 0) || storeOp->Addr()->OperIsLocalAddr();
 
-    Value* dataValue = getGenTreeValue(storeOp->Data());
-    if (targetNotHeap)
+    Value* dataValue = getGenTreeValue(blockOp->Data());
+    if (structLayout->HasGCPtr() && ((blockOp->gtFlags & GTF_IND_TGT_NOT_HEAP) == 0) &&
+        !blockOp->Addr()->OperIsLocalAddr())
     {
-        _builder.CreateStore(dataValue, castIfNecessary(baseAddressValue, dataValue->getType()->getPointerTo())); 
+            storeObjAtAddress(baseAddressValue, dataValue, structDesc);
     }
     else
     {
-        storeObjAtAddress(baseAddressValue, dataValue, structDesc);
+        _builder.CreateStore(dataValue, castIfNecessary(baseAddressValue, dataValue->getType()->getPointerTo()));
     }
 }
 
@@ -1913,24 +1944,6 @@ void Llvm::buildLocalVarAddr(GenTreeLclVarCommon* lclAddr)
     }
 }
 
-// LLVM operations like ICmpNE return an i1, but in the IR it is expected to be an Int (i32).
-/* E.g.
-*                                                 /--*  t10    int
-                                                  +--*  t11    int
-N009 ( 30, 14) [000012] ---XG-------        t12 = *  NE        int
-                                                  /--*  t12    int
-N011 ( 34, 17) [000016] DA-XG-------              *  STORE_LCL_VAR int    V03 loc1
-*/
-Value* Llvm::zextIntIfNecessary(Value* intValue)
-{
-    llvm::TypeSize intSize = intValue->getType()->getPrimitiveSizeInBits();
-    if (intSize < TARGET_POINTER_SIZE * 8)
-    {
-        return _builder.CreateIntCast(intValue, Type::getInt32Ty(_llvmContext), false);
-    }
-    return intValue;
-}
-
 bool Llvm::isLlvmFrameLocal(LclVarDsc* varDsc)
 {
     assert(canStoreLocalOnLlvmStack(varDsc) && (_compiler->fgSsaPassesCompleted >= 1));
@@ -1998,6 +2011,9 @@ void Llvm::visitNode(GenTree* node)
         case GT_CNS_LNG:
             buildCnsLng(node);
             break;
+        case GT_FIELD_LIST:
+            buildFieldList(node->AsFieldList());
+            break;
         case GT_IL_OFFSET:
             _currentOffset = node->AsILOffset()->gtStmtILoffsx;
             _currentOffsetDiLocation = nullptr;
@@ -2059,8 +2075,11 @@ void Llvm::visitNode(GenTree* node)
         case GT_STOREIND:
             buildStoreInd(node->AsStoreInd());
             break;
+        case GT_STORE_BLK:
+            buildStoreBlk(node->AsBlk());
+            break;
         case GT_STORE_OBJ:
-            buildStoreObj(node->AsObj());
+            buildStoreBlk(node->AsBlk());
             break;
         case GT_AND:
         case GT_OR:
@@ -2087,6 +2106,11 @@ void Llvm::endImportingBasicBlock(BasicBlock* block)
     if ((block->bbJumpKind == BBjumpKinds::BBJ_ALWAYS) && block->bbJumpDest != nullptr)
     {
         _builder.CreateBr(getLLVMBasicBlockForBlock(block->bbJumpDest));
+        return;
+    }
+    if ((block->bbJumpKind == BBjumpKinds::BBJ_THROW))
+    {
+        _builder.CreateUnreachable();
         return;
     }
     //TODO: other jump kinds
@@ -2202,7 +2226,8 @@ void Llvm::llvmShutdown()
 
     if (_outputFileName == nullptr) return; // nothing generated
 
-#ifdef DEBUG
+    //TODO-LLVM: when the release build is more stable, reinstate the #ifdef.  For now the text output is useful for debugging
+//#ifdef DEBUG
     char* txtFileName = (char*)malloc(strlen(_outputFileName) + 2); // .txt is longer than .bc
     strcpy(txtFileName, _outputFileName);
     strcpy(txtFileName + strlen(_outputFileName) - 2, "txt");
@@ -2212,7 +2237,7 @@ void Llvm::llvmShutdown()
 
     // verifyModule returns true when its broken, so invert
     assert(!llvm::verifyModule(*_module, &llvm::errs()));
-#endif //DEBUG
+//#endif //DEBUG
 
     llvm::raw_fd_ostream OS(_outputFileName, ec);
     llvm::WriteBitcodeToFile(*_module, OS);
@@ -2286,6 +2311,7 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
     GenTreeLclVarCommon* lclVar = node->AsLclVarCommon();
     LclVarDsc* varDsc = _compiler->lvaGetDesc(lclVar->GetLclNum());
     genTreeOps oper = node->OperGet();
+
     if (!canStoreLocalOnLlvmStack(varDsc))
     {
         // TODO-LLVM: if the offset == 0, just GT_STOREIND at the shadowStack
@@ -2307,13 +2333,24 @@ void Llvm::ConvertShadowStackLocalNode(GenTreeLclVarCommon* node)
                 indirOper = lclVar->TypeIs(TYP_STRUCT) ? GT_OBJ : GT_IND;
                 break;
             case GT_LCL_FLD:
-                assert(!lclVar->TypeIs(TYP_STRUCT));
+                if (lclVar->TypeIs(TYP_STRUCT))
+                {
+                    //TODO-LLVM: eg. S_P_CoreLib_System_DateTimeParse__Parse
+                    // a struct in a struct?
+                    //[000026]-- -- -- -- -- --t26 = LCL_FLD struct V03 loc0[+72] Fseq[parsedDate] $83
+                    failFunctionCompilation();
+                }
                 indirOper = GT_IND;
                 break;
             case GT_LCL_VAR_ADDR:
             case GT_LCL_FLD_ADDR:
                 indirOper = GT_NONE;
                 break;
+            case GT_STORE_LCL_FLD:
+                //TODO-LLVM: example:
+                //   / --* t0  ref
+                //   *   STORE_LCL_FLD ref V01 tmp0 ud : 1->0 [+0] Fseq[_list]
+                failFunctionCompilation();
             default:
                 unreached();
         }
@@ -2418,7 +2455,7 @@ GenTreeCall::Use* Llvm::lowerCallReturn(GenTreeCall*      callNode,
 void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
 {
     // we can't do these yet
-    if (callNode->gtCallType != CT_INDIRECT && _isRuntimeImport(_thisPtr, callNode->gtCallMethHnd))
+    if ((callNode->gtCallType != CT_INDIRECT && _isRuntimeImport(_thisPtr, callNode->gtCallMethHnd)) || callNode->IsTailCall())
     {
         failFunctionCompilation();
     }
@@ -2447,11 +2484,6 @@ void Llvm::failUnsupportedCalls(GenTreeCall* callNode)
             }
 
             fgArgTabEntry* curArgTabEntry = _compiler->gtArgEntryByNode(callNode, operand);
-            regNumber      argReg         = curArgTabEntry->GetRegNum();
-            if (argReg == REG_STK) // TODO-LLVM: out args
-            {
-                failFunctionCompilation();
-            }
             if (curArgTabEntry->nonStandardArgKind == NonStandardArgKind::VirtualStubCell)
             {
                 failFunctionCompilation();
@@ -2662,7 +2694,30 @@ void Llvm::lowerToShadowStack()
         _currentRange = &LIR::AsRange(_currentBlock);
         for (GenTree* node : CurrentRange())
         {
-            if (node->OperIs(GT_STORE_LCL_VAR, GT_LCL_VAR, GT_LCL_FLD, GT_LCL_VAR_ADDR, GT_LCL_FLD_ADDR))
+            if (node->OperIs(GT_STORE_LCL_VAR, GT_LCL_VAR, GT_STORE_LCL_FLD, GT_LCL_FLD_ADDR, GT_LCL_VAR_ADDR))
+            {
+                // fail unsupported promoted structs
+                GenTreeLclVarCommon* lclVar = node->AsLclVarCommon();
+                LclVarDsc*           varDsc = _compiler->lvaGetDesc(lclVar->GetLclNum());
+                if (varDsc->lvPromotedStruct())
+                {
+                    // TODO-LLVM: stores to promoted structs e.g.:
+                    //               *  t2 struct
+                    //  XG-- -- ---* STORE_LCL_VAR struct<System.ReadOnlySpan`1 [System.Byte], 8>(P) V01 tmp0
+                    //             *   byref     V01._pointer(offs = 0x00) ->V08 tmp7
+                    //             *   int V01._length(offs = 0x04) ->V09 tmp8
+                    // or
+                    //     - --t14 = LCL_VAR struct<System.ReadOnlySpan`1 [System.Int32], 8>(P) V01 tmp0
+                    //                 byref V01._pointer(offs = 0x00)->V05 tmp4
+                    //                 int V01._length(offs = 0x04)->V06 tmp5 $81
+                    //    - --t6 =   LCL_VAR_ADDR byref V02 tmp0
+                    //             *   int V02._value(offs = 0x00)->V04 tmp2
+                    failFunctionCompilation();
+                }
+            }
+
+            if (node->OperIs(GT_STORE_LCL_VAR, GT_LCL_VAR, GT_STORE_LCL_FLD, GT_LCL_FLD, GT_LCL_VAR_ADDR,
+                             GT_LCL_FLD_ADDR))
             {
                 ConvertShadowStackLocalNode(node->AsLclVarCommon());
             }
@@ -2679,6 +2734,12 @@ void Llvm::lowerToShadowStack()
                 failUnsupportedCalls(callNode);
 
                 lowerCallToShadowStack(callNode);
+
+                if ((_compiler->fgIsThrow(callNode) || callNode->IsNoReturn()) && callNode->gtNext != nullptr)
+                {
+                    // If there is a no return, or always throw call, delete the dead code so we can add the unreachable statment immediately, and not after any dead RET
+                    CurrentRange().Remove(callNode->gtNext, _currentBlock->lastNode());
+                }
             }
             else if (node->OperIs(GT_RETURN) && _retAddressLclNum != BAD_VAR_NUM)
             {
@@ -2717,12 +2778,13 @@ void Llvm::lowerToShadowStack()
     }
 }
 
+
 //------------------------------------------------------------------------
 // Convert GT_STORE_LCL_VAR and GT_LCL_VAR to use the shadow stack when the local needs to be GC tracked,
 // rewrite calls that returns GC types to do so via a store to a passed in address on the shadow stack.
 // Likewise, store the returned value there if required.
 //
-void Llvm::PlaceAndConvertShadowStackLocals()
+void Llvm::Lower()
 {
     populateLlvmArgNums();
 
@@ -2730,8 +2792,9 @@ void Llvm::PlaceAndConvertShadowStackLocals()
 
     std::vector<LclVarDsc*> locals;
     unsigned localsParamCount = 0;
+    unsigned lvaCount = _compiler->lvaCount;
 
-    for (unsigned lclNum = 0; lclNum < _compiler->lvaCount; lclNum++)
+    for (unsigned lclNum = 0; lclNum < lvaCount; lclNum++)
     {
         LclVarDsc* varDsc = _compiler->lvaGetDesc(lclNum);
         if (!canStoreLocalOnLlvmStack(varDsc))
@@ -2739,9 +2802,50 @@ void Llvm::PlaceAndConvertShadowStackLocals()
             locals.push_back(varDsc);
             if (varDsc->lvIsParam)
             {
+                if (varDsc->lvPromotedStruct())
+                {
+                    // TODO-LLVM: the offsets for promoted structs on the shadow stack is calculated incorrectly below in the call to SetStackOffset
+                    failFunctionCompilation();
+                }
                 localsParamCount++;
                 varDsc->lvIsParam = false;
             }
+        }
+
+        if (varDsc->lvIsParam &&
+            (_compiler->lvaGetPromotionType(varDsc) == Compiler::lvaPromotionType::PROMOTION_TYPE_DEPENDENT))
+        {
+            failFunctionCompilation(); // TODO-LLVM
+        }
+
+        if (varDsc->lvIsParam && (_compiler->lvaGetPromotionType(varDsc) == Compiler::lvaPromotionType::PROMOTION_TYPE_INDEPENDENT))
+        {
+            for (unsigned index = 0; index < varDsc->lvFieldCnt; index++)
+            {
+                unsigned   fieldLclNum = varDsc->lvFieldLclStart + index;
+                LclVarDsc* fieldVarDsc = _compiler->lvaGetDesc(fieldLclNum);
+                if (fieldVarDsc->lvRefCnt(RCS_NORMAL) != 0)
+                {
+                    // TODO-LLVM: is this required, maybe its in a later version of Compiler?
+                    // _compiler->fgEnsureFirstBBIsScratch();
+                    LIR::Range& firstBlockRange = LIR::AsRange(_compiler->fgFirstBB);
+
+                    GenTree* fieldValue =
+                        _compiler->gtNewLclFldNode(lclNum, fieldVarDsc->TypeGet(), fieldVarDsc->lvFldOffset);
+
+                    GenTree* fieldStore = _compiler->gtNewStoreLclVar(fieldLclNum, fieldValue);
+                    firstBlockRange.InsertAtBeginning(fieldStore);
+                    firstBlockRange.InsertAtBeginning(fieldValue);
+                }
+
+                fieldVarDsc->lvIsStructField = false;
+                fieldVarDsc->lvParentLcl     = BAD_VAR_NUM;
+                fieldVarDsc->lvIsParam       = false;
+            }
+
+            varDsc->lvPromoted   = false;
+            varDsc->lvFieldLclStart = BAD_VAR_NUM;
+            varDsc->lvFieldCnt   = 0;
         }
     }
 
@@ -2864,5 +2968,12 @@ void Llvm::Compile()
     {
         _diBuilder->finalizeSubprogram(_debugFunction);
     }
+
+#if DEBUG
+    if (llvm::verifyFunction(*_function, &llvm::errs()))
+    {
+        printf("function failed %s\n", mangledName);
+    }
+#endif
 }
 #endif

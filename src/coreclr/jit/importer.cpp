@@ -15106,9 +15106,8 @@ void Compiler::impImportBlockCode(BasicBlock* block)
                     {
                         assert(aflags & CORINFO_ACCESS_GET);
 
-                        LPVOID         pValue;
-                        InfoAccessType iat = info.compCompHnd->emptyStringLiteral(&pValue);
-                        op1                = gtNewStringLiteralNode(iat, pValue);
+                        // Import String.Empty as "" (GT_CNS_STR with a fake SconCPX = 0)
+                        op1 = gtNewSconNode(EMPTY_STRING_SCON, nullptr);
                         goto FIELD_DONE;
                     }
                     break;
@@ -16100,7 +16099,11 @@ void Compiler::impImportBlockCode(BasicBlock* block)
                     { // compDonotInline()
                         return;
                     }
+#if defined(TARGET_WASM) // TODO-LLVM: delete when IL module gone
+                    op1 = gtNewHelperCallNode(helper, TYP_REF, gtNewCallArgs(op2, op1));
+#else
                     op1 = gtNewHelperCallNode(helper, TYP_VOID, gtNewCallArgs(op2, op1));
+#endif // TARGET_WASM
 
                     op1 = new (this, GT_COLON) GenTreeColon(TYP_VOID, gtNewNothingNode(), op1);
                     op1 = gtNewQmarkNode(TYP_VOID, condBox, op1);
@@ -17459,7 +17462,24 @@ bool Compiler::impReturnInstruction(int prefixFlags, OPCODE& opcode)
                     }
                 }
                 else
+#elif defined(TARGET_WASM)
+                assert(!iciCall->HasRetBufArg());
+
+                if (fgNeedReturnSpillTemp())
+                {
+                    if (!impInlineInfo->retExpr)
+                    {
+                        // The inlinee compiler has figured out the type of the temp already. Use it here.
+                        impInlineInfo->retExpr =
+                            gtNewLclvNode(lvaInlineeReturnSpillTemp, lvaTable[lvaInlineeReturnSpillTemp].lvType);
+                    }
+                }
+                else
+                {
+                    impInlineInfo->retExpr = op2;
+                }
 #endif // defined(TARGET_ARM64)
+#if !defined (TARGET_WASM)
                 {
                     assert(iciCall->HasRetBufArg());
                     GenTree* dest = gtCloneExpr(iciCall->gtCallArgs->GetNode());
@@ -17479,6 +17499,7 @@ bool Compiler::impReturnInstruction(int prefixFlags, OPCODE& opcode)
                         impInlineInfo->retExpr = impAssignStructPtr(dest, op2, retClsHnd, (unsigned)CHECK_SPILL_ALL);
                     }
                 }
+#endif // !defined TARGET_WASM
             }
 
             if (impInlineInfo->retExpr != nullptr)
