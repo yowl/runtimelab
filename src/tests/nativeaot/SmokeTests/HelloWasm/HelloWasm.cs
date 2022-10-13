@@ -548,6 +548,8 @@ internal static class Program
 
         TestUnsafe();
 
+        TestPointerCast();
+
         // This test should remain last to get other results before stopping the debugger
         PrintLine("Debugger.Break() test: Ok if debugger is open and breaks.");
         System.Diagnostics.Debugger.Break();
@@ -624,6 +626,42 @@ internal static class Program
 
         something();
         // just testing if the compilation succeeds
+        EndTest(true);
+    }
+
+    public unsafe struct UnmanagedMemoryPool
+    {
+        public byte* Alloc;
+        public void* Free;
+        public int BlockSize;
+        public int NumBlocks;
+    }
+
+    // originally from https://github.com/ClassicUO/ClassicUO/blob/dev/src/Utility/UnsafeMemoryManager.cs#L151-L166
+    public unsafe static void FreeAll(UnmanagedMemoryPool* pool)
+    {
+        void** pCur = (void**)pool->Alloc;
+        byte* pNext = pool->Alloc + pool->BlockSize;
+
+        for (int i = 0, count = pool->NumBlocks - 1; i < count; ++i)
+        {
+            *pCur = pNext;
+            pCur = (void**)pNext;
+            pNext += pool->BlockSize;
+        }
+
+        *pCur = default(void*);
+
+        pool->Free = pool->Alloc;
+    }
+
+    private unsafe static void TestPointerCast()
+    {
+        StartTest("TestPointerCast");
+        UnmanagedMemoryPool pool;
+        // just testing if the compilation succeeds
+        FreeAll(&pool);
+
         EndTest(true);
     }
 
