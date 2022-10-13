@@ -1842,7 +1842,7 @@ void Llvm::buildStoreBlk(GenTreeBlk* blockOp)
 {
     ClassLayout* structLayout = blockOp->GetLayout();
 
-    Value* baseAddressValue = getGenTreeValue(blockOp->Addr());
+    Value* baseAddressValue = consumeValue(blockOp->Addr(), Type::getInt8Ty(_llvmContext)->getPointerTo());
 
     // zero initialization  check
     GenTree* dataOp = blockOp->Data();
