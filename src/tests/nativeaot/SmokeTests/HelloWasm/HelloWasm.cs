@@ -645,30 +645,75 @@ internal static unsafe class Program
         public stbrp_node** prev_link;
     }
 
-    public struct stbrp_context
+    public struct stbrp_context : IDisposable
     {
+        public int width;
+        public int height;
+        public int align;
+        public int init_mode;
+        public int heuristic;
+        public int num_nodes;
+        public stbrp_node* active_head;
         public stbrp_node* free_head;
+        public stbrp_node* extra;
+        public stbrp_node* all_nodes;
+        public void Dispose() => throw new NotImplementedException();
     }
 
-    public unsafe static void FreeAll()
+    public static stbrp__findresult stbrp__skyline_find_best_pos(stbrp_context* c, int width, int height)
     {
-        stbrp_node* cur;
+        return new stbrp__findresult();
+    }
 
-        cur = null;
-        while (cur->next != null && cur->next->x <= 1)
+    public unsafe static stbrp__findresult FreeAll(stbrp_context* context, int width, int height)
+    {
+        var res = stbrp__skyline_find_best_pos(context, width, height);
+        stbrp_node* node;
+        stbrp_node* cur;
+        if (res.prev_link == null || res.y + height > context->height || context->free_head == null)
+        {
+            res.prev_link = null;
+            return res;
+        }
+
+        node = context->free_head;
+        node->x = (int)res.x;
+        node->y = (int)(res.y + height);
+        context->free_head = node->next;
+        cur = *res.prev_link;
+        if (cur->x < res.x)
         {
             var next = cur->next;
-            // cur->next = context->free_head;
-            // context->free_head = cur;
+            cur->next = node;
             cur = next;
         }
+        else
+        {
+            *res.prev_link = node;
+        }
+
+        while (cur->next != null && cur->next->x <= res.x + width)
+        {
+            var next = cur->next;
+            cur->next = context->free_head;
+            context->free_head = cur;
+            cur = next;
+        }
+
+        node->next = cur;
+        if (cur->x < res.x + width)
+            cur->x = (int)(res.x + width);
+
+        return res;
     }
 
     private unsafe static void TestPointerCast()
     {
         StartTest("TestPointerCast");
+
+        stbrp_context* context = null;
         // just testing if the compilation succeeds
-        FreeAll();
+        FreeAll(context, 2, 2);
 
         EndTest(true);
     }
