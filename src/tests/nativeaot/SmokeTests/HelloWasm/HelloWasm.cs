@@ -155,7 +155,7 @@ class NormalClass : BaseClass
     }
 }
 
-internal static class Program
+internal static unsafe class Program
 {
     private static int staticInt;
     [ThreadStatic]
@@ -629,38 +629,46 @@ internal static class Program
         EndTest(true);
     }
 
-    public unsafe struct UnmanagedMemoryPool
+    [StructLayout(LayoutKind.Sequential)]
+    public struct stbrp_node
     {
-        public byte* Alloc;
-        public void* Free;
-        public int BlockSize;
-        public int NumBlocks;
+        public int x;
+        public int y;
+        public stbrp_node* next;
     }
 
-    // originally from https://github.com/ClassicUO/ClassicUO/blob/dev/src/Utility/UnsafeMemoryManager.cs#L151-L166
-    public unsafe static void FreeAll(UnmanagedMemoryPool* pool)
+    [StructLayout(LayoutKind.Sequential)]
+    public struct stbrp__findresult
     {
-        void** pCur = (void**)pool->Alloc;
-        byte* pNext = pool->Alloc + pool->BlockSize;
+        public int x;
+        public int y;
+        public stbrp_node** prev_link;
+    }
 
-        for (int i = 0, count = pool->NumBlocks - 1; i < count; ++i)
+    public struct stbrp_context
+    {
+        public stbrp_node* free_head;
+    }
+
+    public unsafe static void FreeAll()
+    {
+        stbrp_node* cur;
+
+        cur = null;
+        while (cur->next != null && cur->next->x <= 1)
         {
-            *pCur = pNext;
-            pCur = (void**)pNext;
-            pNext += pool->BlockSize;
+            var next = cur->next;
+            // cur->next = context->free_head;
+            // context->free_head = cur;
+            cur = next;
         }
-
-        *pCur = default(void*);
-
-        pool->Free = pool->Alloc;
     }
 
     private unsafe static void TestPointerCast()
     {
         StartTest("TestPointerCast");
-        UnmanagedMemoryPool pool;
         // just testing if the compilation succeeds
-        FreeAll(&pool);
+        FreeAll();
 
         EndTest(true);
     }
