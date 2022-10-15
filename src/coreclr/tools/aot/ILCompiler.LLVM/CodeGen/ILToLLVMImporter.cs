@@ -179,7 +179,7 @@ namespace Internal.IL
         public void Import()
         {
             FindBasicBlocks();
-            if (_mangledName == "wasm_HelloWorld_PacketHandlers__Add")
+            if (_mangledName == "S_P_CoreLib_System_ValueTuple_2<System___Canon__Int32>__Equals")
             {
 
             }
@@ -520,7 +520,15 @@ namespace Internal.IL
         private void PushLoadExpression(StackValueKind kind, string name, LLVMValueRef rawLLVMValue, TypeDesc type)
         {
             Debug.Assert(kind != StackValueKind.Unknown, "Unknown stack kind");
-            _stack.Push(new LoadExpressionEntry(kind, name, rawLLVMValue, type));
+
+            LLVMValueRef loadValue = LoadValue(_builder, rawLLVMValue, type,
+                GetLLVMTypeForTypeDesc(type),
+                type.IsWellKnownType(WellKnownType.SByte) ||
+                type.IsWellKnownType(WellKnownType.Int16), $"load_{name}");
+
+            _stack.Push(new ExpressionEntry(kind, name, loadValue, type));
+
+            // PushExpression(GetStackValueKind(type), $"{name}", loadValue, type);
         }
 
         /// <summary>
@@ -3719,9 +3727,16 @@ namespace Internal.IL
                 type = GetWellKnownType(WellKnownType.Object);
             }
 
+            StackValueKind pointerStackValueKind = type != null ? GetStackValueKind(type) : StackValueKind.ByRef;
             LLVMValueRef pointerElementType = pointer.ValueAsType(type.MakePointerType(), _builder);
-            _stack.Push(new LoadExpressionEntry(type != null ? GetStackValueKind(type) : StackValueKind.ByRef, $"Indirect{pointer.Name()}",
-                pointerElementType, type));
+
+            LLVMValueRef fieldValue = LoadValue(_builder, pointerElementType, type,
+                GetLLVMTypeForTypeDesc(type),
+                type.IsWellKnownType(WellKnownType.SByte) ||
+                type.IsWellKnownType(WellKnownType.Int16), $"loadIndirect{pointer.Name()}");
+            _stack.Push(new ExpressionEntry(pointerStackValueKind, $"Indirect{pointer.Name()}",
+                fieldValue, type));
+            // PushExpression(pointerStackValueKind, $"Indirect{pointer.Name()}", fieldValue, type);
         }
 
         private void ImportStoreIndirect(int token)
@@ -4375,7 +4390,7 @@ namespace Internal.IL
                     eeTypeExp
                 };
                 CallRuntime(_compilation.TypeSystemContext, RuntimeExport, "RhUnboxAny", arguments);
-                PushLoadExpression(GetStackValueKind(methodType), "unboxed", untypedObjectValue, methodType);
+                PushLoadExpression(GetStackValueKind(type), "unboxed", untypedObjectValue, type);
             }
         }
 
@@ -4970,11 +4985,44 @@ namespace Internal.IL
 
         private void ImportLoadField(int token, bool isStatic)
         {
-            FieldDesc field = (FieldDesc)_methodIL.GetObject(token);
-            FieldDesc canonFieldDesc = (FieldDesc)_canonMethodIL.GetObject(token);
-            LLVMValueRef fieldAddress = GetFieldAddress(field, canonFieldDesc, isStatic);
+            // if (!_mangledName.Contains("S_P_TypeLoader_Internal_")) works
+            // if (!_mangledName.Contains("S_P_TypeLoader_Internal_Runtime_TypeLoader_")) fails
+            // if (!_mangledName.Contains("S_P_TypeLoader_Internal_Runtime_") ) fails
+            // if (!_mangledName.Contains("S_P_TypeLoader_Internal_Runtime_") && !_mangledName.Contains("S_P_TypeLoader_Internal_TypeSystem_") fails
+            //if (!_mangledName.Contains("S_P_TypeLoader_Internal_Runtime_") && !_mangledName.Contains("S_P_TypeLoader_Internal_TypeSystem_") && !_mangledName.Contains("S_P_TypeLoader_Internal_R") fails
+            // if (!_mangledName.Contains("S_P_TypeLoader_Internal_Runtime_") && !_mangledName.Contains("S_P_TypeLoader_Internal_TypeSystem_") && !_mangledName.Contains("S_P_TypeLoader_Internal_R") && !_mangledName.Contains("S_P_TypeLoader_Internal_N")) works
+            // if (!_mangledName.Contains("S_P_TypeLoader_Internal_Runtime_") && !_mangledName.Contains("S_P_TypeLoader_Internal_TypeSystem_") && !_mangledName.Contains("S_P_TypeLoader_Internal_R") && !_mangledName.Contains("S_P_TypeLoader_Internal_NativeFormat_")) works
+            // if (!_mangledName.Contains("S_P_TypeLoader_Internal_Runtime_") && !_mangledName.Contains("S_P_TypeLoader_Internal_TypeSystem_") && !_mangledName.Contains("S_P_TypeLoader_Internal_R") && !_mangledName.Contains("S_P_TypeLoader_Internal_NativeFormat_N")) works
+            // if (!_mangledName.Contains("S_P_TypeLoader_Internal_Runtime_") && !_mangledName.Contains("S_P_TypeLoader_Internal_TypeSystem_") && !_mangledName.Contains("S_P_TypeLoader_Internal_R") && !_mangledName.Contains("S_P_TypeLoader_Internal_NativeFormat_NativeParser")) fails
+            // if (!_mangledName.Contains("S_P_TypeLoader_Internal_Runtime_") && !_mangledName.Contains("S_P_TypeLoader_Internal_TypeSystem_") && !_mangledName.Contains("S_P_TypeLoader_Internal_R") && !_mangledName.Contains("S_P_TypeLoader_Internal_NativeFormat_Native")) wokrs
+            // if (!_mangledName.Contains("S_P_TypeLoader_Internal_Runtime_") && !_mangledName.Contains("S_P_TypeLoader_Internal_TypeSystem_") && !_mangledName.Contains("S_P_TypeLoader_Internal_R") && !_mangledName.Contains("S_P_TypeLoader_Internal_NativeFormat_NativeR")) fails
+            // if (!_mangledName.Contains("S_P_TypeLoader_Internal_Runtime_") && !_mangledName.Contains("S_P_TypeLoader_Internal_TypeSystem_") && !_mangledName.Contains("S_P_TypeLoader_Internal_R") && !_mangledName.Contains("S_P_TypeLoader_Internal_NativeFormat_NativeR") && !_mangledName.Contains("S_P_TypeLoader_Internal_NativeFormat_NativeH")) works
+            // if (!_mangledName.Contains("S_P_TypeLoader_Internal_Runtime_") && !_mangledName.Contains("S_P_TypeLoader_Internal_TypeSystem_") && !_mangledName.Contains("S_P_TypeLoader_Internal_R") && !_mangledName.Contains("S_P_TypeLoader_Internal_NativeFormat_NativeR") && !_mangledName.Contains("S_P_TypeLoader_Internal_NativeFormat_NativeHashtable")) works
+            // if (!_mangledName.Contains("S_P_TypeLoader_Internal_Runtime_") && !_mangledName.Contains("S_P_TypeLoader_Internal_TypeSystem_") && !_mangledName.Contains("S_P_TypeLoader_Internal_R") && !_mangledName.Contains("S_P_TypeLoader_Internal_NativeFormat_NativeR") )
+                // if (!_mangledName.Contains("S_P_TypeLoader_Internal_Runtime_TypeLoader_TypeBuilder__PrepareType")
+                // {
+                FieldDesc field = (FieldDesc)_methodIL.GetObject(token);
+                FieldDesc canonFieldDesc = (FieldDesc)_canonMethodIL.GetObject(token);
+                LLVMValueRef fieldAddress = GetFieldAddress(field, canonFieldDesc, isStatic);
+                TypeDesc fieldTypeDesc = canonFieldDesc.FieldType;
+                LLVMValueRef fieldValue = LoadValue(_builder, fieldAddress, fieldTypeDesc,
+                    GetLLVMTypeForTypeDesc(fieldTypeDesc),
+                    fieldTypeDesc.IsWellKnownType(WellKnownType.SByte) ||
+                    fieldTypeDesc.IsWellKnownType(WellKnownType.Int32) ||
+                    fieldTypeDesc.IsWellKnownType(WellKnownType.Int16), $"loadField_{field.Name}");
 
-            PushLoadExpression(GetStackValueKind(canonFieldDesc.FieldType), $"Field_{field.Name}", fieldAddress, canonFieldDesc.FieldType);
+                _stack.Push(new ExpressionEntry(GetStackValueKind(fieldTypeDesc), $"Field_{field.Name}", fieldValue,
+                    fieldTypeDesc));
+                // PushExpression(GetStackValueKind(fieldTypeDesc), $"Field_{field.Name}", fieldValue, fieldTypeDesc);
+            // }
+            // else
+            // {
+                // FieldDesc field = (FieldDesc)_methodIL.GetObject(token);
+                // FieldDesc canonFieldDesc = (FieldDesc)_canonMethodIL.GetObject(token);
+                // LLVMValueRef fieldAddress = GetFieldAddress(field, canonFieldDesc, isStatic);
+
+                // PushLoadExpression(GetStackValueKind(canonFieldDesc.FieldType), $"Field_{field.Name}", fieldAddress, canonFieldDesc.FieldType);
+            // }
         }
 
         private void ImportAddressOfField(int token, bool isStatic)
@@ -5236,7 +5284,13 @@ namespace Internal.IL
             StackEntry index = _stack.Pop();
             StackEntry arrayReference = _stack.Pop();
             var nullSafeElementType = elementType ?? GetWellKnownType(WellKnownType.Object);
-            PushLoadExpression(GetStackValueKind(nullSafeElementType), $"{arrayReference.Name()}Element", GetElementAddress(index.ValueAsInt32(_builder, false), arrayReference.ValueAsType(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), _builder), nullSafeElementType), nullSafeElementType);
+
+            LLVMValueRef elementValue = LoadValue(_builder, GetElementAddress(index.ValueAsInt32(_builder, false), arrayReference.ValueAsType(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), _builder), nullSafeElementType),
+                nullSafeElementType,
+                GetLLVMTypeForTypeDesc(nullSafeElementType),
+                nullSafeElementType.IsWellKnownType(WellKnownType.SByte) ||
+                nullSafeElementType.IsWellKnownType(WellKnownType.Int16), $"load{arrayReference.Name()}Element");
+            PushExpression(GetStackValueKind(nullSafeElementType), $"{arrayReference.Name()}Element", elementValue, nullSafeElementType);
         }
 
         private void ImportStoreElement(int token)

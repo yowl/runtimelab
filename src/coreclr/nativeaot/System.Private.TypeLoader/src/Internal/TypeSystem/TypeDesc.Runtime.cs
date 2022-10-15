@@ -234,10 +234,12 @@ namespace Internal.TypeSystem
 
         internal TypeDesc ComputeTemplate(TypeBuilderState state, bool templateRequired = true)
         {
+            X.PrintLine("ComputeTemplate " + templateRequired);
             TypeDesc templateType = state.TemplateType;
 
             if (templateRequired && (templateType == null))
             {
+                X.PrintLine("ComputeTemplate throwing " + templateRequired);
                 throw new TypeBuilder.MissingTemplateException();
             }
 
