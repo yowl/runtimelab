@@ -10,7 +10,7 @@ using System.Runtime;
 using System.Text;
 
 using System.Reflection.Runtime.General;
-using System.Runtime.InteropServices;
+
 using Internal.Runtime.Augments;
 using Internal.Runtime.CompilerServices;
 
@@ -32,76 +32,6 @@ namespace Internal.Runtime.TypeLoader
     using MethodDescBasedGenericMethodLookup = TypeLoaderEnvironment.MethodDescBasedGenericMethodLookup;
     using ThunkKind = CallConverterThunk.ThunkKind;
     using VTableSlotMapper = TypeBuilderState.VTableSlotMapper;
-
-    internal static class X
-    {
-        [DllImport("*")]
-        internal static unsafe extern int printf(byte* str, byte* unused);
-        private static unsafe void PrintString(string s)
-        {
-            int length = s.Length;
-            fixed (char* curChar = s)
-            {
-                for (int i = 0; i < length; i++)
-                {
-                    TwoByteStr curCharStr = new TwoByteStr();
-                    curCharStr.first = (byte)(*(curChar + i));
-                    printf((byte*)&curCharStr, null);
-                }
-            }
-        }
-
-        internal static void PrintLine(string s)
-        {
-            PrintString(s);
-            PrintString("\n");
-        }
-
-        public static unsafe void PrintLong(long l)
-        {
-            PrintByte((byte)((l >> 56) & 0xff));
-            PrintByte((byte)((l >> 48) & 0xff));
-            PrintByte((byte)((l >> 40) & 0xff));
-            PrintByte((byte)((l >> 32) & 0xff));
-            PrintByte((byte)((l >> 24) & 0xff));
-            PrintByte((byte)((l >> 16) & 0xff));
-            PrintByte((byte)((l >> 8) & 0xff));
-            PrintByte((byte)(l & 0xff));
-            PrintString("\n");
-        }
-
-        public static unsafe void PrintUint(int l)
-        {
-            PrintByte((byte)((l >> 24) & 0xff));
-            PrintByte((byte)((l >> 16) & 0xff));
-            PrintByte((byte)((l >> 8) & 0xff));
-            PrintByte((byte)(l & 0xff));
-
-            PrintString("\n");
-        }
-
-        public static unsafe void PrintByte(byte b)
-        {
-            fixed (TwoByteStr* s = &tbs)
-            {
-                var nib = (b & 0xf0) >> 4;
-                tbs.first = (byte)((nib <= 9 ? '0' : 'A') + (nib <= 9 ? nib : nib - 10));
-                printf((byte*)s, null);
-                nib = (b & 0xf);
-                tbs.first = (byte)((nib <= 9 ? '0' : 'A') + (nib <= 9 ? nib : nib - 10));
-                printf((byte*)s, null);
-            }
-        }
-
-        static TwoByteStr tbs;
-
-        public struct TwoByteStr
-        {
-            public byte first;
-            public byte second;
-        }
-
-    }
 
     internal static class LowLevelListExtensions
     {
@@ -302,7 +232,6 @@ namespace Internal.Runtime.TypeLoader
         /// </summary>
         internal void PrepareType(TypeDesc type)
         {
-            X.PrintLine("PrepareType(TypeDesc type) " + type.ToString());
             TypeLoaderLogger.WriteLine("Preparing type " + type.ToString() + " ...");
 
             TypeBuilderState state = type.GetTypeBuilderStateIfExist();
@@ -310,10 +239,7 @@ namespace Internal.Runtime.TypeLoader
 
             // If this type has type handle, do nothing and return unless we should prepare even in the presence of a type handle
             if (hasTypeHandle)
-            {
-                X.PrintLine("PrepareType(TypeDesc type) hasTypeHandle " + type.ToString());
                 return;
-            }
 
             if (state == null)
                 state = type.GetOrCreateTypeBuilderState();
@@ -321,7 +247,6 @@ namespace Internal.Runtime.TypeLoader
             // If this type was already prepared, do nothing unless we are re-preparing it for the purpose of loading the field layout
             if (state.HasBeenPrepared)
             {
-                X.PrintLine("PrepareType(TypeDesc type) state.HasBeenPrepared " + type.ToString());
                 return;
             }
 
@@ -330,7 +255,6 @@ namespace Internal.Runtime.TypeLoader
 
             if (!hasTypeHandle)
             {
-                X.PrintLine("PrepareType(TypeDesc type) !hasTypeHandle " + type.ToString());
                 InsertIntoNeedsTypeHandleList(state, type);
             }
 
@@ -338,21 +262,16 @@ namespace Internal.Runtime.TypeLoader
 
             if (type is DefType)
             {
-                X.PrintLine("PrepareType(TypeDesc type) type is DefType " + type.ToString());
                 DefType typeAsDefType = (DefType)type;
 
                 if (typeAsDefType.HasInstantiation)
                 {
-                    X.PrintLine("PrepareType(TypeDesc type) typeAsDefType.HasInstantiation " + type.ToString());
                     if (typeAsDefType.IsTypeDefinition)
                     {
-                        X.PrintLine("PrepareType(TypeDesc type) typeAsDefType.IsTypeDefinition " + type.ToString());
                         noExtraPreparation = true;
                     }
                     else
                     {
-                        X.PrintLine("PrepareType(TypeDesc type) " + type.ToString() + " his call to ComputeTemplate will find the native layout info for the type, and the template");
-
                         // This call to ComputeTemplate will find the native layout info for the type, and the template
                         // For metadata loaded types, a template will not exist, but we may find the NativeLayout describing the generic dictionary
                         typeAsDefType.ComputeTemplate(state, false);
@@ -363,32 +282,21 @@ namespace Internal.Runtime.TypeLoader
 
                         // We need the instantiation arguments to register a generic type
                         foreach (var instArg in typeAsDefType.Instantiation)
-                        {
-                            X.PrintLine("PrepareType(TypeDesc type) foreach (var instArg in typeAsDefType.Instantiation) " + instArg.ToString());
                             RegisterForPreparation(instArg);
-                        }
 
                         // We need the type definition to register a generic type
                         if (type.GetTypeDefinition() is MetadataType)
-                        {
-                            X.PrintLine("PrepareType(TypeDesc type) type.GetTypeDefinition() is MetadataType " + type.ToString());
                             RegisterForPreparation(type.GetTypeDefinition());
-                        }
 
                         ParseNativeLayoutInfo(state, type);
                     }
                 }
 
                 if (!noExtraPreparation)
-                {
-                    X.PrintLine("PrepareType(TypeDesc type) !noExtraPreparation " + type.ToString());
                     state.PrepareStaticGCLayout();
-                }
             }
             else if (type is ParameterizedType)
             {
-                X.PrintLine("PrepareType(TypeDesc type) " + type.ToString() + " type is ParameterizedType");
-
                 PrepareType(((ParameterizedType)type).ParameterType);
 
                 if (type is ArrayType)
@@ -397,7 +305,6 @@ namespace Internal.Runtime.TypeLoader
 
                     if (typeAsArrayType.IsSzArray && !typeAsArrayType.ElementType.IsPointer)
                     {
-                        X.PrintLine("PrepareType(TypeDesc type) " + type.ToString() + " typeAsArrayType.IsSzArray && !typeAsArrayType.ElementType.IsPointer");
                         typeAsArrayType.ComputeTemplate(state);
                         Debug.Assert(state.TemplateType != null && state.TemplateType is ArrayType && !state.TemplateType.RuntimeTypeHandle.IsNull());
 
@@ -420,8 +327,6 @@ namespace Internal.Runtime.TypeLoader
             // Need to prepare the base type first since it is used to compute interfaces
             if (!noExtraPreparation)
             {
-                X.PrintLine("PrepareType(TypeDesc type) " + type.ToString() + " !noExtraPreparation");
-
                 PrepareBaseTypeAndDictionaries(type);
                 PrepareRuntimeInterfaces(type);
 
@@ -448,17 +353,10 @@ namespace Internal.Runtime.TypeLoader
         {
             // Prepare all the interfaces that might be used. (This can be a superset of the
             // interfaces explicitly in the NativeLayout.)
-            for (var i = 0; i < type.RuntimeInterfaces.Length; i++)
+            foreach (DefType interfaceType in type.RuntimeInterfaces)
             {
-                var interfaceType = type.RuntimeInterfaces[i];
-                X.PrintLine($"PrepareRuntimeInterfaces {interfaceType.ToString()}");
                 PrepareType(interfaceType);
             }
-            // foreach (DefType interfaceType in type.RuntimeInterfaces)
-            // {
-            //     X.PrintLine($"PrepareRuntimeInterfaces {interfaceType.ToString()}");
-            //     PrepareType(interfaceType);
-            // }
         }
 
         /// <summary>

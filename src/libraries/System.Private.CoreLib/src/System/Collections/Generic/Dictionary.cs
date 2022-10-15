@@ -54,7 +54,6 @@ namespace System.Collections.Generic
                 Initialize(capacity);
             }
 
-            X.PrintLine("Dictionary(int capacity, IEqualityComparer<TKey>? comparer)");
             if (comparer is not null && comparer != EqualityComparer<TKey>.Default) // first check for null to avoid forcing default comparer instantiation unnecessarily
             {
                 _comparer = comparer;
