@@ -1142,8 +1142,8 @@ namespace Internal.IL
                 new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, offset, false) },
                 String.Empty);
             var typedStoreLocation = CastIfNecessary(builder, storeLocation, LLVMTypeRef.CreatePointer(valueType, 0), "TypedStore" + (name ?? ""));
-            // builder.BuildStore(typedToStore, typedStoreLocation);
-            AssignOrStore(builder, typedToStore, typedStoreLocation);
+            builder.BuildStore(typedToStore, typedStoreLocation);
+            //AssignOrStore(builder, typedToStore, typedStoreLocation);
         }
 
         private LLVMValueRef CastToRawPointer(LLVMValueRef source, string name = null)
@@ -1188,27 +1188,27 @@ namespace Internal.IL
 
         void AssignOrStore(LLVMBuilderRef builder, LLVMValueRef llvmValue, LLVMValueRef typedStoreLocation)
         {
-            //if (llvmValue.TypeOf.Kind == LLVMTypeKind.LLVMPointerTypeKind)
-            //{
-            //    LLVMValueRef rhpCheckedAssignRefFunc = Module.GetNamedFunction("RhpCheckedAssignRef");
-            //    if (rhpCheckedAssignRefFunc.Handle == IntPtr.Zero)
-            //    {
-            //        rhpCheckedAssignRefFunc = Module.AddFunction("RhpCheckedAssignRef",
-            //            LLVMTypeRef.CreateFunction(LLVMTypeRef.Void,
-            //                new LLVMTypeRef[]
-            //                {
-            //                    LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0),
-            //                    LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)
-            //                }, false));
-            //    }
+            if (llvmValue.TypeOf.Kind == LLVMTypeKind.LLVMPointerTypeKind)
+            {
+                LLVMValueRef rhpCheckedAssignRefFunc = Module.GetNamedFunction("RhpCheckedAssignRef");
+                if (rhpCheckedAssignRefFunc.Handle == IntPtr.Zero)
+                {
+                    rhpCheckedAssignRefFunc = Module.AddFunction("RhpCheckedAssignRef",
+                        LLVMTypeRef.CreateFunction(LLVMTypeRef.Void,
+                            new LLVMTypeRef[]
+                            {
+                                LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0),
+                                LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)
+                            }, false));
+                }
 
-            //    builder.BuildCall(rhpCheckedAssignRefFunc, new LLVMValueRef[] { CastIfNecessary(builder, typedStoreLocation, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)),
-            //        CastIfNecessary(builder, llvmValue, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0))}, "");
-            //}
-            //else
-            //{
+                builder.BuildCall(rhpCheckedAssignRefFunc, new LLVMValueRef[] { CastIfNecessary(builder, typedStoreLocation, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)),
+                    CastIfNecessary(builder, llvmValue, LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0))}, "");
+            }
+            else
+            {
                 builder.BuildStore(llvmValue, CastIfNecessary(builder, typedStoreLocation, LLVMTypeRef.CreatePointer(llvmValue.TypeOf, 0)));
-            // }
+            }
         }
 
         private static bool IsStruct(TypeDesc typeDesc)
@@ -1255,8 +1255,8 @@ namespace Internal.IL
             }
             if (!childStruct)
             {
-                AssignOrStore(_builder, llvmValue, typedStoreLocation);
-                // _builder.BuildStore(llvmValue, typedStoreLocation); // just copy all the fields again for simplicity, if all the fields were set using RhpCheckedAssignRef then a possible optimisation would be to skip this line
+                //AssignOrStore(_builder, llvmValue, typedStoreLocation);
+                _builder.BuildStore(llvmValue, typedStoreLocation); // just copy all the fields again for simplicity, if all the fields were set using RhpCheckedAssignRef then a possible optimisation would be to skip this line
             }
         }
 
@@ -2332,8 +2332,8 @@ namespace Internal.IL
                     LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), 0), "castDictPtrPtr"),
                 new [] {BuildConstInt32(1)}, "dictPtrPtr");
 
-            AssignOrStore(_builder, dictPtrPtr, dictPtrPtrStore);
-            // _builder.BuildStore(dictPtrPtr, dictPtrPtrStore);
+            //AssignOrStore(_builder, dictPtrPtr, dictPtrPtrStore);
+            _builder.BuildStore(dictPtrPtr, dictPtrPtrStore);
 
             _builder.BuildBr(endifBlock);
 
