@@ -452,25 +452,6 @@ namespace Internal.IL
                 TriggerCctor(metadataType, prologBuilder);
             }
 
-            if (_llvmFunction.ParamsCount > 0)
-            {
-                var shadowStackBottom = ShadowStackBottom;
-                var ssBottom = prologBuilder.BuildLoad(shadowStackBottom, "ssBottom");
-                var le = prologBuilder.BuildICmp(LLVMIntPredicate.LLVMIntULT, _llvmFunction.GetParam(0), ssBottom);
-                var assertBlock = _currentFunclet.AppendBasicBlock("ssAssert");
-                var ssOkBlock = _currentFunclet.AppendBasicBlock("ssOk");
-
-                prologBuilder.BuildCondBr(le, assertBlock, ssOkBlock);
-
-                prologBuilder.PositionAtEnd(assertBlock);
-                prologBuilder.BuildUnreachable();
-
-                prologBuilder.PositionAtEnd(ssOkBlock);
-                var prologEnd = _currentFunclet.AppendBasicBlock("prologEnd");
-                prologBuilder.BuildBr(prologEnd);
-                prologBuilder.PositionAtEnd(prologEnd);
-            }
-
             LLVMBasicBlockRef block0 = GetLLVMBasicBlockForBlock(_basicBlocks[0]);
             prologBuilder.PositionBefore(prologBuilder.BuildBr(block0));
             _builder.PositionAtEnd(block0);
