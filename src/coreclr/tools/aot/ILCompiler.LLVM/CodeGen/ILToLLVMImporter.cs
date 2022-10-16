@@ -2332,8 +2332,8 @@ namespace Internal.IL
                     LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), 0), 0), "castDictPtrPtr"),
                 new [] {BuildConstInt32(1)}, "dictPtrPtr");
 
-            //AssignOrStore(_builder, dictPtrPtr, dictPtrPtrStore);
-            _builder.BuildStore(dictPtrPtr, dictPtrPtrStore);
+            AssignOrStore(_builder, dictPtrPtr, dictPtrPtrStore);
+            //_builder.BuildStore(dictPtrPtr, dictPtrPtrStore);
 
             _builder.BuildBr(endifBlock);
 
@@ -3750,18 +3750,18 @@ namespace Internal.IL
                 typedValue = value.ValueAsInt32(_builder, false);
                 requireWriteBarrier = (value is ExpressionEntry) && !((ExpressionEntry)value).RawLLVMValue.IsNull && value.Type.IsGCPointer;
             }
-            // AssignOrStore(_builder, typedValue, typedPointer);
-            if (requireWriteBarrier)
-            {
-            CallRuntime(_method.Context, "InternalCalls", "RhpCheckedAssignRef", new StackEntry[]
-            {
-            new ExpressionEntry(StackValueKind.Int32, "typedPointer", typedPointer), value
-            });
-            }
-            else
-            {
-            _builder.BuildStore(typedValue, typedPointer);
-            }
+             AssignOrStore(_builder, typedValue, typedPointer);
+            // if (requireWriteBarrier)
+            // {
+            // CallRuntime(_method.Context, "InternalCalls", "RhpCheckedAssignRef", new StackEntry[]
+            // {
+            // new ExpressionEntry(StackValueKind.Int32, "typedPointer", typedPointer), value
+            // });
+            // }
+            // else
+            // {
+            // _builder.BuildStore(typedValue, typedPointer);
+            // }
         }
 
         private void ImportBinaryOperation(ILOpcode opcode)
