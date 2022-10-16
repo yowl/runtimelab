@@ -506,14 +506,7 @@ namespace ILCompiler.DependencyAnalysis
 
                 var ret = builder.BuildCall(Module.GetNamedFunction(unmanagedSymbolName), new LLVMValueRef[] { func.Params[2]});
 
-                LLVMValueRef rhpCheckedAssignRefFunc = Module.GetNamedFunction("RhpCheckedAssignRef");
-                if (rhpCheckedAssignRefFunc.Handle == IntPtr.Zero)
-                {
-                    rhpCheckedAssignRefFunc = Module.AddFunction("RhpCheckedAssignRef", LLVMTypeRef.CreateFunction(LLVMTypeRef.Void, new LLVMTypeRef[] { LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0) }, false));
-                }
-                // LLVMValueRef RhpPInvoke2 = GetOrCreateLLVMFunction("RhpCheckedAssignRef", pInvokeFunctionType);
-                 builder.BuildCall(rhpCheckedAssignRefFunc, new LLVMValueRef[] { ILImporter.CastIfNecessary(builder, func.Params[1], LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0)), ret }, "");
-                // builder.BuildStore(ret, ILImporter.CastIfNecessary(builder, func.Params[1], LLVMTypeRef.CreatePointer(ret.TypeOf, 0)));
+                builder.BuildStore(ret, ILImporter.CastIfNecessary(builder, func.Params[1], LLVMTypeRef.CreatePointer(ret.TypeOf, 0)));
 
                 builder.BuildRetVoid();
                 builder.Dispose();
