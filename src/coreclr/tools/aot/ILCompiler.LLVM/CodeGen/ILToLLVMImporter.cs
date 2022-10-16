@@ -3750,18 +3750,17 @@ namespace Internal.IL
                 typedValue = value.ValueAsInt32(_builder, false);
                 requireWriteBarrier = (value is ExpressionEntry) && !((ExpressionEntry)value).RawLLVMValue.IsNull && value.Type.IsGCPointer;
             }
-             AssignOrStore(_builder, typedValue, typedPointer);
-            // if (requireWriteBarrier)
-            // {
-            // CallRuntime(_method.Context, "InternalCalls", "RhpCheckedAssignRef", new StackEntry[]
-            // {
-            // new ExpressionEntry(StackValueKind.Int32, "typedPointer", typedPointer), value
-            // });
-            // }
-            // else
-            // {
-            // _builder.BuildStore(typedValue, typedPointer);
-            // }
+            if (requireWriteBarrier)
+            {
+            CallRuntime(_method.Context, "InternalCalls", "RhpCheckedAssignRef", new StackEntry[]
+            {
+            new ExpressionEntry(StackValueKind.Int32, "typedPointer", typedPointer), value
+            });
+            }
+            else
+            {
+            _builder.BuildStore(typedValue, typedPointer);
+            }
         }
 
         private void ImportBinaryOperation(ILOpcode opcode)
