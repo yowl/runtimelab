@@ -1255,8 +1255,8 @@ namespace Internal.IL
             }
             if (!childStruct)
             {
-                //AssignOrStore(_builder, llvmValue, typedStoreLocation);
-                _builder.BuildStore(llvmValue, typedStoreLocation); // just copy all the fields again for simplicity, if all the fields were set using RhpCheckedAssignRef then a possible optimisation would be to skip this line
+                AssignOrStore(_builder, llvmValue, typedStoreLocation);
+                // _builder.BuildStore(llvmValue, typedStoreLocation); // just copy all the fields again for simplicity, if all the fields were set using RhpCheckedAssignRef then a possible optimisation would be to skip this line
             }
         }
 
