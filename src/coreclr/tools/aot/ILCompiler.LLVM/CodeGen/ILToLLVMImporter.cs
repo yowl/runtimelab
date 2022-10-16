@@ -179,7 +179,7 @@ namespace Internal.IL
         public void Import()
         {
             FindBasicBlocks();
-            if (_mangledName == "S_P_CoreLib_System_ValueTuple_2<System___Canon__Int32>__Equals")
+            if (_mangledName == "net7test_Program__TestReadByteArray")
             {
 
             }
@@ -5285,9 +5285,10 @@ namespace Internal.IL
             StackEntry arrayReference = _stack.Pop();
             var nullSafeElementType = elementType ?? GetWellKnownType(WellKnownType.Object);
 
+            // ldelem pushes ints to the evaluation stack, so widen small ints
             LLVMValueRef elementValue = LoadValue(_builder, GetElementAddress(index.ValueAsInt32(_builder, false), arrayReference.ValueAsType(LLVMTypeRef.CreatePointer(LLVMTypeRef.Int8, 0), _builder), nullSafeElementType),
                 nullSafeElementType,
-                GetLLVMTypeForTypeDesc(nullSafeElementType),
+                GetLLVMTypeForTypeDesc(WidenBytesAndShorts(nullSafeElementType)),
                 nullSafeElementType.IsWellKnownType(WellKnownType.SByte) ||
                 nullSafeElementType.IsWellKnownType(WellKnownType.Int16), $"load{arrayReference.Name()}Element");
             PushExpression(GetStackValueKind(nullSafeElementType), $"{arrayReference.Name()}Element", elementValue, nullSafeElementType);
