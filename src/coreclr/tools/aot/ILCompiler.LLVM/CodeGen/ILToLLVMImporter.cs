@@ -1142,8 +1142,8 @@ namespace Internal.IL
                 new LLVMValueRef[] { LLVMValueRef.CreateConstInt(LLVMTypeRef.Int32, offset, false) },
                 String.Empty);
             var typedStoreLocation = CastIfNecessary(builder, storeLocation, LLVMTypeRef.CreatePointer(valueType, 0), "TypedStore" + (name ?? ""));
-            builder.BuildStore(typedToStore, typedStoreLocation);
-            //AssignOrStore(builder, typedToStore, typedStoreLocation);
+            //builder.BuildStore(typedToStore, typedStoreLocation);
+            AssignOrStore(builder, typedToStore, typedStoreLocation);
         }
 
         private LLVMValueRef CastToRawPointer(LLVMValueRef source, string name = null)
