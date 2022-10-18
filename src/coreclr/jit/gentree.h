@@ -1935,7 +1935,6 @@ public:
     void SetOper(genTreeOps oper, ValueNumberUpdate vnUpdate = CLEAR_VN); // set gtOper
     void SetOperResetFlags(genTreeOps oper);                              // set gtOper and reset flags
 
-    void ChangeOperConst(genTreeOps oper); // ChangeOper(constOper)
     // set gtOper and only keep GTF_COMMON_MASK flags
     void ChangeOper(genTreeOps oper, ValueNumberUpdate vnUpdate = CLEAR_VN);
     void ChangeOperUnchecked(genTreeOps oper);
@@ -1956,6 +1955,9 @@ public:
             }
         }
     }
+
+    template <typename T>
+    void BashToConst(T value, var_types type = TYP_UNDEF);
 
 #if NODEBASH_STATS
     static void RecordOperBashing(genTreeOps operOld, genTreeOps operNew);

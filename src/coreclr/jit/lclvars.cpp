@@ -4372,7 +4372,7 @@ void Compiler::lvaMarkLocalVars()
     lvaComputeRefCounts(isRecompute, setSlotNumbers);
 
     // If we're not optimizing, we're done.
-    if (!PreciseRefCountsRequired())
+    if (opts.OptimizationDisabled())
     {
         return;
     }
@@ -4392,7 +4392,7 @@ void Compiler::lvaMarkLocalVars()
     }
 
 #if ASSERTION_PROP
-    assert(PreciseRefCountsRequired());
+    assert(opts.OptimizationEnabled());
 
     // Note: optAddCopies() depends on lvaRefBlks, which is set in lvaMarkLocalVars(BasicBlock*), called above.
     optAddCopies();
@@ -4430,7 +4430,7 @@ void Compiler::lvaComputeRefCounts(bool isRecompute, bool setSlotNumbers)
     //
     // On first compute: mark all locals as implicitly referenced and untracked.
     // On recompute: do nothing.
-    if (!PreciseRefCountsRequired())
+    if (opts.OptimizationDisabled())
     {
         if (isRecompute)
         {
@@ -4532,6 +4532,8 @@ void Compiler::lvaComputeRefCounts(bool isRecompute, bool setSlotNumbers)
     {
         if (block->IsLIR())
         {
+            assert(isRecompute);
+
             const BasicBlock::weight_t weight = block->getBBWeight(this);
             for (GenTree* node : LIR::AsRange(block))
             {
