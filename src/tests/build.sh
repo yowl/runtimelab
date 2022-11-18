@@ -89,6 +89,7 @@ build_Tests()
     export __BinDir
     export __TestBinDir
     export __SkipManaged
+    export __SkipRestorePackages
     export __SkipGenerateLayout
     export __SkipTestWrappers
     export __BuildTestProject
@@ -158,7 +159,7 @@ usage_list+=("-allTargets: Build managed tests for all target platforms (includi
 
 usage_list+=("-rebuild: if tests have already been built - rebuild them.")
 usage_list+=("-runtests: run tests after building them.")
-usage_list+=("-excludemonofailures: Mark the build as running on Mono runtime so that mono-specific issues are honored.")
+usage_list+=("-mono: Build the tests for the Mono runtime honoring mono-specific issues.")
 
 usage_list+=("-log: base file name to use for log files (used in lab pipelines that build tests in multiple steps to retain logs for each step.")
 
@@ -183,7 +184,6 @@ handle_arguments_local() {
             __CopyNativeProjectsAfterCombinedTestBuild=false
             __SkipGenerateLayout=1
             __SkipTestWrappers=1
-            __SkipCrossgenFramework=1
             ;;
 
         crossgen2|-crossgen2)
@@ -253,6 +253,10 @@ handle_arguments_local() {
             __Mono=1
             ;;
 
+        mono|-mono)
+            __Mono=1
+            ;;
+
         mono_aot|-mono_aot)
             __Mono=1
             __MonoAot=1
@@ -288,8 +292,6 @@ export __ProjectDir
 __SkipTestWrappers=0
 __BuildTestWrappersOnly=0
 __Compiler=clang
-__CompilerMajorVersion=
-__CompilerMinorVersion=
 __ConfigureOnly=0
 __CopyNativeProjectsAfterCombinedTestBuild=true
 __CopyNativeTestBinaries=0
@@ -315,7 +317,6 @@ __SkipManaged=0
 __SkipNative=0
 __SkipRestore=""
 __SkipRestorePackages=0
-__SkipCrossgenFramework=0
 __SourceDir="$__ProjectDir/src"
 __UnprocessedBuildArgs=()
 __UseNinja=0
@@ -389,7 +390,7 @@ if [[ "$__RebuildTests" -ne 0 ]]; then
     echo "Removing test build dir: ${__TestBinDir}"
     rm -rf "${__TestBinDir}"
     echo "Removing test intermediate dir: ${__TestIntermediatesDir}"
-    rm -rf "${__TestIntermediatesDir}" 
+    rm -rf "${__TestIntermediatesDir}"
 fi
 
 build_Tests

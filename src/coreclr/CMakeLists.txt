@@ -141,7 +141,14 @@ endif(NOT CLR_CMAKE_TARGET_ARCH_WASM)
 
 
 if(NOT CLR_CROSS_COMPONENTS_BUILD)
+<<<<<<< HEAD
     add_subdirectory(nativeaot)
+=======
+  # NativeAOT only buildable for a subset of CoreCLR-supported configurations
+  if((CLR_CMAKE_HOST_LINUX OR CLR_CMAKE_HOST_OSX OR CLR_CMAKE_HOST_WIN32) AND (CLR_CMAKE_HOST_ARCH_ARM64 OR CLR_CMAKE_HOST_ARCH_AMD64) AND NOT (CLR_CMAKE_HOST_OSX AND CLR_CMAKE_HOST_ARCH_ARM64))
+    add_subdirectory(nativeaot)
+  endif()
+>>>>>>> origin/feature/NativeAOT
 endif(NOT CLR_CROSS_COMPONENTS_BUILD)
 
 # Above projects do not build with these compile options
@@ -244,6 +251,7 @@ if(CLR_CMAKE_HOST_UNIX)
   add_subdirectory(palrt)
 endif(CLR_CMAKE_HOST_UNIX)
 
+<<<<<<< HEAD
 if (NOT CLR_CMAKE_TARGET_ARCH_WASM)
   add_subdirectory(ilasm)
   add_subdirectory(ildasm)
@@ -260,6 +268,21 @@ if (NOT CLR_CMAKE_TARGET_ARCH_WASM)
   add_subdirectory(unwinder)
   add_subdirectory(interop)
 endif(NOT CLR_CMAKE_TARGET_ARCH_WASM)
+=======
+add_subdirectory(ilasm)
+add_subdirectory(ildasm)
+add_subdirectory(gcinfo)
+add_subdirectory(jit)
+add_subdirectory(vm)
+add_subdirectory(md)
+add_subdirectory(debug)
+add_subdirectory(binder)
+add_subdirectory(classlibnative)
+add_subdirectory(dlls)
+add_subdirectory(tools)
+add_subdirectory(unwinder)
+add_subdirectory(interop)
+>>>>>>> origin/feature/NativeAOT
 
 if(CLR_CMAKE_HOST_WIN32)
   add_subdirectory(hosts)

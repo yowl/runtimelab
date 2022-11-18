@@ -51,7 +51,7 @@ inline void FATAL_GC_ERROR()
 //
 // This means any empty regions can be freely used for any generation. For
 // Server GC we will balance regions between heaps.
-// For now enable regions by default for only StandAlone GC builds
+// For now disable regions outside of StandAlone GC builds
 #if defined (HOST_64BIT) && defined (BUILD_AS_STANDALONE)
 #define USE_REGIONS
 #endif //HOST_64BIT && BUILD_AS_STANDALONE
@@ -1286,9 +1286,9 @@ public:
     PER_HEAP
     void verify_free_lists();
     PER_HEAP
-    void verify_regions (int gen_number, bool can_verify_gen_num);
+    void verify_regions (int gen_number, bool can_verify_gen_num, bool can_verify_tail);
     PER_HEAP
-    void verify_regions (bool can_verify_gen_num);
+    void verify_regions (bool can_verify_gen_num, bool concurrent_p);
     PER_HEAP_ISOLATED
     void enter_gc_lock_for_verify_heap();
     PER_HEAP_ISOLATED
@@ -2156,8 +2156,6 @@ protected:
     PER_HEAP
     void seg_clear_mark_array_bits_soh (heap_segment* seg);
     PER_HEAP
-    void clear_batch_mark_array_bits (uint8_t* start, uint8_t* end);
-    PER_HEAP
     void bgc_clear_batch_mark_array_bits (uint8_t* start, uint8_t* end);
 #ifdef VERIFY_HEAP
     PER_HEAP
@@ -2466,6 +2464,10 @@ protected:
     void verify_mark_bits_cleared (uint8_t* obj, size_t s);
     PER_HEAP
     void clear_all_mark_array();
+#ifdef USE_REGIONS
+    PER_HEAP
+    void set_background_overflow_p (uint8_t* oo);
+#endif
 
 #ifdef BGC_SERVO_TUNING
 
@@ -3436,6 +3438,9 @@ protected:
     PER_HEAP
     void decommit_mark_array_by_seg (heap_segment* seg);
 
+    PER_HEAP_ISOLATED
+    bool should_update_end_mark_size();
+
     PER_HEAP
     void background_mark_phase();
 
@@ -4265,6 +4270,9 @@ protected:
     size_t     bgc_poh_size_increased;
 
     PER_HEAP
+    size_t     background_soh_size_end_mark;
+
+    PER_HEAP
     size_t     background_soh_alloc_count;
 
     PER_HEAP
@@ -4282,18 +4290,21 @@ protected:
     PER_HEAP
     size_t    background_mark_stack_array_length;
 
+    // We can't process the ephemeral range concurrently so we
+    // wait till final mark to process it.
+    PER_HEAP
+    BOOL      processed_eph_overflow_p;
+
+#ifdef USE_REGIONS
+    PER_HEAP
+    BOOL      background_overflow_p;
+#else
     PER_HEAP
     uint8_t*  background_min_overflow_address;
 
     PER_HEAP
     uint8_t*  background_max_overflow_address;
 
-    // We can't process the ephemeral range concurrently so we
-    // wait till final mark to process it.
-    PER_HEAP
-    BOOL      processed_eph_overflow_p;
-
-#ifndef USE_REGIONS
     PER_HEAP
     uint8_t*  background_min_soh_overflow_address;
 

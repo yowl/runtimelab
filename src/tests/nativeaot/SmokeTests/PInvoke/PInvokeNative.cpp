@@ -15,11 +15,11 @@
 #define DLL_EXPORT extern "C" __attribute((visibility("default")))
 #endif
 
-#if !defined(__stdcall)
+#ifndef TARGET_WINDOWS
 #define __stdcall
 #endif
 
-#if !defined(__cdecl)
+#ifndef TARGET_WINDOWS
 #define __cdecl
 #endif
 
@@ -339,6 +339,17 @@ DLL_EXPORT bool __stdcall ReversePInvoke_String(StringFuncPtr fnPtr)
 {
     char str[] = "Hello World";
     return fnPtr(str);
+}
+
+struct DelegateFieldStruct
+{
+    StringFuncPtr fnPtr;
+};
+
+DLL_EXPORT bool __stdcall ReversePInvoke_DelegateField(DelegateFieldStruct p)
+{
+    char str[] = "Hello World";
+    return p.fnPtr(str);
 }
 
 typedef bool(__stdcall *OutStringFuncPtr) (char **);

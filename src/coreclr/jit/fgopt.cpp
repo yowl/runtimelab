@@ -61,15 +61,15 @@ bool Compiler::fgDominate(BasicBlock* b1, BasicBlock* b2)
 
     if (b1->bbNum > fgDomBBcount)
     {
-        // if b1 is a loop preheader and Succ is its only successor, then all predecessors of
-        // Succ either are b1 itself or are dominated by Succ. Under these conditions, b1
-        // dominates b2 if and only if Succ dominates b2 (or if b2 == b1, but we already tested
-        // for this case)
+        // If b1 is a loop preheader (that was created after the dominators were calculated),
+        // then it has a single successor that is the loop entry, and it is the only non-loop
+        // predecessor of the loop entry. Thus, b1 dominates the loop entry and also dominates
+        // what the loop entry dominates.
         if (b1->bbFlags & BBF_LOOP_PREHEADER)
         {
-            noway_assert(b1->bbFlags & BBF_INTERNAL);
-            noway_assert(b1->bbJumpKind == BBJ_NONE);
-            return fgDominate(b1->bbNext, b2);
+            BasicBlock* loopEntry = b1->GetUniqueSucc();
+            assert(loopEntry != nullptr);
+            return fgDominate(loopEntry, b2);
         }
 
         // unknown dominators; err on the safe side and return false
@@ -145,16 +145,16 @@ bool Compiler::fgReachable(BasicBlock* b1, BasicBlock* b2)
 
     if (b1->bbNum > fgDomBBcount)
     {
-        noway_assert(b1->bbJumpKind == BBJ_NONE || b1->bbJumpKind == BBJ_ALWAYS || b1->bbJumpKind == BBJ_COND);
+        noway_assert(b1->KindIs(BBJ_NONE, BBJ_ALWAYS, BBJ_COND));
 
-        if (b1->bbFallsThrough() && fgReachable(b1->bbNext, b2))
+        if (b1->KindIs(BBJ_NONE, BBJ_COND) && fgReachable(b1->bbNext, b2))
         {
             return true;
         }
 
-        if (b1->bbJumpKind == BBJ_ALWAYS || b1->bbJumpKind == BBJ_COND)
+        if (b1->KindIs(BBJ_ALWAYS, BBJ_COND) && fgReachable(b1->bbJumpDest, b2))
         {
-            return fgReachable(b1->bbJumpDest, b2);
+            return true;
         }
 
         return false;
@@ -170,14 +170,27 @@ bool Compiler::fgReachable(BasicBlock* b1, BasicBlock* b2)
 // fgUpdateChangedFlowGraph: Update changed flow graph information.
 //
 // If the flow graph has changed, we need to recompute various information if we want to use it again.
+// This does similar work to `fgComputeReachability`, but the caller can pick and choose what needs
+// to be recomputed if they know certain things do NOT need to be recomputed.
 //
 // Arguments:
-//    computeDoms -- `true` if we should recompute dominators
+//    computePreds        -- `true` if we should recompute predecessors
+//    computeDoms         -- `true` if we should recompute dominators
+//    computeReturnBlocks -- `true` if we should recompute the list of return blocks
+//    computeLoops        -- `true` if we should recompute the loop table
 //
-void Compiler::fgUpdateChangedFlowGraph(const bool computePreds, const bool computeDoms)
+void Compiler::fgUpdateChangedFlowGraph(const bool computePreds,
+                                        const bool computeDoms,
+                                        const bool computeReturnBlocks,
+                                        const bool computeLoops)
 {
     // We need to clear this so we don't hit an assert calling fgRenumberBlocks().
     fgDomsComputed = false;
+
+    if (computeReturnBlocks)
+    {
+        fgComputeReturnBlocks();
+    }
 
     JITDUMP("\nRenumbering the basic blocks for fgUpdateChangeFlowGraph\n");
     fgRenumberBlocks();
@@ -191,6 +204,14 @@ void Compiler::fgUpdateChangedFlowGraph(const bool computePreds, const bool comp
     if (computeDoms)
     {
         fgComputeDoms();
+    }
+    if (computeLoops)
+    {
+        // Reset the loop info annotations and find the loops again.
+        // Note: this is similar to `RecomputeLoopInfo`.
+        optResetLoopInfo();
+        optSetBlockWeights();
+        optFindLoops();
     }
 }
 
@@ -277,6 +298,47 @@ void Compiler::fgComputeReachabilitySets()
     }
 
     fgReachabilitySetsValid = true;
+#endif // DEBUG
+}
+
+//------------------------------------------------------------------------
+// fgComputeReturnBlocks: Compute the set of BBJ_RETURN blocks.
+//
+// Initialize `fgReturnBlocks` to a list of the BBJ_RETURN blocks in the function.
+//
+void Compiler::fgComputeReturnBlocks()
+{
+    fgReturnBlocks = nullptr;
+
+    for (BasicBlock* const block : Blocks())
+    {
+        // If this is a BBJ_RETURN block, add it to our list of all BBJ_RETURN blocks. This list is only
+        // used to find return blocks.
+        if (block->bbJumpKind == BBJ_RETURN)
+        {
+            fgReturnBlocks = new (this, CMK_Reachability) BasicBlockList(block, fgReturnBlocks);
+        }
+    }
+
+    fgReturnBlocksComputed = true;
+
+#ifdef DEBUG
+    if (verbose)
+    {
+        printf("Return blocks:");
+        if (fgReturnBlocks == nullptr)
+        {
+            printf(" NONE");
+        }
+        else
+        {
+            for (const BasicBlockList* bl = fgReturnBlocks; bl != nullptr; bl = bl->next)
+            {
+                printf(" " FMT_BB, bl->block->bbNum);
+            }
+        }
+        printf("\n");
+    }
 #endif // DEBUG
 }
 
@@ -501,18 +563,7 @@ void Compiler::fgComputeReachability()
     fgDebugCheckBBlist();
 #endif // DEBUG
 
-    /* Create a list of all BBJ_RETURN blocks. The head of the list is 'fgReturnBlocks'. */
-    fgReturnBlocks = nullptr;
-
-    for (BasicBlock* const block : Blocks())
-    {
-        // If this is a BBJ_RETURN block, add it to our list of all BBJ_RETURN blocks. This list is only
-        // used to find return blocks.
-        if (block->bbJumpKind == BBJ_RETURN)
-        {
-            fgReturnBlocks = new (this, CMK_Reachability) BasicBlockList(block, fgReturnBlocks);
-        }
-    }
+    fgComputeReturnBlocks();
 
     // Compute reachability and then delete blocks determined to be unreachable. If we delete blocks, we
     // need to loop, as that might have caused more blocks to become unreachable. This can happen in the
@@ -3502,7 +3553,7 @@ bool Compiler::fgOptimizeUncondBranchToSimpleCond(BasicBlock* block, BasicBlock*
 //
 bool Compiler::fgOptimizeBranchToNext(BasicBlock* block, BasicBlock* bNext, BasicBlock* bPrev)
 {
-    assert(block->bbJumpKind == BBJ_COND || block->bbJumpKind == BBJ_ALWAYS);
+    assert(block->KindIs(BBJ_COND, BBJ_ALWAYS));
     assert(block->bbJumpDest == bNext);
     assert(block->bbNext == bNext);
     assert(block->bbPrev == bPrev);
@@ -4557,7 +4608,7 @@ bool Compiler::fgReorderBlocks()
         bool        backwardBranch = false;
 
         // Setup bDest
-        if ((bPrev->bbJumpKind == BBJ_COND) || (bPrev->bbJumpKind == BBJ_ALWAYS))
+        if (bPrev->KindIs(BBJ_COND, BBJ_ALWAYS))
         {
             bDest          = bPrev->bbJumpDest;
             forwardBranch  = fgIsForwardBranch(bPrev);
@@ -4807,8 +4858,7 @@ bool Compiler::fgReorderBlocks()
                         // to bTmp (which is a higher weighted block) then it is better to keep out current
                         // candidateBlock and have it fall into bTmp
                         //
-                        if ((candidateBlock == nullptr) ||
-                            ((candidateBlock->bbJumpKind != BBJ_COND) && (candidateBlock->bbJumpKind != BBJ_ALWAYS)) ||
+                        if ((candidateBlock == nullptr) || !candidateBlock->KindIs(BBJ_COND, BBJ_ALWAYS) ||
                             (candidateBlock->bbJumpDest != bTmp))
                         {
                             // otherwise we have a new candidateBlock
@@ -5749,7 +5799,7 @@ bool Compiler::fgUpdateFlowGraph(bool doTailDuplication)
             // Remove JUMPS to the following block
             // and optimize any JUMPS to JUMPS
 
-            if (block->bbJumpKind == BBJ_COND || block->bbJumpKind == BBJ_ALWAYS)
+            if (block->KindIs(BBJ_COND, BBJ_ALWAYS))
             {
                 bDest = block->bbJumpDest;
                 if (bDest == bNext)
@@ -5888,7 +5938,7 @@ bool Compiler::fgUpdateFlowGraph(bool doTailDuplication)
 
                             // Add fall through fixup block, if needed.
                             //
-                            if ((bDest->bbJumpKind == BBJ_NONE) || (bDest->bbJumpKind == BBJ_COND))
+                            if (bDest->KindIs(BBJ_NONE, BBJ_COND))
                             {
                                 BasicBlock* const bFixup = fgNewBBafter(BBJ_ALWAYS, bDest, true);
                                 bFixup->inheritWeight(bDestNext);

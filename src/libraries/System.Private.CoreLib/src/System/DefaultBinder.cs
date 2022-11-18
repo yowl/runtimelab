@@ -30,7 +30,7 @@ namespace System
         // The most specific match will be selected.
         //
         [UnconditionalSuppressMessage("AotAnalysis", "IL3050:RequiresDynamicCode",
-            Justification = "Known corner case bug https://github.com/dotnet/runtimelab/issues/1079.")]
+            Justification = "AOT compiler ensures params arrays are created for reflection-invokable methods")]
         public sealed override MethodBase BindToMethod(
             BindingFlags bindingAttr, MethodBase[] match, ref object?[] args,
             ParameterModifier[]? modifiers, CultureInfo? cultureInfo, string[]? names, out object? state)
@@ -369,7 +369,7 @@ namespace System
             }
 
             if (ambig)
-                throw new AmbiguousMatchException(SR.Arg_AmbiguousMatchException);
+                throw new AmbiguousMatchException();
 
             // Reorder (if needed)
             if (names != null)
@@ -515,7 +515,7 @@ namespace System
                 }
             }
             if (ambig)
-                throw new AmbiguousMatchException(SR.Arg_AmbiguousMatchException);
+                throw new AmbiguousMatchException();
             return candidates[currentMin];
         }
 
@@ -609,7 +609,7 @@ namespace System
                 }
             }
             if (ambig)
-                throw new AmbiguousMatchException(SR.Arg_AmbiguousMatchException);
+                throw new AmbiguousMatchException();
             return candidates[currentMin];
         }
 
@@ -725,7 +725,7 @@ namespace System
             }
 
             if (ambig)
-                throw new AmbiguousMatchException(SR.Arg_AmbiguousMatchException);
+                throw new AmbiguousMatchException();
             return candidates[currentMin];
         }
 
@@ -841,7 +841,7 @@ namespace System
                     continue;
 
                 if (bestMatch != null)
-                    throw new AmbiguousMatchException(SR.Arg_AmbiguousMatchException);
+                    throw new AmbiguousMatchException();
 
                 bestMatch = match[i];
             }
@@ -1128,7 +1128,7 @@ namespace System
                 // This can only happen if at least one is vararg or generic.
                 if (currentHierarchyDepth == deepestHierarchy)
                 {
-                    throw new AmbiguousMatchException(SR.Arg_AmbiguousMatchException);
+                    throw new AmbiguousMatchException();
                 }
 
                 // Check to see if this method is on the most derived class.

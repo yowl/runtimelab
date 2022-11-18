@@ -282,7 +282,7 @@ namespace System.Reflection.Tests
             Assert.Equal(0, properties.Length);
         }
 
-        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/865" /* NativeAot */)]
+        [ActiveIssue("https://github.com/dotnet/runtimelab/issues/865", typeof(PlatformDetection), nameof(PlatformDetection.IsNativeAot))]
         [Fact]
         public static void HideDetectionHappensAfterPrivateInBaseClassChecks()
         {
@@ -419,7 +419,7 @@ namespace System.Reflection.Tests
     {
         public event Action MyEvent;
 
-        public class myinner { }
+        public class @myinner { }
         public class MyInner { }
         public int MyProp { get; }
 

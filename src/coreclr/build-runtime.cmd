@@ -338,6 +338,9 @@ if NOT DEFINED PYTHON (
 set __CMakeTarget=
 for /f "delims=" %%a in ("-%__RequestedBuildComponents%-") do (
     set "string=%%a"
+    if not "!string:-hosts-=!"=="!string!" (
+        set __CMakeTarget=!__CMakeTarget! hosts
+    )
     if not "!string:-jit-=!"=="!string!" (
         set __CMakeTarget=!__CMakeTarget! jit
     )
@@ -371,6 +374,9 @@ for /f "delims=" %%a in ("-%__RequestedBuildComponents%-") do (
                 goto ExitWithError
             )
         )
+    )
+    if not "!string:-spmi-=!"=="!string!" (
+        set __CMakeTarget=!__CMakeTarget! spmi
     )
 )
 if [!__CMakeTarget!] == [] (
@@ -785,7 +791,7 @@ echo -all: Builds all configurations and platforms.
 echo Build architecture: one of -x64, -x86, -arm, -arm64 ^(default: -x64^).
 echo Build type: one of -Debug, -Checked, -Release ^(default: -Debug^).
 echo -component ^<name^> : specify this option one or more times to limit components built to those specified.
-echo                     Allowed ^<name^>: jit alljits runtime paltests iltools
+echo                     Allowed ^<name^>: hosts jit alljits runtime paltests iltools nativeaot spmi
 echo -enforcepgo: verify after the build that PGO was used for key DLLs, and fail the build if not
 echo -pgoinstrument: generate instrumented code for profile guided optimization enabled binaries.
 echo -cmakeargs: user-settable additional arguments passed to CMake.
