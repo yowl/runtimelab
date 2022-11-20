@@ -171,11 +171,6 @@ namespace Internal.JitInterface
             JitSetOs(JitPointerAccessor.Get(), os);
         }
 
-        public static void Shutdown()
-        {
-            jitShutdown(true);
-        }
-
         public CorInfoImpl()
         {
             _jit = JitPointerAccessor.Get();

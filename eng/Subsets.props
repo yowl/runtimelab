@@ -55,7 +55,7 @@
     <ClrNativeAot Condition="'$(BuildAllConfigurations)' != 'true'">true</ClrNativeAot>
 
     <!-- CLR NativeAot only builds in a subset of the matrix -->
-    <NativeAotSupported Condition="('$(TargetOS)' == 'windows' or '$(TargetOS)' == 'linux' or '$(TargetOS)' == 'OSX') and ('$(TargetArchitecture)' == 'x64' or '$(TargetArchitecture)' == 'arm64') and ('$(TargetOS)' != 'OSX' or '$(TargetArchitecture)' != 'arm64')">true</NativeAotSupported>
+    <NativeAotSupported Condition="('$(TargetOS)' == 'windows' or '$(TargetOS)' == 'linux' or '$(TargetOS)' == 'OSX' or '$(TargetOS)' == 'Browser') and ('$(TargetArchitecture)' == 'x64' or '$(TargetArchitecture)' == 'arm64' or '$(TargetArchitecture)' == 'wasm') and ('$(TargetOS)' != 'OSX' or '$(TargetArchitecture)' != 'arm64')">true</NativeAotSupported>
 
     <!-- If we're building clr.nativeaotlibs and not building the CLR runtime, compile libraries against NativeAOT CoreLib -->
     <UseNativeAotCoreLib Condition="$(_subset.Contains('+clr.nativeaotlibs+')) and !$(_subset.Contains('+clr+')) and !$(_subset.Contains('+clr.runtime+'))">true</UseNativeAotCoreLib>
@@ -270,7 +270,7 @@
                              $(CoreClrProjectRoot)tools\dotnet-pgo\dotnet-pgo.csproj;
                              $(CoreClrProjectRoot)tools\aot\ILCompiler\repro\repro.csproj;
                              $(CoreClrProjectRoot)tools\r2rtest\R2RTest.csproj" Category="clr" Condition="'$(DotNetBuildFromSource)' != 'true'"/>
-    <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\crossgen2\crossgen2.csproj" Category="clr" />
+    <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\crossgen2\crossgen2.csproj" Category="clr" Condition="'$(TargetArchitecture)' != 'wasm'"/>
     <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ILCompiler.Build.Tasks\ILCompiler.Build.Tasks.csproj" Category="clr" Condition="'$(NativeAotSupported)' == 'true'" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ILCompiler\ILCompiler.csproj" Category="clr" Condition="'$(NativeAotSupported)' == 'true'" />
     <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\BuildIntegration\BuildIntegration.proj" Category="clr" Condition="'$(NativeAotSupported)' == 'true'" />
@@ -294,36 +294,8 @@
     <ProjectToBuild Include="$(CoreClrProjectRoot)tools\dotnet-pgo\dotnet-pgo-pack.proj" Pack="true" BuildInParallel="false" Category="clr" Condition="'$(DotNetBuildFromSource)' != 'true' and '$(RuntimeFlavor)' != 'Mono'"/>
   </ItemGroup>
 
-<<<<<<< HEAD
-  <!-- CoreClr Native AOT sets -->
-  <ItemGroup Condition="$(_subset.Contains('+nativeaot.libs+'))">
-    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\System.Private.CoreLib\src\System.Private.CoreLib.csproj" Category="clr" />
-    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\System.Private.Reflection.Metadata\src\System.Private.Reflection.Metadata.csproj" Category="clr" />
-    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\System.Private.TypeLoader\src\System.Private.TypeLoader.csproj" Category="clr" />
-    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\System.Private.Interop\src\System.Private.Interop.csproj" Category="clr" />
-    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\System.Private.Reflection.Core\src\System.Private.Reflection.Core.csproj" Category="clr" />
-    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\System.Private.Reflection.Execution\src\System.Private.Reflection.Execution.csproj" Category="clr" />
-    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\System.Private.DisabledReflection\src\System.Private.DisabledReflection.csproj" Category="clr" />
-    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\System.Private.StackTraceMetadata\src\System.Private.StackTraceMetadata.csproj" Category="clr" />
-    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\Test.CoreLib\src\Test.CoreLib.csproj" Category="clr" />
-  </ItemGroup>
-
-  <ItemGroup Condition="$(_subset.Contains('+nativeaot.objwriter+'))">
-    <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ObjWriter\objwriter.proj" Category="clr" />
-  </ItemGroup>
-
-  <ItemGroup Condition="$(_subset.Contains('+nativeaot.ilc+'))">
-    <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ILCompiler\ILCompiler.csproj" Category="clr" />
-    <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ILCompiler\repro\repro.csproj" Category="clr" />
-  </ItemGroup>
-
-  <ItemGroup Condition="$(_subset.Contains('+nativeaot.build+'))">
-    <ProjectToBuild Include="$(CoreClrProjectRoot)tools\aot\ILCompiler.Build.Tasks\ILCompiler.Build.Tasks.csproj" Category="clr" />
-    <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\BuildIntegration\BuildIntegration.proj" Category="clr" />
-=======
   <ItemGroup Condition="$(_subset.Contains('+clr.nativeaotlibs+')) and '$(NativeAotSupported)' == 'true'">
     <ProjectToBuild Include="$(CoreClrProjectRoot)nativeaot\**\src\*.csproj" Category="clr" />
->>>>>>> origin/feature/NativeAOT
   </ItemGroup>
 
   <!-- Mono sets -->

@@ -85,6 +85,7 @@
     <Compile Include="..\..\Common\Compiler\DependencyAnalysis\Target_X86\Register.cs" Link="Compiler\DependencyAnalysis\Target_X86\Register.cs" />
     <Compile Include="..\..\Common\Compiler\DependencyAnalysis\Target_X86\TargetRegisterMap.cs" Link="Compiler\DependencyAnalysis\Target_X86\TargetRegisterMap.cs" />
     <Compile Include="..\..\Common\Compiler\DependencyAnalysis\Target_X86\X86Emitter.cs" Link="Compiler\DependencyAnalysis\Target_X86\X86Emitter.cs" />
+    <Compile Include="..\ILCompiler.Compiler\Compiler\DependencyAnalysis\Target_Wasm\WasmEmitter.cs" />
     <Compile Include="..\..\Common\Compiler\DependencyTrackingLevel.cs" Link="Compiler\DependencyTrackingLevel.cs" />
     <Compile Include="..\..\Common\Compiler\DevirtualizationManager.cs" Link="Compiler\DevirtualizationManager.cs" />
     <Compile Include="..\..\Common\Compiler\DisplayNameHelpers.cs" Link="Compiler\DisplayNameHelpers.cs" />
@@ -181,6 +182,7 @@
     <Compile Include="Compiler\DependencyAnalysis\ReadyToRun\Target_ARM\ImportThunk.cs" />
     <Compile Include="Compiler\DependencyAnalysis\ReadyToRun\Target_X64\ImportThunk.cs" />
     <Compile Include="Compiler\DependencyAnalysis\ReadyToRun\Target_X86\ImportThunk.cs" />
+    <Compile Include="Compiler\DependencyAnalysis\ReadyToRun\Target_Wasm\ImportThunk.cs" />
     <Compile Include="Compiler\DependencyAnalysis\ReadyToRun\TransitionBlock.cs" />
     <Compile Include="Compiler\DependencyAnalysis\ReadyToRun\TypeFixupSignature.cs" />
     <Compile Include="Compiler\DependencyAnalysis\ReadyToRun\TypesTableNode.cs" />

@@ -127,11 +127,6 @@ if defined RunNativeAot (
         ECHO FAILED
         exit /b 1
     )
-<<<<<<< HEAD
-
-    set ExePath=$(ExeRunner)native\$(MSBuildProjectName)$(ExeExtension)
-=======
->>>>>>> origin/feature/NativeAOT
 )
         ]]>
       </NativeAotBatchScript>

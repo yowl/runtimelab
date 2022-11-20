@@ -21,6 +21,11 @@ namespace Internal.JitInterface
         [DllImport(JitLibrary)]
         private extern static void jitShutdown([MarshalAs(UnmanagedType.I1)] bool processIsTerminating);
 
+        public static void Shutdown()
+        {
+            jitShutdown(true);
+        }
+
         [UnmanagedCallersOnly]
         public static void addCodeReloc(IntPtr thisHandle, void* handle)
         {
