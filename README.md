@@ -1,3 +1,9 @@
+# IL -> Wasm without LLVM IR
+
+An experiment to try creating Wasm object files directly (or nearly) from RyuJIT without going through LLVM IR.  Idea is to use binaryen to create a Wasm binary (object file if possible) and link as normal with wasm-ld.
+
+Rest of this file and repo is as per the NativeAOT-LLVM experiment.
+
 # READ FIRST
 
 This branch contains just the experimental LLVM backend.  This is only tested for WebAssembly and should not be used for any platforms served by the main NativeAOT branch.  In the future other targets not served by the main NativeAOT branch, but that are possible with LLVM may work, but there is no work in those areas currently.
