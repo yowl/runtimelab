@@ -59,7 +59,7 @@
     </ItemGroup>
 
     <ItemGroup Condition="'$(TargetsAppleMobile)' == 'true' or '$(TargetArchitecture)' == 'wasm'">
-      <_CoreClrBuildArg Include="-cmakeargs &quot;-DCMAKE_ICU_DIR=$(_IcuDir)&quot;" />
+      <_CoreClrBuildArg Include="-cmakeargs -DCMAKE_ICU_DIR=&quot;$(_IcuDir)&quot;" />
     </ItemGroup>
 
     <PropertyGroup>
