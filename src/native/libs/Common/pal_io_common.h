@@ -160,9 +160,9 @@ inline static int32_t Common_Poll(PollEvent* pollEvents, uint32_t eventCount, in
                 pollEvents[i].TriggeredEvents = PAL_POLLIN;
                 break;
 #ifdef POLLPRI // not available in WASI
-            case POLLPRI:
-                pollEvents[i].TriggeredEvents = PAL_POLLPRI;
-                break;
+            //case POLLPRI:
+              //  pollEvents[i].TriggeredEvents = PAL_POLLPRI;
+                //break;
 #endif
             case POLLOUT:
                 pollEvents[i].TriggeredEvents = PAL_POLLOUT;

@@ -9,11 +9,12 @@
 
 typedef unsigned long long rlim_t;
 
+/*
 struct rlimit {
 	rlim_t rlim_cur;
 	rlim_t rlim_max;
 };
-
+*/
 #define RLIM_INFINITY (~0ULL)
 #define RLIMIT_AS      9
 
