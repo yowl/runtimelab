@@ -407,7 +407,6 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CompileWasmArgs Condition="'$(IlcLlvmExceptionHandlingModel)' == 'cpp'">$(CompileWasmArgs) -s DISABLE_EXCEPTION_CATCHING=0</CompileWasmArgs>
       <CompileWasmArgs Condition="'$(IlcLlvmExceptionHandlingModel)' == 'wasm'">$(CompileWasmArgs) -fwasm-exceptions</CompileWasmArgs>
       <CompileWasmArgs Condition="'$(NativeDebugSymbols)' == 'true'">$(CompileWasmArgs) -g3</CompileWasmArgs>
-      <CompileWasmArgs Condition="'$(WasmSplitDwarf)' == 'true'">$(CompileWasmArgs) -gdwarf-5 -gsplit-dwarf -gpubnames</CompileWasmArgs>
       <CompileWasmArgs>$(CompileWasmArgs) $(WasmOptimizationSetting)</CompileWasmArgs>
 
       <ScriptExt Condition="'$(OS)' == 'Windows_NT'">.bat</ScriptExt>
@@ -426,7 +425,11 @@ The .NET Foundation licenses this file to you under the MIT license.
       <WasmCompilerPath>&quot;$(EMSDK)/upstream/bin/clang++$(ExeExt)&quot;</WasmCompilerPath>
       <WasmLinkerPath>&quot;$(WASI_SDK_PATH)/bin/clang&quot;</WasmLinkerPath>
       <!--llvm-dwp is not currently part of the WASI SDK. -->
-      <WasmDwarfKInkerPath>&quot;$(EMSDK)/upstream/bin/llvm-dwp$(ExeExt)&quot;</WasmDwarfKInkerPath>
+      <WasmDwarfLInkerPath>&quot;$(EMSDK)/upstream/bin/llvm-dwp$(ExeExt)&quot;</WasmDwarfLInkerPath>
+  </PropertyGroup>
+
+    <PropertyGroup>
+	    <CompileWasmArgs Condition="'$(WasmSplitDwarf)' == 'true'">$(CompileWasmArgs) -gdwarf-5 -gsplit-dwarf -gpubnames</CompileWasmArgs>
     </PropertyGroup>
 
     <!-- We use a wrapper project to invoke the compilers in parallel. -->
