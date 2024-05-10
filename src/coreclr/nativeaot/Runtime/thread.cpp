@@ -1210,14 +1210,14 @@ void Thread::ReversePInvokeAttachOrTrapThread(ReversePInvokeFrame * pFrame)
     }
 
     // If the thread is already in cooperative mode, this is a bad transition.
-    if (IsCurrentThreadInCooperativeMode())
-    {
-        // The TSF_DoNotTriggerGc mode is handled by the fast path (InlineTryFastReversePInvoke or equivalent assembly code)
-        ASSERT(!IsDoNotTriggerGcSet());
+//     if (IsCurrentThreadInCooperativeMode())
+//     {
+//         // The TSF_DoNotTriggerGc mode is handled by the fast path (InlineTryFastReversePInvoke or equivalent assembly code)
+//         ASSERT(!IsDoNotTriggerGcSet());
 
-        PalPrintFatalError("\nFatal error. Invalid Program: attempted to call a UnmanagedCallersOnly method from managed code.\n");
-        RhFailFast();
-   }
+//         PalPrintFatalError("\nFatal error. Invalid Program: attempted to call a UnmanagedCallersOnly method from managed code.\n");
+//         RhFailFast();
+//    }
 
     // save the previous transition frame
     pFrame->m_savedPInvokeTransitionFrame = m_pTransitionFrame;
