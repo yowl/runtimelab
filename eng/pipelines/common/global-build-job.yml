@@ -208,8 +208,9 @@ jobs:
     - ${{ if and(eq(parameters.runtimeFlavor, 'coreclr'), eq(parameters.archType, 'wasm')) }}:
       - script: pwsh $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-emscripten.ps1 $(Build.SourcesDirectory)/wasm-tools
         displayName: Install/activate emscripten
-      - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/set-cmake-path.cmd
-        displayName: Set CMake path
+      - ${{ if eq(parameters.hostedOs, 'windows') }}:
+        - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/set-cmake-path.cmd
+          displayName: Set CMake path
       # Install Powershell on OSes that don't come with it by default
       - ${{ if ne(parameters.hostedOs, 'windows') }}:
         - script: $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-pwsh.sh $(Build.SourcesDirectory)/wasm-tools
