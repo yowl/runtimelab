@@ -1,3 +1,11 @@
+[CmdletBinding(PositionalBinding=$false)]
+param(
+    $InstallDir,
+    [switch]$CI,
+)
+
+Set-Location -Path $InstallDir
+
 Invoke-WebRequest -Uri https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-22/wasi-sdk-22.0.m-mingw64.tar.gz -OutFile wasi-sdk-22.0.m-mingw64.tar.gz
 
 tar -xzf wasi-sdk-22.0.m-mingw64.tar.gz
@@ -11,3 +19,9 @@ mv wasi-sdk-22.0+m wasi-sdk
 # the issue to remove this workaround once WASI-SDK 23 is released.
 
 cp wasi-sdk/share/wasi-sysroot/include/wasm32-wasi-threads/pthread.h wasi-sdk/share/wasi-sysroot/include/wasm32-wasi/
+
+Write-Host "Setting WASI_SDK_PATH to '$InstallDir/wasi-sdk'"
+if ($CI)
+{
+    Write-Output "##vso[task.setvariable variable=WASI_SDK_PATH]$InstallDir/wasi-sdk"
+}
