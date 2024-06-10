@@ -1,7 +1,7 @@
 [CmdletBinding(PositionalBinding=$false)]
 param(
     $InstallDir,
-    [switch]$CI,
+    [switch]$CI
 )
 
 Set-Location -Path $InstallDir
