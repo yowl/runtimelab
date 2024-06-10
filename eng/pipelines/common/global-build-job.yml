@@ -220,11 +220,11 @@ jobs:
       - script: pwsh $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-nodejs.ps1 $(Build.SourcesDirectory)\wasm-tools
         displayName: Install NodeJS
 
-    - ${{ if and(eq(parameters.runtimeFlavor, 'coreclr'), eq(parameters.platform, 'wasi_wasm_win')) }}:
+    - ${{ if and(eq(parameters.runtimeFlavor, 'coreclr'), ('wasi_wasm' in parameters.platform)) }}:
       # Install Wasi Wasm dependencies: wasi-sdk, wasmer
-      - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-wasi-sdk.cmd $(Build.SourcesDirectory)\wasm-tools
+      - script: pwsh $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-wasi-sdk.ps1 -InstallDir $(Build.SourcesDirectory)\wasm-tools
         displayName: Install wasi-sdk
-      - script: call $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-wasmer.cmd $(Build.SourcesDirectory)\wasm-tools
+      - script: pwsh $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-wasmer.ps1 -InstallDir $(Build.SourcesDirectory)\wasm-tools
         displayName: Install wasmer
 
     - ${{ if or(eq(parameters.platform, 'browser_wasm_win'), and(eq(parameters.platform, 'wasi_wasm_win'), not(eq(parameters.runtimeFlavor, 'coreclr')))) }}:
