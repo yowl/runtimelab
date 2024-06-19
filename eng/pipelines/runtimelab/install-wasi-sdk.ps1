@@ -20,8 +20,8 @@ mv wasi-sdk-22.0+m wasi-sdk
 
 cp wasi-sdk/share/wasi-sysroot/include/wasm32-wasi-threads/pthread.h wasi-sdk/share/wasi-sysroot/include/wasm32-wasi/
 
-Write-Host "Setting WASI_SDK_PATH to '$InstallDir/wasi-sdk'"
 if ($CI)
 {
+    Write-Host "Setting WASI_SDK_PATH to '$InstallDir/wasi-sdk'"
     Write-Output "##vso[task.setvariable variable=WASI_SDK_PATH]$InstallDir/wasi-sdk"
 }
