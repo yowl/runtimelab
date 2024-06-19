@@ -6,11 +6,22 @@ param(
 
 Set-Location -Path $InstallDir
 
-Invoke-WebRequest -Uri https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-22/wasi-sdk-22.0.m-mingw64.tar.gz -OutFile wasi-sdk-22.0.m-mingw64.tar.gz
+if ($IsWindows)
+{
+    $WasiTar = "wasi-sdk-22.0.m-mingw64.tar.gz"
+    $WasiFolder = "wasi-sdk-22.0+m"
+}
+else
+{
+    $WasiTar = "wasi-sdk-22.0-linux.tar.gz"
+    $WasiFolder = "wasi-sdk-22.0"
+}
 
-tar -xzf wasi-sdk-22.0.m-mingw64.tar.gz
+Invoke-WebRequest -Uri https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-22/$WasiTar -OutFile $WasiTar
 
-mv wasi-sdk-22.0+m wasi-sdk
+tar -xzf $WasiTar
+
+mv $WasiFolder wasi-sdk
 
 # Temporary WASI-SDK 22 workaround: Until
 # https://github.com/WebAssembly/wasi-libc/issues/501 is addressed, we copy
