@@ -20,7 +20,6 @@ echo ifunc arg 1 is $1
     source ~/.bashrc 
     $1/python/bin/pip3 install --upgrade pip 
     $1/python/bin/pip3 install --upgrade pygithub 
-    $1/python/bin/pip3 install --upgrade --no-cache-dir -r /tmp/requirements.txt --use-pep517 
     cd ~ && rm -rf ~/Python-${PYTHON_VER}* 
     $1/python/bin/python3 --version 
     $1/python/bin/pip3 --version 
@@ -30,5 +29,5 @@ echo ifunc arg 1 is $1
 echo arg 1 is $1
 python_config $1
 
-echo Adding Python to path %1/python/bin
-echo '##vso[task.prependpath]$1/python/bin'
+echo Adding Python to path $1/python/bin
+echo '##vso[task.prependpath]'$1/python/bin
