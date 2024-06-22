@@ -25,7 +25,9 @@ python_config() {
     echo "Python ${PYTHON_VER} - Setup Completed!" 
 }
 
-python_config $1
+sudo apt install python3
 
-echo Adding Python to path $1/python/bin
-echo '##vso[task.prependpath]'$1/python/bin
+##python_config $1
+
+#echo Adding Python to path $1/python/bin
+#echo '##vso[task.prependpath]'$1/python/bin
