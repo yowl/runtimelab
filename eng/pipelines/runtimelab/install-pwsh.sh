@@ -10,12 +10,10 @@ curl -L -o powershell.tar.gz https://github.com/PowerShell/PowerShell/releases/d
 mkdir powershell7
 
 # Expand powershell to the target folder
-tar zxfv powershell.tar.gz -C powershell7
+tar zxf powershell.tar.gz -C powershell7
 
 # Set execute permissions
 chmod +x powershell7/pwsh
 
-./powershell7/pwsh --version
-
 echo setting PATH $PATH:$1/powershell7
-echo ##vso[task.setvariable variable=PATH]$PATH:$1/powershell7
+echo ##vso[task.setvariable variable=PATH;]$PATH:$1/powershell7
