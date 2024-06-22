@@ -492,6 +492,12 @@ jobs:
       targetRid: wasi-wasm
       platform: wasi_wasm_linux_x64
       shouldContinueOnError: ${{ parameters.shouldContinueOnError }}
+      ${{ if eq(parameters.container, '') }}:
+        container: linux_x64
+      ${{ if ne(parameters.container, '') }}:
+        container:
+          image: ${{ parameters.container }}
+          registry: mcr
       jobParameters:
         hostedOs: linux
         runtimeFlavor: ${{ parameters.runtimeFlavor }}
