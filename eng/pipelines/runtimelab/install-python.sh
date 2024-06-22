@@ -8,10 +8,11 @@ python_config() {
     pwd
     PATH=$1/python/bin:$PATH 
     wget --no-check-certificate "https://www.python.org/ftp/python/${PYTHON_VER}/Python-${PYTHON_VER}.tgz" 
-    tar -zxvf $1/Python-${PYTHON_VER}.tgz 1>/dev/null 
+    tar -zxvf $1/Python-${PYTHON_VER}.tgz 
     cd $1/Python-${PYTHON_VER}/ 
-    ./configure --enable-optimizations --prefix=$1/python > /dev/null 2>&1; 
-    make altinstall > /dev/null 2>&1; 
+    ./configure --enable-optimizations --prefix=$1/python  
+    make altinstall 
+    ls -lR $1/python
     ln -s $1/python/bin/python${PYTHON_VER_SHORT} $1/python/bin/python3 
     ln -s $1/python/bin/pip${PYTHON_VER_SHORT} $1/python/bin/pip3 
     wget --quiet --no-check-certificate https://bootstrap.pypa.io/get-pip.py -O - | python3 - --prefix=$1/python 
