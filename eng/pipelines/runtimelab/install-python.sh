@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 
-# Install Python3 and Libraries to $1 
+# Install Python3 to $1 
 python_config() {
-echo ifunc arg 1 is $1
-
     export PYTHON_VER="3.12.4" 
     export PYTHON_VER_SHORT="$(echo ${PYTHON_VER} | cut -d '.' -f1,2)" 
     cd $1
@@ -26,7 +24,6 @@ echo ifunc arg 1 is $1
     echo "Python ${PYTHON_VER} - Setup Completed!" 
 }
 
-echo arg 1 is $1
 python_config $1
 
 echo Adding Python to path $1/python/bin
