@@ -14,6 +14,3 @@ tar zxf powershell.tar.gz -C powershell7
 
 # Set execute permissions
 chmod +x powershell7/pwsh
-
-echo setting PATH $PATH:$1/powershell7
-echo ##vso[task.setvariable variable=PATH;]$PATH:$1/powershell7
