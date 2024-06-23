@@ -183,6 +183,6 @@ setup_dirs
 # Check prereqs.
 check_prereqs
 
-echo "b"uild)native -> build_native"
+echo "buildnative -> build_native"
 # Build the corefx native components.
 build_native "$__TargetOS" "$__TargetArch" "$__nativeroot" "$__IntermediatesDir" "install" "$__CMakeArgs" "native libraries component"
