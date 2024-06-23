@@ -128,7 +128,7 @@ fi
 echo checking ld >&2
 # Only lld version >= 9 can be considered stable. lld supports s390x starting from 18.0.
 if [ "$compiler" = "clang" ] && [ -n "$majorVersion" ] && [ "$majorVersion" -ge 9 ] && ([ "$build_arch" != "s390x" ] || [ "$majorVersion" -ge 18 ]); then
-    echo clang version ok >&2
+    echo clang version ok 
     if "$CC" -fuse-ld=lld -Wl,--version >/dev/null 2>&1; then
         echo lld >&2
         LDFLAGS="-fuse-ld=lld"
