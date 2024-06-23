@@ -165,11 +165,14 @@ build_native()
         buildTool="make"
     fi
 
+echo build-commons
     if [[ "$__SkipConfigure" == 0 ]]; then
 
         if [[ "$__StaticAnalyzer" == 1 ]]; then
             scan_build=scan-build
         fi
+
+echo gen-buildsys
 
         nextCommand="\"$__RepoRootDir/eng/native/gen-buildsys.sh\" \"$cmakeDir\" \"$intermediatesDir\" $hostArch $targetOS $__Compiler $__BuildType \"$generator\" $scan_build $cmakeArgs"
         echo "Invoking $nextCommand"
@@ -536,7 +539,9 @@ if [[ "$__PortableBuild" == 0 ]]; then
     __CommonMSBuildArgs="$__CommonMSBuildArgs /p:PortableBuild=false"
 fi
 
+echo build-commons main
 if [[ "$__TargetArch" == wasm ]]; then
+    echo nothing to do
     # nothing to do here
     true
 elif [[ "$__TargetOS" == ios || "$__TargetOS" == iossimulator ]]; then

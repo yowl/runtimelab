@@ -74,5 +74,6 @@ setup_dirs
 # Check prereqs.
 check_prereqs
 
+echo "corehost build - > build_native"
 # Build the installer native components.
 build_native "$__TargetOS" "$__TargetArch" "$__scriptpath" "$__IntermediatesDir" "install" "$__CMakeArgs" "installer component"
