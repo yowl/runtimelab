@@ -23,6 +23,8 @@ host_arch="$3"
 target_os="$4"
 compiler="$5"
 
+echo compiler $compiler host_arch $host_arch
+
 if [[ "$compiler" != "default" ]]; then
     nativescriptroot="$( cd -P "$scriptroot/../common/native" && pwd )"
     build_arch="$host_arch" compiler="$compiler" . "$nativescriptroot/init-compiler.sh"
