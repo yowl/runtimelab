@@ -25,7 +25,10 @@ python_config() {
     echo "Python ${PYTHON_VER} - Setup Completed!" 
 }
 
+python --version
 python3 --version
+
+ln -s /usr/bin/python3 /usr/bin/python
 
 apt install python3
 
