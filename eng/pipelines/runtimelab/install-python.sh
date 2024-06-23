@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+ls /usr/bin
+
 as --version
 
 #echo Adding Python to path     $1/python/bin
