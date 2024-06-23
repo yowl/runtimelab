@@ -56,7 +56,7 @@ if ($CI -and !$IsWindows) {
     $RepoDir = Split-path $PSScriptRoot | Split-Path | Split-Path
     Write-Host $RepoDir
 
-    bash -c "build_arch=amd64 compiler=clang source $RepoDir/eng/common/native/init-compiler.sh && set | grep -e CC -e CXX" |
+    bash -c "build_arch=amd64 compiler=clang source $RepoDir/eng/common/native/init-compiler.sh && set | grep -e CC -e CXX -e LDFLAGS" |
       ForEach-Object {
        # Split the "<name>=<value>" line into the variable's name and value.
        $name, $value = $_ -split '=', 2
