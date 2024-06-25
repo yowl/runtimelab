@@ -48,9 +48,9 @@ jobs:
     - ${{ if in(parameters.platform, 'android_x64') }}:
       - Ubuntu.2204.Amd64.Android.29.Open
 
-    # Wasm
-    - ${{ if in(parameters.platform, 'browser_wasm', 'wasi_wasm_linux_x64') }}:
-      - XXX
+    # Browser wasm
+    - ${{ if eq(parameters.platform, 'browser_wasm') }}:
+      - (Ubuntu.2204.Amd64)Ubuntu.2204.Amd64.Open@mcr.microsoft.com/dotnet-buildtools/prereqs:ubuntu-22.04-helix-webassembly
 
     # iOS devices
     - ${{ if in(parameters.platform, 'ios_arm64') }}:
@@ -98,9 +98,9 @@ jobs:
     # Linux x64
     - ${{ if eq(parameters.platform, 'linux_x64') }}:
       - ${{ if eq(variables['System.TeamProject'], 'public') }}:
-        - YYYY
+        - Ubuntu.2204.Amd64.Open
       - ${{ if eq(variables['System.TeamProject'], 'internal') }}:
-        - ZZZZ
+        - Ubuntu.2204.Amd64
 
     # OSX arm64
     - ${{ if eq(parameters.platform, 'osx_arm64') }}:

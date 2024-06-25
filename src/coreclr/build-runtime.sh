@@ -105,7 +105,6 @@ __CMakeArgs=""
 __RequestedBuildComponents=""
 __SubDir=""
 
-echo build-runtime
 source "$__ProjectRoot"/_build-commons.sh
 
 # Set dependent variables
@@ -206,7 +205,6 @@ fi
 
 eval "$__RepoRootDir/eng/native/version/copy_version_files.sh"
 
-echo "call build-native"
 build_native "$__HostOS" "$__HostArch" "$__ProjectRoot" "$__IntermediatesDir" "$__CMakeTarget" "$__CMakeArgs" "CoreCLR component"
 
 # Build complete
