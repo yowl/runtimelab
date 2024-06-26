@@ -227,7 +227,7 @@ function Build {
     bl="/bl:\"$log_dir/Build.binlog\""
   fi
 
-echo build2
+echo build2 $properties
 echo $LDFLAGS
 
   MSBuild $_InitializeToolset \
