@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Stop script if unbound variable found (use ${var:-} if intentional)
-set -u
+#set -u
 
 # Stop script if command returns non-zero exit code.
 # Prevents hidden errors caused by missing error code propagation.
