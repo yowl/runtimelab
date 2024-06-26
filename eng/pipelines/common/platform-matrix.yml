@@ -503,6 +503,7 @@ jobs:
         runtimeFlavor: ${{ parameters.runtimeFlavor }}
         stagedBuild: ${{ parameters.stagedBuild }}
         buildConfig: ${{ parameters.buildConfig }}
+        crossBuild: true
         ${{ insert }}: ${{ parameters.jobParameters }}
 
 # Browser WebAssembly
