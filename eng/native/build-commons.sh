@@ -205,6 +205,9 @@ build_native()
     export CXXFLAGS="${CXXFLAGS} ${EXTRA_CXXFLAGS}"
     export LDFLAGS="${LDFLAGS} ${EXTRA_LDFLAGS}"
 
+echo build-commens
+echo $LDFLAGS
+
     local exit_code
     if [[ "$__StaticAnalyzer" == 1 ]]; then
         pushd "$intermediatesDir"
@@ -238,6 +241,9 @@ build_native()
     CFLAGS="${SAVED_CFLAGS}"
     CXXFLAGS="${SAVED_CXXFLAGS}"
     LDFLAGS="${SAVED_LDFLAGS}"
+
+echo build-commens2
+echo $LDFLAGS
 
     if [[ "$exit_code" != 0 ]]; then
         echo "${__ErrMsgPrefix}Failed to build \"$message\"."

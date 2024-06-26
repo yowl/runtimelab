@@ -87,6 +87,9 @@ verbosity='minimal'
 runtime_source_feed=''
 runtime_source_feed_key=''
 
+echo build
+echo $LDFLAGS
+
 properties=''
 while [[ $# > 0 ]]; do
   opt="$(echo "${1/#--/-}" | tr "[:upper:]" "[:lower:]")"
@@ -223,6 +226,9 @@ function Build {
   if [[ "$binary_log" == true ]]; then
     bl="/bl:\"$log_dir/Build.binlog\""
   fi
+
+echo build2
+echo $LDFLAGS
 
   MSBuild $_InitializeToolset \
     $bl \

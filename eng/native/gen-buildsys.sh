@@ -19,6 +19,11 @@ if [[ "$#" -lt 4 ]]; then
   exit 1
 fi
 
+echo gen-buildsys
+echo $LDFLAGS
+
+echo $3 $4 $5
+
 host_arch="$3"
 target_os="$4"
 compiler="$5"
@@ -109,6 +114,9 @@ if [[ "$host_arch" == "wasm" ]]; then
         exit 1
     fi
 fi
+
+echo gen-buildsys2
+echo $LDFLAGS
 
 $cmake_command \
   --no-warn-unused-cli \
