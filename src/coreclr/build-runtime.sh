@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+echo build-runtime
+
 # resolve python-version to use
 if [[ -z "$PYTHON" ]]; then
     if ! PYTHON=$(command -v python3 || command -v python2 || command -v python || command -v py)
@@ -205,7 +207,11 @@ fi
 
 eval "$__RepoRootDir/eng/native/version/copy_version_files.sh"
 
+echo build-runtime 2
+
 build_native "$__HostOS" "$__HostArch" "$__ProjectRoot" "$__IntermediatesDir" "$__CMakeTarget" "$__CMakeArgs" "CoreCLR component"
+
+echo $LDFLAGS
 
 # Build complete
 

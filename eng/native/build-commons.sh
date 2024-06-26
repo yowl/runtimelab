@@ -48,6 +48,9 @@ check_prereqs()
 
 build_native()
 {
+echo build_native
+echo $LDFLAGS
+
     if [[ ! -e "$__RepoRootDir/artifacts/obj/_version.c" ]]; then
         eval "$__RepoRootDir/eng/native/version/copy_version_files.sh"
     fi
