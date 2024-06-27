@@ -99,6 +99,8 @@ function(create_standalone_jit)
     )
 
     # Only look at "our" LLVM with LLVM_CMAKE_CONFIG.
+
+    set(LLVM_DIR /__w/1/s/wasm-tools/llvm-project/build-release/lib/cmake/llvm)
     find_package(LLVM REQUIRED CONFIG PATHS $ENV{LLVM_CMAKE_CONFIG} NO_DEFAULT_PATH)
     target_include_directories(${TARGETDETAILS_TARGET} PRIVATE ${LLVM_INCLUDE_DIRS})
     separate_arguments(LLVM_DEFINITIONS)
