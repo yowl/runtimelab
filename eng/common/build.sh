@@ -230,6 +230,10 @@ function Build {
 echo build2 $properties
 echo $LDFLAGS
 echo $LLVM_DIR
+ls $LLVM_DIR
+
+echo $LLVM_CMAKE_CONFIG
+ls $LLVM_CMAKE_CONFIG
 
   MSBuild $_InitializeToolset \
     $bl \
