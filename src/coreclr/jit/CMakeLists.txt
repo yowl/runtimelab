@@ -91,6 +91,9 @@ function(create_standalone_jit)
     # Shared C#/C++ Jit-EE interface sources.
     target_include_directories(${TARGETDETAILS_TARGET} PRIVATE "../tools/Common/JitInterface")
 
+    message("config")
+    message($ENV{LLVM_CMAKE_CONFIG})
+
     # Only look at "our" LLVM with LLVM_CMAKE_CONFIG.
     find_package(LLVM REQUIRED CONFIG PATHS $ENV{LLVM_CMAKE_CONFIG} NO_DEFAULT_PATH)
     target_include_directories(${TARGETDETAILS_TARGET} PRIVATE ${LLVM_INCLUDE_DIRS})
