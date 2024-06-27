@@ -133,6 +133,7 @@ foreach ($Config in $Configs | % { if ($_ -eq "Checked") { "Debug" } else { $_ }
     if ($CI)
     {
         Write-Output "##vso[task.setvariable variable=$LlvmCmakeConfigEnvVarName]$LlvmCmakeConfigPath"
+        Write-Output "##vso[task.setvariable variable=LLVM_DIR]$LlvmCmakeConfigPath"
     }
     else
     {

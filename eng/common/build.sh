@@ -229,6 +229,7 @@ function Build {
 
 echo build2 $properties
 echo $LDFLAGS
+echo $LLVM_DIR
 
   MSBuild $_InitializeToolset \
     $bl \
