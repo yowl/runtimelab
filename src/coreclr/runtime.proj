@@ -84,7 +84,9 @@
       <_CoreClrBuildArg Include="-cmakeargs &quot;-DCMAKE_ICU_DIR=$(_IcuDir)&quot;" />
     </ItemGroup>
 
-    <_CoreClrBuildArg Include="-cmakeargs --trace-expand" />
+    <ItemGroup>
+      <_CoreClrBuildArg Include="-cmakeargs --trace-expand" />
+    </ItemGroup>
 
     <ItemGroup Condition="('$(TargetsAndroid)' == 'true' or '$(TargetsLinuxBionic)' == 'true') and '$(ANDROID_NDK_ROOT)' != ''">
       <_CoreClrBuildArg Include="-DCMAKE_TOOLCHAIN_FILE=$(ANDROID_NDK_ROOT)/build/cmake/android.toolchain.cmake"/>
