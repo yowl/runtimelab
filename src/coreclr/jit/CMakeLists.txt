@@ -94,13 +94,10 @@ function(create_standalone_jit)
     message("config")
     message($ENV{LLVM_CMAKE_CONFIG})
 
-    execute_process(
-      COMMAND bash -c "cat $ENV{LLVM_CMAKE_CONFIG}/LLVMConfig.cmake"
-    )
-
     # Only look at "our" LLVM with LLVM_CMAKE_CONFIG.
 
     set(LLVM_DIR /__w/1/s/wasm-tools/llvm-project/build-release/lib/cmake/llvm)
+    set(CMAKE_CXX_STANDARD 17) 
     find_package(LLVM REQUIRED CONFIG PATHS $ENV{LLVM_CMAKE_CONFIG} NO_DEFAULT_PATH)
     target_include_directories(${TARGETDETAILS_TARGET} PRIVATE ${LLVM_INCLUDE_DIRS})
     separate_arguments(LLVM_DEFINITIONS)
@@ -736,7 +733,7 @@ if (CLR_CMAKE_BUILD_LLVM_JIT)
 
     # LLVM headers require C++17.
     message("setting C++ 17")
-    
+
     create_standalone_jit(TARGET clrjit_universal_wasm32_${ARCH_HOST_NAME} OS universal ARCH wasm32 CMAKE_CXX_STANDARD 17 DESTINATIONS .)
     install_clr(TARGETS clrjit_universal_wasm32_${ARCH_HOST_NAME} DESTINATIONS . COMPONENT wasmjit)
 
