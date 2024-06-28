@@ -232,8 +232,7 @@ echo $LDFLAGS
 echo $LLVM_DIR
 ls $LLVM_DIR
 
-echo $LLVM_CMAKE_CONFIG
-ls $LLVM_CMAKE_CONFIG
+cmake --version
 
   MSBuild $_InitializeToolset \
     $bl \

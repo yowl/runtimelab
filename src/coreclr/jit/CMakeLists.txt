@@ -735,6 +735,8 @@ if (CLR_CMAKE_BUILD_LLVM_JIT)
     list(FILTER JIT_SOURCES EXCLUDE REGEX regalloc\.cpp)
 
     # LLVM headers require C++17.
+    message("setting C++ 17")
+    
     create_standalone_jit(TARGET clrjit_universal_wasm32_${ARCH_HOST_NAME} OS universal ARCH wasm32 CMAKE_CXX_STANDARD 17 DESTINATIONS .)
     install_clr(TARGETS clrjit_universal_wasm32_${ARCH_HOST_NAME} DESTINATIONS . COMPONENT wasmjit)
 
