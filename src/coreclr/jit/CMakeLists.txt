@@ -98,6 +98,7 @@ function(create_standalone_jit)
 
     set(LLVM_DIR /__w/1/s/wasm-tools/llvm-project/build-release/lib/cmake/llvm)
     set(CMAKE_CXX_STANDARD 17) 
+    add_compile_options(-isystem ${ROOTFS_DIR}/usr/include/c++/v1)
     find_package(LLVM REQUIRED CONFIG PATHS $ENV{LLVM_CMAKE_CONFIG} NO_DEFAULT_PATH)
     target_include_directories(${TARGETDETAILS_TARGET} PRIVATE ${LLVM_INCLUDE_DIRS})
     separate_arguments(LLVM_DEFINITIONS)
