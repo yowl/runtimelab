@@ -94,15 +94,13 @@ function(create_standalone_jit)
     message("config")
     message($ENV{LLVM_CMAKE_CONFIG})
 
-message ("include")
-message (${ROOTFS_DIR}/usr/include/c++/v1)
     # Only look at "our" LLVM with LLVM_CMAKE_CONFIG.
 
-    set(LLVM_DIR /__w/1/s/wasm-tools/llvm-project/build-release/lib/cmake/llvm)
+ #   set(LLVM_DIR /__w/1/s/wasm-tools/llvm-project/build-release/lib/cmake/llvm)
     set(CMAKE_CXX_STANDARD 17) 
     find_package(LLVM REQUIRED CONFIG PATHS $ENV{LLVM_CMAKE_CONFIG} NO_DEFAULT_PATH)
     target_include_directories(${TARGETDETAILS_TARGET} PRIVATE ${LLVM_INCLUDE_DIRS})
-    target_include_directories(${TARGETDETAILS_TARGET} SYSTEM ${ROOTFS_DIR}/usr/include/c++/v1)
+#    target_include_directories(${TARGETDETAILS_TARGET} SYSTEM ${ROOTFS_DIR}/usr/include/c++/v1)
     separate_arguments(LLVM_DEFINITIONS)
     target_compile_definitions(${TARGETDETAILS_TARGET} PRIVATE ${LLVM_DEFINITIONS})
     llvm_map_components_to_libnames(llvm_libs core bitwriter)

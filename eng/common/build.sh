@@ -230,7 +230,6 @@ function Build {
 echo build2 $properties
 echo $LDFLAGS
 echo $LLVM_DIR
-ls $LLVM_DIR
 
 cmake --version
 

@@ -29,7 +29,7 @@ if ($CloneDir -ne $null)
     Set-Location -Path $CloneDir
 }
 
-$LlvmProjectTag = "llvmorg-18.1.3"
+$LlvmProjectTag = "llvmorg-18.1.8"
 if ($NoClone)
 {
     if (!(Test-Path llvm-project))
@@ -51,18 +51,21 @@ else
     git clone https://github.com/llvm/llvm-project --branch $LlvmProjectTag $DepthOption
 }
 
+
 # Set the compiler for CI on non-Windows
-if ($CI -and !$IsWindows) {
+if (!$IsWindows) {
     $RepoDir = Split-path $PSScriptRoot | Split-Path | Split-Path
-    Write-Host $RepoDir
 
     bash -c "build_arch=amd64 compiler=clang source $RepoDir/eng/common/native/init-compiler.sh && set | grep -e CC -e CXX -e LDFLAGS" |
       ForEach-Object {
-       # Split the "<name>=<value>" line into the variable's name and value.
-       $name, $value = $_ -split '=', 2
-       # Define it as a process-level environment variable in PowerShell.
-       Set-Content ENV:$name $value
-       Write-Host $name $value
+        if ($CI)
+        {
+            # Split the "<name>=<value>" line into the variable's name and value.
+            $name, $value = $_ -split '=', 2
+            # Define it as a process-level environment variable in PowerShell.
+            Set-Content ENV:$name $value
+            Write-Host $name $value
+        }
      }
 }
 
@@ -105,6 +108,13 @@ foreach ($Config in $Configs | % { if ($_ -eq "Checked") { "Debug" } else { $_ }
         }
     }
     $CmakeConfigureCommandLine += "-DCMAKE_BUILD_TYPE=$LlvmConfig"
+    
+    if (!$IsWindows)
+    {
+        # $CmakeConfigureCommandLine += "-DCMAKE_SYSROOT=/crossrootfs/x64 -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_INSTALL_PREFIX=/usr/local/llvm-cross -DLLVM_HOST_TRIPLE=x86_64-unknown-linux-gnu -DLLVM_TARGETS_TO_BUILD=WebAssembly"
+        $CmakeConfigureCommandLine += "-DCMAKE_SYSROOT=/crossrootfs/x64 -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_INSTALL_PREFIX=/usr/local/llvm-cross -DLLVM_TARGETS_TO_BUILD=WebAssembly"
+        # $CmakeConfigureCommandLine += "-DCMAKE_SYSROOT=/crossrootfs/x64"
+    }
 
     Write-Host "Invoking CMake configure: 'cmake $CmakeConfigureCommandLine'"
     cmake @CmakeConfigureCommandLine
