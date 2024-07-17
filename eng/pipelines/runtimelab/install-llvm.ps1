@@ -113,7 +113,11 @@ foreach ($Config in $Configs | % { if ($_ -eq "Checked") { "Debug" } else { $_ }
     {
         # $CmakeConfigureCommandLine += "-DCMAKE_SYSROOT=/crossrootfs/x64 -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_INSTALL_PREFIX=/usr/local/llvm-cross -DLLVM_HOST_TRIPLE=x86_64-unknown-linux-gnu -DLLVM_TARGETS_TO_BUILD=WebAssembly"
         #$CmakeConfigureCommandLine += "-DCMAKE_SYSROOT=/crossrootfs/x64 -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_INSTALL_PREFIX=/usr/local/llvm-cross -DLLVM_HOST_TRIPLE=x86_64-pc-linux-gnu -DLLVM_TARGETS_TO_BUILD=WebAssembly"
-        $CmakeConfigureCommandLine += "-DCMAKE_SYSROOT=/crossrootfs/x64", "-DCMAKE_SYSTEM_NAME=Linux", "-DCMAKE_INSTALL_PREFIX=/usr/local/llvm-cross", "-DLLVM_HOST_TRIPLE=x86_64-pc-linux-gnu", "-DLLVM_TARGETS_TO_BUILD=WebAssembly", "-DCMAKE_CXX_FLAGS=-L/usr/lib"
+        # $CmakeConfigureCommandLine += "-DCMAKE_SYSROOT=/crossrootfs/x64", "-DCMAKE_SYSTEM_NAME=Linux", "-DCMAKE_INSTALL_PREFIX=/usr/local/llvm-cross", "-DLLVM_HOST_TRIPLE=x86_64-pc-linux-gnu", "-DLLVM_TARGETS_TO_BUILD=WebAssembly", "-DCMAKE_CXX_FLAGS=-L/usr/lib"
+        $CmakeConfigureCommandLine += "-DCMAKE_SYSROOT=/crossrootfs/x64", "-DCMAKE_SYSTEM_NAME=Linux", "-DCMAKE_INSTALL_PREFIX=/usr/local/llvm-cross", "-DLLVM_HOST_TRIPLE=x86_64-pc-linux-gnu", "-DLLVM_TARGETS_TO_BUILD=WebAssembly"
+        # $CmakeConfigureCommandLine += "-DCMAKE_SYSROOT=/crossrootfs/x64", "-DCMAKE_SYSTEM_NAME=Linux", "-DCMAKE_INSTALL_PREFIX=/usr/local/llvm-cross", "-DLLVM_HOST_TRIPLE=x86_64-linux-gnu", "-DLLVM_TARGETS_TO_BUILD=WebAssembly"
+        # $CmakeConfigureCommandLine += "-DCMAKE_SYSROOT=/crossrootfs/x64", "-DCMAKE_SYSTEM_NAME=Linux", "-DCMAKE_INSTALL_PREFIX=/usr/local/llvm-cross", "-DLLVM_HOST_TRIPLE=x86_64-linux-gnu", "-DLLVM_TARGETS_TO_BUILD=WebAssembly", "-DLLVM_DEFAULT_TARGET_TRIPLE=x86_64-linux-gnu"
+        # $CmakeConfigureCommandLine += "-DCMAKE_SYSROOT=/crossrootfs/x64", "-DCMAKE_SYSTEM_NAME=Linux", "-DCMAKE_INSTALL_PREFIX=/usr/local/llvm-cross", "-DLLVM_HOST_TRIPLE=x86_64-pc-linux-gnu", "-DLLVM_TARGETS_TO_BUILD=WebAssembly", "-DCMAKE_CXX_FLAGS=-L/lib64"
         # $CmakeConfigureCommandLine += "-DCMAKE_SYSROOT=/crossrootfs/x64 -DCMAKE_SYSTEM_NAME=Linux -DCMAKE_INSTALL_PREFIX=/usr/local/llvm-cross -DLLVM_TARGETS_TO_BUILD=WebAssembly"
         # $CmakeConfigureCommandLine += "-DCMAKE_SYSROOT=/crossrootfs/x64"
     }
