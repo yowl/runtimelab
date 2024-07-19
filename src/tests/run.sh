@@ -41,6 +41,7 @@ function print_usage {
     echo '  --tieringtest                    : Run each test to encourage tier1 rejitting'
     echo '  --runnativeaottests              : Run NativeAOT compiled tests'
     echo '  --limitedDumpGeneration          : '
+    echo '  --target-os=<target-os>          : Override the target OS'
 }
 
 # Exit code constants
@@ -187,6 +188,9 @@ do
         --runnativeaottests)
             nativeaottest=1
             ;;
+        --target-os=*)
+            targetOS=${i#*=}
+            ;;
         *)
             echo "Unknown switch: $i"
             print_usage
@@ -205,7 +209,11 @@ echo "Build Architecture            : ${buildArch}"
 echo "Build Configuration           : ${buildConfiguration}"
 
 if [ "$buildArch" = "wasm" ]; then
-    runtestPyArguments+=("-os" "browser")
+    if [ -z $targetOS ]; then
+        targetOS=browser
+    fi
+
+    runtestPyArguments+=("-os" $targetOS)
 fi
 
 if [ "$buildOS" = "android" ]; then
