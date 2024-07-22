@@ -10,7 +10,6 @@
 # 2. Filename of the test executable
 # 3. - n. Additional arguments that were passed to the test .sh
 
-
 source ${pwd}/../../../../eng/testing/FindWasmHostExecutable.sh $1/native/$2
 
 if [[ "$?" -ne 0 ]]; then
