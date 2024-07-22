@@ -10,18 +10,14 @@
 # 2. Filename of the test executable
 # 3. - n. Additional arguments that were passed to the test .sh
 
-source ${pwd}/../../../../eng/testing/FindWasmHostExecutable.sh $1/native/$2
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 
-if [[ "$?" -ne 0 ]]; then
-    echo "Failed to FindWasmHostExecutables"
-    exit 1
+source $SCRIPT_DIR/../../../../eng/testing/FindWasmHostExecutable.sh "$1/native/$2"
+
+if [ -n "${WASM_HOST_EXECUTABLE}" ]; then
+  echo $WASM_HOST_EXECUTABLE "$WASM_BINARY_TO_EXECUTE" "${@:3}"
+  $WASM_HOST_EXECUTABLE "$WASM_BINARY_TO_EXECUTE" "${@:3}"
+else
+  chmod +x $1/native/$exename
+  $_DebuggerFullPath $1/native/$exename "${@:3}"
 fi
-
-if [[ -n $WASM_HOST_EXECUTABLE ]]; then
-  $WASM_HOST_EXECUTABLE $WASM_BINARY_TO_EXECUTE $3 $4 $5 $6 $7 $8 $9
-  exit $?
-fi
-
-exename=$(basename $2 .dll)
-chmod +x $1/native/$exename
-$_DebuggerFullPath $1/native/$exename "${@:3}"
