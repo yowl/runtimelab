@@ -24,27 +24,21 @@ Invoke-WebRequest -Uri https://github.com/bytecodealliance/wasmtime/releases/dow
 
 mkdir wasmtime/bin
 
-Expand-Archive -LiteralPath $WasmtimeTar -DestinationPath .
 if ($IsWindows)
 {
+    Expand-Archive -LiteralPath $WasmtimeTar -DestinationPath .
     move wasmtime-v23.0.1-x86_64-windows\wasmtime.exe wasmtime\bin\
+    $WasmtimeExecutable = "wasmtime.exe"
 }
 else
 {
-    $WasmtimeTar = "wasmtime-v23.0.1-x86_64-linux.tar.xz"
+    tar -xzf $WasmtimeTar
+    move wasmtime-v23.0.1-x86_64-linux/wasmtime wasmtime/bin/
+    $WasmtimeExecutable = "wasmtime"
 }
 
 if ($CI)
 {
-    if ($IsWindows)
-    {
-        $WasmtimeExecutable = "wasmtime-v23.0.1-x86_64-windows/wasmtime.exe"
-    }
-    else
-    {
-        $WasmtimeExecutable = "wasmtime-v23.0.1-x86_64-windows/wasmtime.exe"
-    }
-
-    Write-Host "Setting WASMTIME_EXECUTABLE to '$WasmtimeExecutable'"
+    Write-Host "Setting WASMTIME_EXECUTABLE to '$InstallDir/wasm-tools/wasmtime/bin/$WasmtimeExecutable'"
     Write-Output "##vso[task.setvariable variable=WASMTIME_EXECUTABLE]$WasmtimeExecutable"
 }
