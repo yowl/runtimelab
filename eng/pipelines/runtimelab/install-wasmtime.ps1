@@ -4,9 +4,9 @@ param(
     [switch]$CI
 )
 
-if (!(Test-Path $InstallPath))
+if (!(Test-Path $InstallDir))
 {
-    md $InstallPath
+    md $InstallDir
 }
 
 Set-Location -Path $InstallDir
