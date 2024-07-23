@@ -26,12 +26,12 @@ if exist "%__WasmBinaryPathWithoutExtension%.js" (
 )
 
 if "%__WasmBinaryExtension%" == ".wasm" (
-  if "%WASMTIME_EXECUTABLE%" == "" (
+  if "%WASMER_EXECUTABLE%" == "" (
     :: When running tests locally, assume wasmer is in PATH.
-    set WASMTIME_EXECUTABLE=wasmtime
+    set WASMER_EXECUTABLE=wasmer
   )
 
-  set WASM_HOST_EXECUTABLE="!WASMTIME_EXECUTABLE!" --
+  set WASM_HOST_EXECUTABLE="!WASMER_EXECUTABLE!" --
 ) else (
   if "%NODEJS_EXECUTABLE%" == "" (
     :: When running tests locally, assume NodeJS is in PATH.
