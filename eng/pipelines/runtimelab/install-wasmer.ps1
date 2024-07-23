@@ -22,7 +22,7 @@ else
 
 Invoke-WebRequest -Uri https://github.com/wasmerio/wasmer/releases/download/v3.3.0/$WasmerTar -OutFile $WasmerTar
 
-mkdir wasmer -Force
+New-Item -ItemType Directory -Force -Path wasmer
 
 tar -xzf $WasmerTar -C wasmer
 
