@@ -4,7 +4,6 @@ exename=$(basename "$1" .dll)
 dirname=$(dirname "$1")
 
 node="node --stack_trace_limit=100"
-wasmtime="wasmtime run -S http"
 
 if [ -e "${dirname}/${exename}.js" ]; then
   WASM_HOST_EXECUTABLE=$node
@@ -19,6 +18,6 @@ elif [ -e "${dirname}/main.mjs" ]; then
   WASM_HOST_EXECUTABLE=$node
   WASM_BINARY_TO_EXECUTE="${dirname}/main.mjs"
 elif [ -e "${dirname}/${exename}.wasm" ]; then
-  WASM_HOST_EXECUTABLE=$wasmtime
+  WASM_HOST_EXECUTABLE=wasmer
   WASM_BINARY_TO_EXECUTE="${dirname}/${exename}.wasm"
 fi
