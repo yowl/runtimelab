@@ -4,6 +4,11 @@ param(
     [switch]$CI
 )
 
+if (!(Test-Path $InstallPath))
+{
+    md $InstallPath
+}
+
 Set-Location -Path $InstallDir
 
 if (!(Test-Path variable:global:IsWindows))
@@ -22,7 +27,10 @@ else
 
 Invoke-WebRequest -Uri https://github.com/bytecodealliance/wasmtime/releases/download/v23.0.1/$WasmtimeTar -OutFile $WasmtimeTar
 
-mkdir wasmtime/bin
+if (!(Test-Path wasmtime/bin))
+{
+    md wasmtime/bin
+}
 
 if ($IsWindows)
 {
@@ -32,7 +40,7 @@ if ($IsWindows)
 }
 else
 {
-    tar -xzf $WasmtimeTar
+    tar -xf $WasmtimeTar
     move wasmtime-v23.0.1-x86_64-linux/wasmtime wasmtime/bin/
     $WasmtimeExecutable = "wasmtime"
 }
