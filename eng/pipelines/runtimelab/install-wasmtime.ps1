@@ -6,7 +6,7 @@ param(
 
 if (!(Test-Path $InstallDir))
 {
-    md $InstallDir
+    md -Force $InstallDir
 }
 
 Set-Location -Path $InstallDir
