@@ -18,6 +18,6 @@ elif [ -e "${dirname}/main.mjs" ]; then
   WASM_HOST_EXECUTABLE=$node
   WASM_BINARY_TO_EXECUTE="${dirname}/main.mjs"
 elif [ -e "${dirname}/${exename}.wasm" ]; then
-  WASM_HOST_EXECUTABLE=wasmer
+  WASM_HOST_EXECUTABLE=$WASMER_EXECUTABLE
   WASM_BINARY_TO_EXECUTE="${dirname}/${exename}.wasm"
 fi
