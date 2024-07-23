@@ -13,18 +13,18 @@ if (!(Test-Path variable:global:IsWindows))
 
 if ($IsWIndows)
 {
-    $WasmerTar=wasmer-linux-amd64.tar.gz
+    $WasmerTar="wasmer-windows-amd64.tar.gz"
 }
 else
 {
-    $WasmerTar=wasmer-windows-amd64.tar.gz
+    $WasmerTar="wasmer-linux-amd64.tar.gz"
 }
 
 Invoke-WebRequest -Uri https://github.com/wasmerio/wasmer/releases/download/v3.3.0/$WasmerTar -OutFile $WasmerTar
 
-mkdir wasmer
+mkdir wasmer -Force
 
-tar -xzf $WasmerExe -C wasmer
+tar -xzf $WasmerTar -C wasmer
 
 if ($CI)
 {
