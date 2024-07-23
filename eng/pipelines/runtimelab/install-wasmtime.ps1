@@ -6,7 +6,7 @@ param(
 
 if (!(Test-Path $InstallDir))
 {
-    md -Force $InstallDir
+    md $InstallDir
 }
 
 Set-Location -Path $InstallDir
@@ -29,7 +29,7 @@ Invoke-WebRequest -Uri https://github.com/bytecodealliance/wasmtime/releases/dow
 
 if (!(Test-Path wasmtime/bin))
 {
-    md wasmtime/bin
+    New-Item -ItemType Directory -Path wasmtime/bin -Force
 }
 
 if ($IsWindows)
