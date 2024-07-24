@@ -77,7 +77,7 @@ steps:
           displayName: Build and run WebAssembly libraries tests
       - ${{ else }}:
         - script: |
-              source $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env.sh
+              source $(Build.SourcesDirectory)/wasm-tools/emsdk/emsdk_env.sh
               LD_LIBRARY_PATH=/usr/local/lib:/opt/lib:/lib:/usr/lib:/crossrootfs/x64/lib/x86_64-linux-gnu/ $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -test -a ${{ parameters.archType }} -os ${{ parameters.osGroup }} -lc ${{ parameters.librariesConfiguration }} -rc $(buildConfigUpper) /p:TestNativeAot=true /p:RunSmokeTestsOnly=true
           displayName: Build and run WebAssembly libraries tests
 
