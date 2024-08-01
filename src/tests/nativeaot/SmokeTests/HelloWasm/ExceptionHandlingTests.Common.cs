@@ -5,6 +5,7 @@ using System;
 using System.Threading;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 
 // Assignment in conditional expression is always constant; did you mean to use == instead of = ? (No we did not).
 #pragma warning disable CS0665
@@ -87,6 +88,8 @@ internal unsafe partial class Program
         TestExpandingUncontainedNestedDispatchIntraFrame();
         TestDeepUncontainedNestedDispatchSingleFrame();
         TestDeepUncontainedNestedDispatchIntraFrame();
+
+        TestUnwindDestinations();
 
         return Success;
     }
@@ -1942,6 +1945,12 @@ internal unsafe partial class Program
         EndTest(result);
     }
 
+    private static void TestUnwindDestinations()
+    {
+        // just testing compilation of method similar to https://github.com/dotnet/runtimelab/blob/53dc49532ac2d8e49c739d784515d66ef0434851/src/libraries/System.Net.WebSockets.Client/src/System/Net/WebSockets/BrowserWebSockets/BrowserWebSocket.cs#L316
+        SafeContext.ConnectAsyncCore(new CancellationToken()).ContinueWith(_ => { });
+    }
+
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void ThrowException(Exception e) => throw e;
 
@@ -2013,6 +2022,35 @@ internal unsafe partial class Program
     {
         PrintString(s);
         PrintString("\n");
+    }
+}
+
+public class SafeContext
+{
+    private static object _lockObject = new object();
+
+    class OperationCanceledException : Exception
+    { }
+
+    public static async Task ConnectAsyncCore(CancellationToken cancellationToken)
+    {
+        Task openTask;
+
+        try
+        {
+            await Task.CompletedTask;
+        }
+        catch (OperationCanceledException ex)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            lock (_lockObject)
+            {
+            }
+            throw;
+        }
     }
 }
 
