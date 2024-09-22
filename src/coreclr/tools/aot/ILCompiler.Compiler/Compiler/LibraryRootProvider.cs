@@ -18,7 +18,7 @@ namespace ILCompiler
             _module = module;
         }
 
-        public void AddCompilationRoots(IRootingServiceProvider rootProvider)
+        public void AddCompilationRoots(IRootingServiceProvider rootProvider, NameMangler nodeFactoryNameMangler)
         {
             foreach (TypeDesc type in _module.GetAllTypes())
             {

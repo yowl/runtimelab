@@ -205,7 +205,7 @@ namespace ILCompiler
                         entrypointModule = module;
                     }
 
-                    compilationRoots.Add(new UnmanagedEntryPointsRootProvider(module));
+                    compilationRoots.Add(new UnmanagedEntryPointsRootProvider(module, new NativeAotNameMangler(new LLVMNodeMangler())));
                 }
 
                 bool nativeLib = Get(_command.NativeLib);
@@ -280,7 +280,8 @@ namespace ILCompiler
                         continue;
                     }
                     EcmaModule module = typeSystemContext.GetModuleForSimpleName(unmanagedEntryPointsAssembly);
-                    compilationRoots.Add(new UnmanagedEntryPointsRootProvider(module));
+                    // Creates another Name Mangler.
+                    compilationRoots.Add(new UnmanagedEntryPointsRootProvider(module, new NativeAotNameMangler(new LLVMNodeMangler())));
                 }
 
                 foreach (var rdXmlFilePath in Get(_command.RdXmlFilePaths))
@@ -622,7 +623,7 @@ namespace ILCompiler
                     }
                 }
 
-                defFileWriter.EmitExportedMethods();
+                defFileWriter.EmitExportedMethods(new NativeAotNameMangler(new LLVMNodeMangler()));
             }
 
             typeSystemContext.LogWarnings(logger);

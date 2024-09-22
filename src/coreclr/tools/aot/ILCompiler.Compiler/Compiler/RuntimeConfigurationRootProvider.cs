@@ -25,7 +25,8 @@ namespace ILCompiler
             _runtimeOptions = runtimeOptions;
         }
 
-        void ICompilationRootProvider.AddCompilationRoots(IRootingServiceProvider rootProvider)
+        void ICompilationRootProvider.AddCompilationRoots(IRootingServiceProvider rootProvider,
+            NameMangler nodeFactoryNameMangler)
         {
             rootProvider.AddCompilationRoot(new RuntimeConfigurationBlobNode(_blobName, _runtimeOptions), "Runtime configuration");
         }

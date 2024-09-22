@@ -27,7 +27,8 @@ namespace ILCompiler
             _typesWithDelegateMarshalling = typesWithDelegateMarshalling;
         }
 
-        public override void AddCompilationRoots(IRootingServiceProvider rootProvider)
+        public override void AddCompilationRoots(IRootingServiceProvider rootProvider,
+            NameMangler nodeFactoryNameMangler)
         {
             foreach (DefType type in _typesWithStructMarshalling)
             {

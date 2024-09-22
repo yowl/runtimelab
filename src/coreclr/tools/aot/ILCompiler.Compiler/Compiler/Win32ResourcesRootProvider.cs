@@ -16,7 +16,8 @@ namespace ILCompiler
         public Win32ResourcesRootProvider(EcmaModule resourceModule)
             => _resourceModule = resourceModule;
 
-        void ICompilationRootProvider.AddCompilationRoots(IRootingServiceProvider rootProvider)
+        void ICompilationRootProvider.AddCompilationRoots(IRootingServiceProvider rootProvider,
+            NameMangler nodeFactoryNameMangler)
         {
             var resData = new ResourceData(_resourceModule);
             if (!resData.IsEmpty)

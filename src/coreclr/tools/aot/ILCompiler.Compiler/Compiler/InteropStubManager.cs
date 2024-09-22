@@ -30,7 +30,8 @@ namespace ILCompiler
         {
         }
 
-        public virtual void AddCompilationRoots(IRootingServiceProvider rootProvider)
+        public virtual void AddCompilationRoots(IRootingServiceProvider rootProvider,
+            NameMangler nodeFactoryNameMangler)
         {
         }
     }

@@ -99,7 +99,7 @@ namespace Internal.TypeSystem
         /// </summary>
         public class MissingMethodException : MissingMemberException
         {
-            internal MissingMethodException(ExceptionStringID id, params string[] args)
+            public MissingMethodException(ExceptionStringID id, params string[] args)
                 : base(id, args)
             {
             }
@@ -151,7 +151,7 @@ namespace Internal.TypeSystem
 
         public class BadImageFormatException : TypeSystemException
         {
-            internal BadImageFormatException()
+            public BadImageFormatException()
                 : base(ExceptionStringID.BadImageFormatGeneric)
             {
             }

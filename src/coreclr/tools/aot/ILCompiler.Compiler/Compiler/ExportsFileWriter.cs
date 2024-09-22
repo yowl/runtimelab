@@ -30,7 +30,7 @@ namespace ILCompiler
         public void AddExportedMethods(IEnumerable<EcmaMethod> methods)
             => _methods.AddRange(methods.Where(m => m.Module != _context.SystemModule));
 
-        public void EmitExportedMethods()
+        public void EmitExportedMethods(NameMangler nameMangler)
         {
             FileStream fileStream = new FileStream(_exportsFile, FileMode.Create);
             using (StreamWriter streamWriter = new StreamWriter(fileStream))
@@ -41,7 +41,7 @@ namespace ILCompiler
                     foreach (string symbol in _exportSymbols)
                         streamWriter.WriteLine($"   {symbol.Replace(',', ' ')}");
                     foreach (var method in _methods)
-                        streamWriter.WriteLine($"   {method.GetUnmanagedCallersOnlyExportName()}");
+                        streamWriter.WriteLine($"   {method.GetUnmanagedCallersOnlyExportName(nameMangler)}");
                 }
                 else if (_context.Target.IsApplePlatform || _context.Target.OperatingSystem == TargetOS.Browser)
                 {
@@ -54,14 +54,14 @@ namespace ILCompiler
                     foreach (string symbol in _exportSymbols)
                         streamWriter.WriteLine($"_{symbol}");
                     foreach (var method in _methods)
-                        streamWriter.WriteLine($"_{method.GetUnmanagedCallersOnlyExportName()}");
+                        streamWriter.WriteLine($"_{method.GetUnmanagedCallersOnlyExportName(nameMangler)}");
                 }
                 else if (_context.Target.OperatingSystem == TargetOS.Wasi)
                 {
                     foreach (string symbol in _exportSymbols)
                         streamWriter.WriteLine(symbol);
                     foreach (var method in _methods)
-                        streamWriter.WriteLine(method.GetUnmanagedCallersOnlyExportName());
+                        streamWriter.WriteLine(method.GetUnmanagedCallersOnlyExportName(nameMangler));
                 }
                 else
                 {
@@ -72,7 +72,7 @@ namespace ILCompiler
                         foreach (string symbol in _exportSymbols)
                             streamWriter.WriteLine($"        {symbol};");
                         foreach (var method in _methods)
-                            streamWriter.WriteLine($"        {method.GetUnmanagedCallersOnlyExportName()};");
+                            streamWriter.WriteLine($"        {method.GetUnmanagedCallersOnlyExportName(nameMangler)};");
                     }
                     streamWriter.WriteLine("    local: *;");
                     streamWriter.WriteLine("};");

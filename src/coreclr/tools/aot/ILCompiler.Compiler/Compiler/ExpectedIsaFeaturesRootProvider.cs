@@ -16,7 +16,8 @@ namespace ILCompiler
             _isaSupport = isaSupport;
         }
 
-        void ICompilationRootProvider.AddCompilationRoots(IRootingServiceProvider rootProvider)
+        void ICompilationRootProvider.AddCompilationRoots(IRootingServiceProvider rootProvider,
+            NameMangler nodeFactoryNameMangler)
         {
             if (_isaSupport.Architecture == TargetArchitecture.X64
                 || _isaSupport.Architecture == TargetArchitecture.X86

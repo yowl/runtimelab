@@ -15,10 +15,12 @@ namespace ILCompiler
     public class UnmanagedEntryPointsRootProvider : ICompilationRootProvider
     {
         private EcmaModule _module;
+        private readonly NameMangler _nameMangler;
 
-        public UnmanagedEntryPointsRootProvider(EcmaModule module)
+        public UnmanagedEntryPointsRootProvider(EcmaModule module, NameMangler nameMangler)
         {
             _module = module;
+            _nameMangler = nameMangler;
         }
 
         public IEnumerable<EcmaMethod> ExportedMethods
@@ -27,6 +29,8 @@ namespace ILCompiler
             {
                 MetadataReader reader = _module.MetadataReader;
                 MetadataStringComparer comparer = reader.StringComparer;
+                HashSet<EcmaMethod> hacks = new HashSet<EcmaMethod>();
+
                 foreach (CustomAttributeHandle caHandle in reader.CustomAttributes)
                 {
                     CustomAttribute ca = reader.GetCustomAttribute(caHandle);
@@ -48,21 +52,40 @@ namespace ILCompiler
                         && comparer.Equals(nsHandle, "System.Runtime.InteropServices"))
                     {
                         var method = (EcmaMethod)_module.GetMethod(ca.Parent);
-                        if (method.GetUnmanagedCallersOnlyExportName() != null)
+                        if (method.GetUnmanagedCallersOnlyExportName(_nameMangler) != null)
                             yield return method;
+                    }
+
+                    if (comparer.Equals(nameHandle, "DynamicDependencyAttribute")
+                        && comparer.Equals(nsHandle, "System.Diagnostics.CodeAnalysis"))
+                    {
+                        var method = (EcmaMethod)_module.GetMethod(ca.Parent);
+
+                        // Don't add the method for each attribute.
+                        if (method.HasDynamicDependencyMemberSignatureForJsExport() && !hacks.Contains(method))
+                        {
+                            hacks.Add(method);
+                            yield return method;
+                        }
                     }
                 }
             }
         }
 
-        public void AddCompilationRoots(IRootingServiceProvider rootProvider)
+        public void AddCompilationRoots(IRootingServiceProvider rootProvider, NameMangler nodeFactoryNameMangler)
         {
             foreach (var ecmaMethod in ExportedMethods)
             {
                 if (ecmaMethod.IsUnmanagedCallersOnly)
                 {
-                    string unmanagedCallersOnlyExportName = ecmaMethod.GetUnmanagedCallersOnlyExportName();
+                    string unmanagedCallersOnlyExportName = ecmaMethod.GetUnmanagedCallersOnlyExportName(nodeFactoryNameMangler);
                     rootProvider.AddCompilationRoot((MethodDesc)ecmaMethod, "Native callable", unmanagedCallersOnlyExportName);
+                }
+                else if (ecmaMethod.HasDynamicDependencyMemberSignatureForJsExport())
+                {
+                    string name = nodeFactoryNameMangler.GetMangledMethodName(ecmaMethod).ToString();
+                    name = ecmaMethod.GetDynamicDependencyMemberSignatureForJsExportExportName(name);
+                    rootProvider.AddCompilationRoot(ecmaMethod, "Native callable", name);
                 }
                 else
                 {

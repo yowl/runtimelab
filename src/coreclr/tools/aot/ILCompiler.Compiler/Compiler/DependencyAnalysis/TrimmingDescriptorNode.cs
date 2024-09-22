@@ -37,6 +37,7 @@ namespace ILCompiler.DependencyAnalysis
         public override bool StaticDependenciesAreComputed => true;
         public override IEnumerable<CombinedDependencyListEntry> GetConditionalStaticDependencies(NodeFactory context) => null;
         public override IEnumerable<CombinedDependencyListEntry> SearchDynamicDependencies(List<DependencyNodeCore<NodeFactory>> markedNodes, int firstNode, NodeFactory context) => null;
-        void ICompilationRootProvider.AddCompilationRoots(IRootingServiceProvider rootProvider) => rootProvider.AddCompilationRoot(this, "Descriptor from command line");
+        void ICompilationRootProvider.AddCompilationRoots(IRootingServiceProvider rootProvider,
+            NameMangler nodeFactoryNameMangler) => rootProvider.AddCompilationRoot(this, "Descriptor from command line");
     }
 }

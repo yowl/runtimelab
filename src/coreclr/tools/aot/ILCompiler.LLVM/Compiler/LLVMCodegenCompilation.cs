@@ -164,7 +164,15 @@ namespace ILCompiler
             {
                 try
                 {
-                    corInfo.CompileMethod(methodCodeNodeNeedingCode, null);
+                    if (method.ToString().Contains("__Net7SelfInit_"))
+                    {
+                        MethodIL throwingIL = TypeSystemThrowingILEmitter.EmitIL(method, new TypeSystemException.BadImageFormatException());
+                        corInfo.CompileMethod(methodCodeNodeNeedingCode, throwingIL);
+                    }
+                    else
+                    {
+                        corInfo.CompileMethod(methodCodeNodeNeedingCode, null);
+                    }
                     methodCodeNodeNeedingCode.CompilationCompleted = true;
                 }
                 catch (TypeSystemException ex)

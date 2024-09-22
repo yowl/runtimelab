@@ -18,7 +18,7 @@ namespace ILCompiler
             _context = context;
         }
 
-        public void AddCompilationRoots(IRootingServiceProvider rootProvider)
+        public void AddCompilationRoots(IRootingServiceProvider rootProvider, NameMangler nodeFactoryNameMangler)
         {
             if (_context.SupportsUniversalCanon)
                 rootProvider.AddCompilationRoot(_context.UniversalCanonType.MakeArrayType(), "Universal generic array support");

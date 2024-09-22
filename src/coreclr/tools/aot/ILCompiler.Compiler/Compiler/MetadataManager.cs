@@ -722,7 +722,8 @@ namespace ILCompiler
             ComputeMetadata(factory, out _metadataBlob, out _typeMappings, out _methodMappings, out _fieldMappings, out _stackTraceMappings);
         }
 
-        void ICompilationRootProvider.AddCompilationRoots(IRootingServiceProvider rootProvider)
+        void ICompilationRootProvider.AddCompilationRoots(IRootingServiceProvider rootProvider,
+            NameMangler nodeFactoryNameMangler)
         {
             // MetadataManagers can override this to provide metadata compilation roots that need to be added to the graph ahead of time.
             // (E.g. reflection roots computed by IL analyzers, or non-compilation-based roots)

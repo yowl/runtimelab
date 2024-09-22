@@ -95,8 +95,19 @@ namespace Internal.TypeSystem
         public static UnmanagedCallingConventions GetUnmanagedCallersOnlyMethodCallingConventions(this MethodDesc method)
         {
             Debug.Assert(method.IsUnmanagedCallersOnly);
-            CustomAttributeValue<TypeDesc> unmanagedCallersOnlyAttribute = ((EcmaMethod)method).GetDecodedCustomAttribute("System.Runtime.InteropServices", "UnmanagedCallersOnlyAttribute").Value;
-            return GetUnmanagedCallingConventionFromAttribute(unmanagedCallersOnlyAttribute, method.Context) & ~UnmanagedCallingConventions.IsSuppressGcTransition;
+            CustomAttributeValue<TypeDesc>? decoded = ((EcmaMethod)method).GetDecodedCustomAttribute("System.Runtime.InteropServices", "UnmanagedCallersOnlyAttribute");
+            if (decoded != null)
+            {
+                CustomAttributeValue<TypeDesc> unmanagedCallersOnlyAttribute = ((EcmaMethod)method)
+                    .GetDecodedCustomAttribute("System.Runtime.InteropServices", "UnmanagedCallersOnlyAttribute").Value;
+                return GetUnmanagedCallingConventionFromAttribute(unmanagedCallersOnlyAttribute, method.Context) &
+                       ~UnmanagedCallingConventions.IsSuppressGcTransition;
+            }
+            else
+            {
+                // Must be our hack.
+                return GetPlatformDefaultUnmanagedCallingConvention(method.Context);
+            }
         }
 
         public static UnmanagedCallingConventions GetPInvokeMethodCallingConventions(this MethodDesc method)

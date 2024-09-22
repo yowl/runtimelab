@@ -12,6 +12,6 @@ namespace ILCompiler
         /// When implemented in a class, uses <paramref name="rootProvider"/> to add compilation
         /// roots to the compilation.
         /// </summary>
-        void AddCompilationRoots(IRootingServiceProvider rootProvider);
+        void AddCompilationRoots(IRootingServiceProvider rootProvider, NameMangler nodeFactoryNameMangler);
     }
 }

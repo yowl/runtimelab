@@ -26,7 +26,7 @@ namespace ILCompiler
             _libraryInitializers = libraryInitializers;
         }
 
-        public void AddCompilationRoots(IRootingServiceProvider rootProvider)
+        public void AddCompilationRoots(IRootingServiceProvider rootProvider, NameMangler nodeFactoryNameMangler)
         {
             TypeDesc owningType = _module.GetGlobalModuleType();
             NativeLibraryStartupMethod nativeLibStartupCode = new NativeLibraryStartupMethod(owningType, _libraryInitializers);

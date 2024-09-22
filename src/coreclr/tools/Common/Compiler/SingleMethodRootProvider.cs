@@ -17,7 +17,7 @@ namespace ILCompiler
             _method = method;
         }
 
-        public void AddCompilationRoots(IRootingServiceProvider rootProvider)
+        public void AddCompilationRoots(IRootingServiceProvider rootProvider, NameMangler nodeFactoryNameMangler)
         {
             rootProvider.AddCompilationRoot(_method,
 #if READYTORUN

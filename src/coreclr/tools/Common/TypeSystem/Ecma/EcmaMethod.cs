@@ -9,6 +9,40 @@ using System.Threading;
 
 namespace Internal.TypeSystem.Ecma
 {
+    public static class MethodExtensions
+    {
+        public static bool HasDynamicDependencyMemberSignatureForJsExport(this EcmaMethod This)
+        {
+            var decodedAttributes = This.GetDecodedCustomAttributes("System.Diagnostics.CodeAnalysis", "DynamicDependencyAttribute");
+            if (decodedAttributes == null)
+                return false;
+
+            foreach (CustomAttributeValue<TypeDesc> decodedValue in decodedAttributes)
+            {
+                foreach (var argument in decodedValue.FixedArguments)
+                {
+                    if (argument.Type.IsWellKnownType(WellKnownType.String))
+                    {
+                        var s = (string)argument.Value;
+                        if (s != null && s.StartsWith("__Wrapper_JsExport"))
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        public static string GetDynamicDependencyMemberSignatureForJsExportExportName(this EcmaMethod This,
+            string mangledName)
+        {
+            return
+                $"{mangledName.Replace("_System_Runtime_InteropServices_JavaScript_", "").Replace("__Register", "Register")}";
+        }
+    }
+
     public sealed partial class EcmaMethod : MethodDesc, EcmaModule.IEntityHandleObject
     {
         private static class MethodFlags
@@ -192,13 +226,16 @@ namespace Internal.TypeSystem.Ecma
                             flags |= MethodFlags.Intrinsic;
                         }
                     }
-                    else
-                    if (metadataReader.StringComparer.Equals(namespaceHandle, "System.Runtime.InteropServices"))
+                    else if (metadataReader.StringComparer.Equals(namespaceHandle, "System.Runtime.InteropServices"))
                     {
                         if (metadataReader.StringComparer.Equals(nameHandle, "UnmanagedCallersOnlyAttribute"))
                         {
                             flags |= MethodFlags.UnmanagedCallersOnly;
                         }
+                    }
+                    else if (this.HasDynamicDependencyMemberSignatureForJsExport())
+                    {
+                        flags |= MethodFlags.UnmanagedCallersOnly;
                     }
                 }
 

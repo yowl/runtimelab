@@ -31,7 +31,7 @@ namespace ILCompiler
             _generateLibraryAndModuleInitializers = generateLibraryAndModuleInitializers;
         }
 
-        public void AddCompilationRoots(IRootingServiceProvider rootProvider)
+        public void AddCompilationRoots(IRootingServiceProvider rootProvider, NameMangler nodeFactoryNameMangler)
         {
             MethodDesc mainMethod = _module.EntryPoint;
             if (mainMethod == null)

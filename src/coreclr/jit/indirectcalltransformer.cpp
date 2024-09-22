@@ -381,6 +381,7 @@ private:
             assert(checkIdx == 0);
 
             checkBlock                 = CreateAndInsertBasicBlock(BBJ_ALWAYS, currBlock);
+            checkBlock->CopyFlags(currBlock, BBF_SPLIT_GAINED);
             GenTree*   fatPointerMask  = new (compiler, GT_CNS_INT) GenTreeIntCon(TYP_I_IMPL, FAT_POINTER_MASK);
             GenTree*   fptrAddressCopy = compiler->gtCloneExpr(fptrAddress);
             GenTree*   fatPointerAnd   = compiler->gtNewOperNode(GT_AND, TYP_I_IMPL, fptrAddressCopy, fatPointerMask);
@@ -399,6 +400,7 @@ private:
         {
             assert(remainderBlock != nullptr);
             thenBlock                     = CreateAndInsertBasicBlock(BBJ_ALWAYS, checkBlock);
+            thenBlock->CopyFlags(currBlock, BBF_SPLIT_GAINED);
             Statement* copyOfOriginalStmt = compiler->gtCloneStmt(stmt);
             compiler->fgInsertStmtAtEnd(thenBlock, copyOfOriginalStmt);
         }
@@ -409,6 +411,7 @@ private:
         virtual void CreateElse()
         {
             elseBlock = CreateAndInsertBasicBlock(BBJ_ALWAYS, thenBlock);
+            elseBlock->CopyFlags(currBlock, BBF_SPLIT_GAINED);
 
             GenTree* fixedFptrAddress  = GetFixedFptrAddress();
             GenTree* actualCallAddress = compiler->gtNewIndir(pointerType, fixedFptrAddress);
@@ -613,7 +616,8 @@ private:
                 // (Set jump target of new checkBlock in CreateThen())
                 BasicBlock* prevCheckBlock = checkBlock;
                 checkBlock                 = CreateAndInsertBasicBlock(BBJ_ALWAYS, thenBlock);
-                checkFallsThrough          = false;
+                checkBlock->CopyFlags(currBlock, BBF_SPLIT_GAINED);
+                checkFallsThrough = false;
 
                 // We computed the "then" likelihood in CreateThen, so we
                 // just use that to figure out the "else" likelihood.

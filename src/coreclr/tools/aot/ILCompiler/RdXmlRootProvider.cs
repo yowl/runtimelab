@@ -28,7 +28,7 @@ namespace ILCompiler
             _documentRoot = XElement.Load(rdXmlFileName);
         }
 
-        public void AddCompilationRoots(IRootingServiceProvider rootProvider)
+        public void AddCompilationRoots(IRootingServiceProvider rootProvider, NameMangler nodeFactoryNameMangler)
         {
             var libraryOrApplication = _documentRoot.Elements().Single();
 

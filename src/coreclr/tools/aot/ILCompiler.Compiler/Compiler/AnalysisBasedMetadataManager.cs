@@ -175,7 +175,8 @@ namespace ILCompiler
             }
         }
 
-        void ICompilationRootProvider.AddCompilationRoots(IRootingServiceProvider rootProvider)
+        void ICompilationRootProvider.AddCompilationRoots(IRootingServiceProvider rootProvider,
+            NameMangler nodeFactoryNameMangler)
         {
             // We go over all the types and members that need a runtime artifact present in the
             // compiled executable and root it.

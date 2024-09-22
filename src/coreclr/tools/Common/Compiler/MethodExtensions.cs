@@ -1,6 +1,7 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Reflection.Metadata;
 using ILCompiler.DependencyAnalysis;
 
 using Internal.TypeSystem;
@@ -60,11 +61,18 @@ namespace ILCompiler
             return null;
         }
 
-        public static string GetUnmanagedCallersOnlyExportName(this EcmaMethod This)
+        public static string GetUnmanagedCallersOnlyExportName(this EcmaMethod This, NameMangler nameMangler)
         {
             var decoded = This.GetDecodedCustomAttribute("System.Runtime.InteropServices", "UnmanagedCallersOnlyAttribute");
             if (decoded == null)
+            {
+                if (This.HasDynamicDependencyMemberSignatureForJsExport())
+                {
+                    return This.GetDynamicDependencyMemberSignatureForJsExportExportName(
+                        nameMangler.GetMangledMethodName(This).ToString());
+                }
                 return null;
+            }
 
             var decodedValue = decoded.Value;
 
@@ -76,6 +84,7 @@ namespace ILCompiler
 
             return null;
         }
+
 
 #if !READYTORUN
         /// <summary>
@@ -134,5 +143,6 @@ namespace ILCompiler
                 (owningType is not MetadataType mdType || !mdType.IsModuleType) && /* Compiler parks some instance methods on the <Module> type */
                 !method.IsSharedByGenericInstantiations; /* Current impl limitation; can be lifted */
         }
+
     }
 }
