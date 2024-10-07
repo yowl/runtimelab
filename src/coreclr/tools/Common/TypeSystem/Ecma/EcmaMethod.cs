@@ -35,11 +35,38 @@ namespace Internal.TypeSystem.Ecma
             return false;
         }
 
+        public static bool IsOldJsExport(this EcmaMethod This)
+        {
+            var decodedAttributes = This.GetDecodedCustomAttributes("System.Diagnostics", "DebuggerNonUserCodeAttribute");
+            if (decodedAttributes == null)
+                return false;
+
+            return This.ToString().Contains("__Wrapper_");
+        }
+
         public static string GetDynamicDependencyMemberSignatureForJsExportExportName(this EcmaMethod This,
             string mangledName)
         {
             return
                 $"{mangledName.Replace("_System_Runtime_InteropServices_JavaScript_", "").Replace("__Register", "Register")}";
+        }
+
+        public static string GetJsExportName(this EcmaMethod This, string mangledName)
+        {
+            return
+                $"{ReplaceFirst(mangledName, "Avalonia_Browser", "_5B_Avalonia_Browser_5D").Replace("____Wrapper", "_3A")}";
+        }
+
+        private static string ReplaceFirst(string text, string search, string replace)
+        {
+            int pos = text.IndexOf(search);
+            if (pos < 0)
+            {
+                return text;
+            }
+#pragma warning disable CA1845
+            return text.Substring(0, pos) + replace + text.Substring(pos + search.Length);
+#pragma warning restore CA1845
         }
     }
 

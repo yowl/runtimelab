@@ -6,6 +6,7 @@
 
 FCIMPL0(void, RhpThrowNativeException)
 {
+    printf("RhpThrowNativeException\n");
     __builtin_wasm_throw(/* CPP_EXCEPTION_TAG */ 0, nullptr);
 }
 FCIMPLEND

@@ -52,17 +52,32 @@ namespace ILCompiler
                         && comparer.Equals(nsHandle, "System.Runtime.InteropServices"))
                     {
                         var method = (EcmaMethod)_module.GetMethod(ca.Parent);
-                        if (method.GetUnmanagedCallersOnlyExportName(_nameMangler) != null)
+                        if (method.GetUnmanagedCallersOnlyExportName(_nameMangler) != null && !hacks.Contains(method))
+                        {
+                            hacks.Add(method);
                             yield return method;
+                        }
                     }
 
-                    if (comparer.Equals(nameHandle, "DynamicDependencyAttribute")
+                    else if (comparer.Equals(nameHandle, "DynamicDependencyAttribute")
                         && comparer.Equals(nsHandle, "System.Diagnostics.CodeAnalysis"))
                     {
                         var method = (EcmaMethod)_module.GetMethod(ca.Parent);
 
                         // Don't add the method for each attribute.
                         if (method.HasDynamicDependencyMemberSignatureForJsExport() && !hacks.Contains(method))
+                        {
+                            hacks.Add(method);
+                            yield return method;
+                        }
+                    }
+
+                    else if (comparer.Equals(nameHandle, "DebuggerNonUserCodeAttribute")
+                        && comparer.Equals(nsHandle, "System.Diagnostics"))
+                    {
+                        var method = (EcmaMethod)_module.GetMethod(ca.Parent);
+
+                        if (!hacks.Contains(method) && method.ToString().Contains("__Wrapper_"))
                         {
                             hacks.Add(method);
                             yield return method;
@@ -85,6 +100,12 @@ namespace ILCompiler
                 {
                     string name = nodeFactoryNameMangler.GetMangledMethodName(ecmaMethod).ToString();
                     name = ecmaMethod.GetDynamicDependencyMemberSignatureForJsExportExportName(name);
+                    rootProvider.AddCompilationRoot(ecmaMethod, "Native callable", name);
+                }
+                else if (ecmaMethod.IsOldJsExport())
+                {
+                    string name = nodeFactoryNameMangler.GetMangledMethodName(ecmaMethod).ToString();
+                    name = ecmaMethod.GetJsExportName(name);
                     rootProvider.AddCompilationRoot(ecmaMethod, "Native callable", name);
                 }
                 else

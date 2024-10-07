@@ -164,10 +164,10 @@ namespace ILCompiler
             {
                 try
                 {
-                    if (method.ToString().Contains("__Net7SelfInit_"))
+                    if (method.ToString().Contains("__Net7SelfInit_") || (method.ToString().Contains("[WindowsBase]<Module>..cctor()")))
                     {
-                        MethodIL throwingIL = TypeSystemThrowingILEmitter.EmitIL(method, new TypeSystemException.BadImageFormatException());
-                        corInfo.CompileMethod(methodCodeNodeNeedingCode, throwingIL);
+                        MethodIL emptyIl = new ILStubMethodIL(method, [(byte)ILOpcode.ret], [], []);
+                        corInfo.CompileMethod(methodCodeNodeNeedingCode, emptyIl);
                     }
                     else
                     {
