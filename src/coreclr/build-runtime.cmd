@@ -347,13 +347,6 @@ for /f "delims=" %%a in ("-%__RequestedBuildComponents%-") do (
     )
     if not "!string:-nativeaot-=!"=="!string!" (
         set __CMakeTarget=!__CMakeTarget! nativeaot
-
-        if "%__TargetArch%"=="wasm" (
-            if not defined EMSDK (
-                echo %__ErrMsgPrefix%%__MsgPrefix%Error: The EMSDK environment variable pointing to emsdk root must be set.
-                goto ExitWithError
-            )
-        )
     )
     if not "!string:-spmi-=!"=="!string!" (
         set __CMakeTarget=!__CMakeTarget! spmi

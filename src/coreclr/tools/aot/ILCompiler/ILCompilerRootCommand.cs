@@ -11,7 +11,7 @@ using Internal.TypeSystem;
 
 namespace ILCompiler
 {
-    internal sealed class ILCompilerRootCommand : CliRootCommand
+    internal sealed partial class ILCompilerRootCommand : CliRootCommand
     {
         public CliArgument<Dictionary<string, string>> InputFilePaths { get; } =
             new("input-file-path") { CustomParser = result => Helpers.BuildPathDictionary(result.Tokens, true), Description = "Input file(s)", Arity = ArgumentArity.OneOrMore };
@@ -243,6 +243,7 @@ namespace ILCompiler
             Options.Add(ConditionallyRootedAssemblies);
             Options.Add(TrimmedAssemblies);
             Options.Add(RootDefaultAssemblies);
+            InitializeWasmOptions();
             Options.Add(TargetArchitecture);
             Options.Add(TargetOS);
             Options.Add(JitPath);
@@ -329,7 +330,7 @@ namespace ILCompiler
                 Console.WriteLine("Use the '--' option to disambiguate between input files that have begin with -- and options. After a '--' option, all arguments are " +
                     "considered to be input files. If no input files begin with '--' then this option is not necessary.\n");
 
-                string[] ValidArchitectures = new string[] { "arm", "arm64", "x86", "x64", "riscv64" };
+                string[] ValidArchitectures = new string[] { "arm", "arm64", "x86", "x64", "riscv64", "loongarch64" };
                 string[] ValidOS = new string[] { "windows", "linux", "freebsd", "osx", "maccatalyst", "ios", "iossimulator", "tvos", "tvossimulator" };
 
                 Console.WriteLine("Valid switches for {0} are: '{1}'. The default value is '{2}'\n", "--targetos", string.Join("', '", ValidOS), Helpers.GetTargetOS(null).ToString().ToLowerInvariant());

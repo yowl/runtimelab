@@ -22,8 +22,8 @@ from the project's root directory. New package sources must be added after the `
 Once you have added the package sources, add references to the ILCompiler packages by adding the following elements to the project file:
 ```xml
 <ItemGroup>
-  <PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM" Version="9.0.0-*" />
-  <PackageReference Include="runtime.$(NETCoreSdkPortableRuntimeIdentifier).Microsoft.DotNet.ILCompiler.LLVM" Version="9.0.0-*" />
+  <PackageReference Include="Microsoft.DotNet.ILCompiler.LLVM" Version="10.0.0-*" />
+  <PackageReference Include="runtime.$(NETCoreSdkPortableRuntimeIdentifier).Microsoft.DotNet.ILCompiler.LLVM" Version="10.0.0-*" />
 </ItemGroup>
 ```
 
@@ -65,7 +65,7 @@ If the compilation succeeds, the native artifacts will be placed under the `bin/
 
 ## WebAssembly application configuration
 
-By default, the build will produce a binary with debug information, which is usually quite large. If you do not need it, add `/p:NativeDebugSymbols=false` to the publish command line. Note that this will disable the generation of _all_ debug info, including function names for stack traces.
+By default, the build will produce a binary with debug information, which is usually quite large. If you do not need it, add `/p:DebugType=none` to the publish command line.
 
 Another large contributor to the size is globalization support (ICU data and code). You can opt out by setting the [`InvariantGlobalization`](https://learn.microsoft.com/en-us/dotnet/core/runtime-config/globalization) MSBuild property to `true`.
 

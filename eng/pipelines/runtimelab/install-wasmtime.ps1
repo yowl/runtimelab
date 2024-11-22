@@ -9,7 +9,7 @@ $ProgressPreference = "SilentlyContinue"
 
 Set-Location $InstallDir
 
-$WasmtimeVersion = "v21.0.1"
+$WasmtimeVersion = "v26.0.1"
 
 if (!(Test-Path variable:global:IsWindows))
 {

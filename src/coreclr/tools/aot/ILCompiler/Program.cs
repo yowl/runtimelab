@@ -27,7 +27,7 @@ using InstructionSet = Internal.JitInterface.InstructionSet;
 
 namespace ILCompiler
 {
-    internal sealed class Program
+    internal sealed partial class Program
     {
         private readonly ILCompilerRootCommand _command;
         private static readonly char[] s_separator = new char[] { ',', ';', ' ' };
@@ -118,6 +118,8 @@ namespace ILCompiler
                 new CompilerTypeSystemContext(targetDetails, genericsMode, supportsReflection ? DelegateFeature.All : 0,
                     genericCycleDepthCutoff: Get(_command.MaxGenericCycleDepth),
                     genericCycleBreadthCutoff: Get(_command.MaxGenericCycleBreadth));
+
+            InitializeWasmCompilationOptions(typeSystemContext);
 
             //
             // TODO: To support our pre-compiled test tree, allow input files that aren't managed assemblies since
@@ -379,6 +381,7 @@ namespace ILCompiler
                     throw new CommandLineException($"Unexpected feature switch pair '{switchPair}'");
                 featureSwitches[switchAndValue[0]] = switchValue;
             }
+            AddInternalWasmFeatureSwitches(typeSystemContext, featureSwitches);
 
             BodyAndFieldSubstitutions substitutions = default;
             IReadOnlyDictionary<ModuleDesc, IReadOnlySet<string>> resourceBlocks = default;
@@ -394,6 +397,7 @@ namespace ILCompiler
                     ManifestResourceBlockingPolicy.SubstitutionsReader.GetSubstitutions(
                         logger, typeSystemContext, XmlReader.Create(fs), substitutionFilePath, featureSwitches));
             }
+            AddInternalWasmSubstitutions(typeSystemContext, ref substitutions);
 
             SubstitutionProvider substitutionProvider = new SubstitutionProvider(logger, featureSwitches, substitutions);
             ILProvider unsubstitutedILProvider = ilProvider;
@@ -517,7 +521,7 @@ namespace ILCompiler
 
                 interopStubManager = scanResults.GetInteropStubManager(interopStateManager, pinvokePolicy);
 
-                ilProvider = new SubstitutedILProvider(unsubstitutedILProvider, substitutionProvider, devirtualizationManager);
+                ilProvider = new SubstitutedILProvider(unsubstitutedILProvider, substitutionProvider, devirtualizationManager, metadataManager);
 
                 // Use a more precise IL provider that uses whole program analysis for dead branch elimination
                 builder.UseILProvider(ilProvider);

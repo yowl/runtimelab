@@ -3130,7 +3130,7 @@ bool Compiler::fgExpandRarelyRunBlocks()
                 break;
 
             case BBJ_COND:
-                if (block->isRunRarely() && bPrev->GetTrueTarget()->isRunRarely())
+                if (bPrev->GetTrueTarget()->isRunRarely() && bPrev->GetFalseTarget()->isRunRarely())
                 {
                     INDEBUG(reason = "Both sides of a conditional jump are rarely run");
                     setRarelyRun = true;
@@ -3234,21 +3234,13 @@ bool Compiler::fgExpandRarelyRunBlocks()
             }
         }
 
-        /* COMPACT blocks if possible */
-        if (fgCanCompactBlock(bPrev))
-        {
-            fgCompactBlock(bPrev);
-
-            block = bPrev;
-            continue;
-        }
         //
         // if bPrev->bbWeight is not based upon profile data we can adjust
         // the weights of bPrev and block
         //
-        else if (bPrev->isBBCallFinallyPair() &&         // we must have a BBJ_CALLFINALLY and BBJ_CALLFINALLYRET pair
-                 (bPrev->bbWeight != block->bbWeight) && // the weights are currently different
-                 !bPrev->hasProfileWeight())             // and the BBJ_CALLFINALLY block is not using profiled weights
+        if (bPrev->isBBCallFinallyPair() &&         // we must have a BBJ_CALLFINALLY and BBJ_CALLFINALLYRET pair
+            (bPrev->bbWeight != block->bbWeight) && // the weights are currently different
+            !bPrev->hasProfileWeight())             // and the BBJ_CALLFINALLY block is not using profiled weights
         {
             if (block->isRunRarely())
             {
@@ -3298,9 +3290,8 @@ bool Compiler::fgExpandRarelyRunBlocks()
 #endif
 
 //-----------------------------------------------------------------------------
-// fgReorderBlocks: reorder blocks to favor frequent fall through paths,
-//   move rare blocks to the end of the method/eh region, and move
-//   funclets to the ends of methods.
+// fgReorderBlocks: reorder blocks to favor frequent fall through paths
+//   and move rare blocks to the end of the method/eh region.
 //
 // Arguments:
 //   useProfile - if true, use profile data (if available) to more aggressively
@@ -3317,8 +3308,6 @@ bool Compiler::fgExpandRarelyRunBlocks()
 bool Compiler::fgReorderBlocks(bool useProfile)
 {
     noway_assert(opts.compDbgCode == false);
-
-    assert(UsesFunclets() == fgFuncletsCreated);
 
     // We can't relocate anything if we only have one block
     if (fgFirstBB->IsLast())
@@ -5311,16 +5300,15 @@ bool Compiler::fgUpdateFlowGraph(bool doTailDuplication /* = false */,
                             {
                                 fgCompactBlock(otherPred);
                                 fgFoldSimpleCondByForwardSub(otherPred);
+
+                                // Since compaction removes blocks, update lexical pointers
+                                bPrev = block->Prev();
+                                bNext = block->Next();
                             }
                         }
 
                         assert(block->KindIs(BBJ_ALWAYS));
                         bDest = block->GetTarget();
-                    }
-                    else
-                    {
-                        bDest      = block->GetTrueTarget();
-                        bFalseDest = block->GetFalseTarget();
                     }
                 }
             }
