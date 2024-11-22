@@ -41,7 +41,7 @@ FCIMPL_NO_SS(void, RhpPushVirtualUnwindFrame, VirtualUnwindFrame* pFrame, void* 
 
     t_pLastVirtualUnwindFrame = pFrame;
 
-    printf("RhpPushVirtualUnwindFrame t_pLastVirtualUnwindFrame %p pFrame %p length %d\n", t_pLastVirtualUnwindFrame, pFrame, VirtualLength());
+    // printf("RhpPushVirtualUnwindFrame t_pLastVirtualUnwindFrame %p pFrame %p length %d\n", t_pLastVirtualUnwindFrame, pFrame, VirtualLength());
 }
 FCIMPLEND
 
@@ -50,7 +50,7 @@ FCIMPL_NO_SS(void, RhpPopVirtualUnwindFrame)
     ASSERT(t_pLastVirtualUnwindFrame != nullptr);
     t_pLastVirtualUnwindFrame = t_pLastVirtualUnwindFrame->Prev;
 
-    printf("RhpPopVirtualUnwindFrame t_pLastVirtualUnwindFrame %p length %d\n", t_pLastVirtualUnwindFrame, VirtualLength());
+    // printf("RhpPopVirtualUnwindFrame t_pLastVirtualUnwindFrame %p length %d\n", t_pLastVirtualUnwindFrame, VirtualLength());
 }
 FCIMPLEND
 

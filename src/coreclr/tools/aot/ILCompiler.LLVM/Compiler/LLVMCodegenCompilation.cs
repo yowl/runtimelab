@@ -164,11 +164,30 @@ namespace ILCompiler
             {
                 try
                 {
-                    if (method.ToString().Contains("__Net7SelfInit_") || (method.ToString().Contains("[WindowsBase]<Module>..cctor()")))
+                    var methodName = method.ToString();
+                    if (methodName.Contains("__Net7SelfInit_") || (methodName.Contains("[WindowsBase]<Module>..cctor()")))
                     {
                         MethodIL emptyIl = new ILStubMethodIL(method, [(byte)ILOpcode.ret], [], []);
                         corInfo.CompileMethod(methodCodeNodeNeedingCode, emptyIl);
                     }
+                    else if (methodName.Contains("Validate") && (methodName.Contains("AvaloniaLicenseInformation")) && !methodName.Contains("ValidateEntryAssembly"))
+                    {
+                        if (method.Signature.ReturnType.IsVoid)
+                        {
+                            MethodIL emptyIl = new ILStubMethodIL(method, [(byte)ILOpcode.ret], [], []);
+                            corInfo.CompileMethod(methodCodeNodeNeedingCode, emptyIl);
+                        }
+                        else
+                        {
+                            MethodIL emptyIl = new ILStubMethodIL(method, [(byte)ILOpcode.ldc_i4_1, (byte)ILOpcode.ret], [], []);
+                            corInfo.CompileMethod(methodCodeNodeNeedingCode, emptyIl);
+                        }
+                    }
+                    //else if (method.ToString() == "[System.Configuration.ConfigurationManager]System.Configuration.ConfigurationManager.GetSection(string)")
+                    //{
+                    //    MethodIL emptyIl = new ILStubMethodIL(method, [(byte)ILOpcode.ldnull, (byte)ILOpcode.ret], [], []);
+                    //    corInfo.CompileMethod(methodCodeNodeNeedingCode, emptyIl);
+                    //}
                     else
                     {
                         corInfo.CompileMethod(methodCodeNodeNeedingCode, null);

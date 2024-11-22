@@ -20,6 +20,7 @@ namespace System
             Type type, bool nonPublic)
         {
             ArgumentNullException.ThrowIfNull(type);
+            string msg;
 
             type = type.UnderlyingSystemType;
             CreateInstanceCheckType(type);
@@ -40,7 +41,9 @@ namespace System
                     return RuntimeAugments.RawNewObject(typeHandle);
                 }
 
-                throw new MissingMethodException(SR.Format(SR.Arg_NoDefCTor, type));
+                //RuntimeTypeHandle typeHandle = type.TypeHandle;
+                msg = type.Name;
+                throw new MissingMethodException(msg);
             }
             object result = constructor.Invoke(Array.Empty<object>());
             System.Diagnostics.DebugAnnotations.PreviousCallContainsDebuggerStepInCode();
@@ -53,7 +56,7 @@ namespace System
             Type type, BindingFlags bindingAttr, Binder binder, object?[]? args, CultureInfo? culture, object?[]? activationAttributes)
         {
             ArgumentNullException.ThrowIfNull(type);
-
+            string msg;
             // If they didn't specify a lookup, then we will provide the default lookup.
             const BindingFlags LookupMask = (BindingFlags)0x000000FF;
             if ((bindingAttr & LookupMask) == 0)
@@ -93,7 +96,8 @@ namespace System
                     return RuntimeAugments.RawNewObject(typeHandle);
                 }
 
-                throw new MissingMethodException(SR.Format(SR.Arg_NoDefCTor, type));
+                msg = type.Name;
+                throw new MissingMethodException(msg);
             }
 
             binder ??= Type.DefaultBinder;

@@ -1,6 +1,5 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
-
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -32,6 +31,77 @@ namespace System.Threading
         }
 
 #if NATIVEAOT
+
+        internal static partial class X
+        {
+            [LibraryImport("*")]
+            internal static unsafe partial int printf(byte* str, byte* unused);
+            private static unsafe void PrintString(string s)
+            {
+                int length = s.Length;
+                fixed (char* curChar = s)
+                {
+                    for (int i = 0; i < length; i++)
+                    {
+                        TwoByteStr curCharStr;
+                        curCharStr.first = (byte)(*(curChar + i));
+                        printf((byte*)&curCharStr, null);
+                    }
+                }
+            }
+
+            internal static void PrintLine(string s)
+            {
+                PrintString(s);
+                PrintString("\n");
+            }
+
+            public static unsafe void PrintLong(long l)
+            {
+                PrintByte((byte)((l >> 56) & 0xff));
+                PrintByte((byte)((l >> 48) & 0xff));
+                PrintByte((byte)((l >> 40) & 0xff));
+                PrintByte((byte)((l >> 32) & 0xff));
+                PrintByte((byte)((l >> 24) & 0xff));
+                PrintByte((byte)((l >> 16) & 0xff));
+                PrintByte((byte)((l >> 8) & 0xff));
+                PrintByte((byte)(l & 0xff));
+                PrintString("\n");
+            }
+
+            public static unsafe void PrintUint(int l)
+            {
+                PrintByte((byte)((l >> 24) & 0xff));
+                PrintByte((byte)((l >> 16) & 0xff));
+                PrintByte((byte)((l >> 8) & 0xff));
+                PrintByte((byte)(l & 0xff));
+
+                PrintString("\n");
+            }
+
+            public static unsafe void PrintByte(byte b)
+            {
+                fixed (TwoByteStr* s = &tbs)
+                {
+                    var nib = (b & 0xf0) >> 4;
+                    tbs.first = (byte)((nib <= 9 ? '0' : 'A') + (nib <= 9 ? nib : nib - 10));
+                    printf((byte*)s, null);
+                    nib = (b & 0xf);
+                    tbs.first = (byte)((nib <= 9 ? '0' : 'A') + (nib <= 9 ? nib : nib - 10));
+                    printf((byte*)s, null);
+                }
+            }
+
+            private static TwoByteStr tbs;
+
+            public struct TwoByteStr
+            {
+                public byte first;
+                public byte second;
+            }
+
+        }
+
         private static nuint s_lastScheduledHandlerId;
 
         [UnmanagedCallersOnly]
@@ -43,15 +113,33 @@ namespace System.Threading
                 return;
             }
 
-            // TODO-LLVM-Upstream: remove this double thunking by modifying "TimerHandler" directly.
-            ((delegate* unmanaged[Cdecl]<void>)&TimerHandler)();
+            try
+            {
+                // TODO-LLVM-Upstream: remove this double thunking by modifying "TimerHandler" directly.
+                ((delegate* unmanaged[Cdecl]<void>)&TimerHandler)();
+            }
+            catch(Exception e)
+            {
+                X.PrintLine(e.ToString());
+                throw;
+            }
         }
 
         private static unsafe void MainThreadScheduleTimer(void* _, int shortestDueTimeMs)
         {
             [DllImport("*")]
             static extern void emscripten_async_call(delegate* unmanaged<void*, void> func, void* arg, int millis);
-            emscripten_async_call(&TimerHandlerWithId, (void*)++s_lastScheduledHandlerId, shortestDueTimeMs);
+
+            try
+            {
+                X.PrintLine("MainThreadScheduleTimer ");
+                emscripten_async_call(&TimerHandlerWithId, (void*)++s_lastScheduledHandlerId, shortestDueTimeMs);
+            }
+            catch(Exception e)
+            {
+                X.PrintLine(e.ToString());
+                throw;
+            }
         }
 #else
         // This replaces the current pending setTimeout with shorter one

@@ -37,7 +37,14 @@ namespace Internal.TypeSystem.Ecma
 
         public static bool IsOldJsExport(this EcmaMethod This)
         {
-            var decodedAttributes = This.GetDecodedCustomAttributes("System.Diagnostics", "DebuggerNonUserCodeAttribute");
+            var decodedAttributes = This.GetDecodedCustomAttributes("System.Runtime.InteropServices", "UnmanagedCallersOnlyAttribute");
+
+            foreach (CustomAttributeValue<TypeDesc> _ in decodedAttributes)
+            {
+                return false;
+            }
+
+            decodedAttributes = This.GetDecodedCustomAttributes("System.Diagnostics", "DebuggerNonUserCodeAttribute");
             if (decodedAttributes == null)
                 return false;
 
@@ -261,6 +268,10 @@ namespace Internal.TypeSystem.Ecma
                         }
                     }
                     else if (this.HasDynamicDependencyMemberSignatureForJsExport())
+                    {
+                        flags |= MethodFlags.UnmanagedCallersOnly;
+                    }
+                    else if (this.IsOldJsExport())
                     {
                         flags |= MethodFlags.UnmanagedCallersOnly;
                     }

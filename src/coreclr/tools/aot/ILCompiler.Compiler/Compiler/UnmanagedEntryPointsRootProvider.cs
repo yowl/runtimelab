@@ -91,7 +91,7 @@ namespace ILCompiler
         {
             foreach (var ecmaMethod in ExportedMethods)
             {
-                if (ecmaMethod.IsUnmanagedCallersOnly)
+                if (ecmaMethod.IsUnmanagedCallersOnly && !ecmaMethod.IsOldJsExport())
                 {
                     string unmanagedCallersOnlyExportName = ecmaMethod.GetUnmanagedCallersOnlyExportName(nodeFactoryNameMangler);
                     rootProvider.AddCompilationRoot((MethodDesc)ecmaMethod, "Native callable", unmanagedCallersOnlyExportName);
