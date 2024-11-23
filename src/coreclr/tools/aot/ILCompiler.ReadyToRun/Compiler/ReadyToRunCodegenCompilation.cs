@@ -63,7 +63,7 @@ namespace ILCompiler
 
             var rootingService = new RootingServiceProvider(nodeFactory, _dependencyGraph.AddRoot);
             foreach (var rootProvider in compilationRoots)
-                rootProvider.AddCompilationRoots(rootingService);
+                rootProvider.AddCompilationRoots(rootingService, NameMangler);
 
             _methodILCache = new ILCache((ReadyToRunILProvider)ilProvider, NodeFactory.CompilationModuleGroup);
         }

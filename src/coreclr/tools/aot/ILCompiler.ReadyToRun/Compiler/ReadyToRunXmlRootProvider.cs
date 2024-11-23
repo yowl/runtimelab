@@ -35,7 +35,7 @@ namespace ILCompiler
             _xmlDocumentLocation = xmlDocumentLocation;
         }
 
-        public void AddCompilationRoots(IRootingServiceProvider rootProvider)
+        public void AddCompilationRoots(IRootingServiceProvider rootProvider, NameMangler nm)
         {
             CompilationRootProvider root = new CompilationRootProvider(rootProvider, _context, _documentStream, _resource, _owningModule, _xmlDocumentLocation);
             root.ProcessXml();

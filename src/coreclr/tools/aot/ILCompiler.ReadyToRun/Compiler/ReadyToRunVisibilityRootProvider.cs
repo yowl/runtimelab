@@ -24,7 +24,7 @@ namespace ILCompiler
             _instructionSetSupport = ((ReadyToRunCompilerContext)module.Context).InstructionSetSupport;
         }
 
-        public void AddCompilationRoots(IRootingServiceProvider rootProvider)
+        public void AddCompilationRoots(IRootingServiceProvider rootProvider, NameMangler nm)
         {
             foreach (MetadataType type in _module.GetAllTypes())
             {
