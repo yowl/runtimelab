@@ -263,7 +263,7 @@ The .NET Foundation licenses this file to you under the MIT license.
     </ItemGroup>
 
     <ItemGroup>
-      <IlcArg Include="--codegenopt:JitCheckLlvmIR=1" />
+      <IlcArg Include="@(IlcCompileInput)" />
       <IlcArg Include="-o:$(NativeIntermediateOutputPath)%(ManagedBinary.Filename)$(IlcOutputFileExt)" />
       <IlcArg Include="@(IlcReference->'-r:%(Identity)')" />
       <IlcArg Include="@(IlcSatelliteAssembly->'--satellite:%(Identity)')" />

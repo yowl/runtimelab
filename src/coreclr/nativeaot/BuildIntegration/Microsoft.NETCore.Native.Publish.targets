@@ -7,6 +7,9 @@
       <IlcReference Include="@(_ManagedResolvedAssembliesToPublish)" />
       <IlcSatelliteAssembly Include="@(_SatelliteAssembliesToPublish)" />
       <IlcSatelliteAssembly Include="@(IntermediateSatelliteAssembliesWithTargetPath)" />
+
+      <IlcReference Remove="@(ReferenceOverides)" MatchOnMetadata="Filename" />
+      <IlcReference Include="@(ReferenceOverides)" />
     </ItemGroup>
   </Target>
 
@@ -104,8 +107,8 @@
     <Delete Files="$(PublishDir)\$(TargetName).js" Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' != 'true'"/>
     <Copy SourceFiles="$(NativeOutputPath)$(TargetName).js" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' != 'true'"/>
 
-    <Delete Files="$(PublishDir)\$(TargetName).wasm" Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' != 'true'"/>
-    <Copy SourceFiles="$(NativeOutputPath)$(TargetName).wasm" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser' and '$(DotNetJsApi)' != 'true'"/>
+    <Delete Files="$(PublishDir)\$(TargetName).wasm" Condition="'$(_targetOS)' == 'browser'"/>
+    <Copy SourceFiles="$(NativeOutputPath)$(TargetName).wasm" DestinationFolder="$(PublishDir)" Condition="'$(_targetOS)' == 'browser'"/>
     
     <ItemGroup>
       <_FilesToCopyToNative Include="$(NativeOutputPath)\dotnet.native.js" />

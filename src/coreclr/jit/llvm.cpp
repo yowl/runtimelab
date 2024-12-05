@@ -891,6 +891,7 @@ extern "C" DLLEXPORT int registerLlvmCallbacks(void** jitImports, void** jitExpo
     }
 
     llvm::raw_fd_ostream bitCodeFileStream(outputFilePath, code);
+    assert(!code);
     llvm::WriteBitcodeToFile(module, bitCodeFileStream);
 
     delete context;

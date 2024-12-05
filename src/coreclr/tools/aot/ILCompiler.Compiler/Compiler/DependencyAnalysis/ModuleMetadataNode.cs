@@ -18,7 +18,7 @@ namespace ILCompiler.DependencyAnalysis
     /// <remarks>
     /// Only expected to be used during ILScanning when scanning for reflection.
     /// </remarks>
-    internal sealed class ModuleMetadataNode : DependencyNodeCore<NodeFactory>
+    public sealed class ModuleMetadataNode : DependencyNodeCore<NodeFactory>
     {
         private readonly ModuleDesc _module;
 

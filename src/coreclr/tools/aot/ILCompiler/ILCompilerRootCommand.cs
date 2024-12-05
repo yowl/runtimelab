@@ -167,6 +167,8 @@ namespace ILCompiler
             new("--make-repro-path") { Description = "Path where to place a repro package" };
         public CliOption<string[]> UnmanagedEntryPointsAssemblies { get; } =
             new("--generateunmanagedentrypoints") { DefaultValueFactory = _ => Array.Empty<string>(), Description = "Generate unmanaged entrypoints for a given assembly" };
+        public CliOption<string[]> MetadataOnlyAssemblies { get; } =
+            new("--metadataonlyassembly") { DefaultValueFactory = _ => Array.Empty<string>(), Description = "Generate resource data for a given assembly" };
 
         public OptimizationMode OptimizationMode { get; private set; }
         public ParseResult Result;
@@ -252,6 +254,7 @@ namespace ILCompiler
             Options.Add(SingleMethodGenericArgs);
             Options.Add(MakeReproPath);
             Options.Add(UnmanagedEntryPointsAssemblies);
+            Options.Add(MetadataOnlyAssemblies);
 
             this.SetAction(result =>
             {

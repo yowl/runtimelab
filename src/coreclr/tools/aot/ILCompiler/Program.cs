@@ -457,7 +457,8 @@ namespace ILCompiler
                     Get(_command.ConditionallyRootedAssemblies),
                     rootedAssemblies,
                     Get(_command.TrimmedAssemblies),
-                    Get(_command.SatelliteFilePaths));
+                    Get(_command.SatelliteFilePaths),
+                    Get(_command.MetadataOnlyAssemblies));
 
             InteropStateManager interopStateManager = new InteropStateManager(typeSystemContext.GeneratedAssembly);
             InteropStubManager interopStubManager = new UsageBasedInteropStubManager(interopStateManager, pinvokePolicy, logger);
@@ -593,6 +594,7 @@ namespace ILCompiler
                 .UseLogger(logger)
                 .UseDependencyTracking(trackingLevel)
                 .UseCompilationRoots(compilationRoots)
+                .UseMetadataOnlyAssemblies(Get(_command.MetadataOnlyAssemblies))
                 .UseOptimizationMode(_command.OptimizationMode)
                 .UseSecurityMitigationOptions(securityMitigationOptions)
                 .UseDebugInfoProvider(debugInfoProvider)

@@ -138,7 +138,7 @@ namespace ILCompiler
             var factory = new RyuJitNodeFactory(_context, _compilationGroup, _metadataManager, _interopStubManager, _nameMangler, _vtableSliceProvider, _dictionaryLayoutProvider, _inlinedThreadStatics, GetPreinitializationManager(), _devirtualizationManager, interner);
 
             DependencyAnalyzerBase<NodeFactory> graph = CreateDependencyGraph(factory, new ObjectNode.ObjectNodeComparer(CompilerComparer.Instance));
-            return new RyuJitCompilation(graph, factory, _compilationRoots, _ilProvider, _debugInformationProvider, _logger, _inliningPolicy ?? _compilationGroup, _instructionSetSupport, _profileDataManager, _methodImportationErrorProvider, _readOnlyFieldPolicy, options, _parallelism);
+            return new RyuJitCompilation(graph, factory, _compilationRoots, _ilProvider, _debugInformationProvider, _logger, _inliningPolicy ?? _compilationGroup, _instructionSetSupport, _profileDataManager, _methodImportationErrorProvider, _readOnlyFieldPolicy, options, _parallelism, _metadataOnlyAssemblies);
         }
     }
 }

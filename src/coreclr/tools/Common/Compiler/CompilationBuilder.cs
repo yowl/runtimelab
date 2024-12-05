@@ -22,6 +22,7 @@ namespace ILCompiler
         protected Logger _logger = Logger.Null;
         private DependencyTrackingLevel _dependencyTrackingLevel = DependencyTrackingLevel.None;
         protected IEnumerable<ICompilationRootProvider> _compilationRoots = Array.Empty<ICompilationRootProvider>();
+        protected IEnumerable<string> _metadataOnlyAssemblies = Array.Empty<string>();
         protected OptimizationMode _optimizationMode = OptimizationMode.None;
         protected int _parallelism = -1;
         protected bool _resilient;
@@ -64,6 +65,12 @@ namespace ILCompiler
         public CompilationBuilder UseCompilationRoots(IEnumerable<ICompilationRootProvider> compilationRoots)
         {
             _compilationRoots = compilationRoots;
+            return this;
+        }
+
+        public CompilationBuilder UseMetadataOnlyAssemblies(string[] metadataOnlyAssemblies)
+        {
+            _metadataOnlyAssemblies = metadataOnlyAssemblies;
             return this;
         }
 

@@ -40,9 +40,10 @@ namespace ILCompiler
             MethodImportationErrorProvider errorProvider,
             ReadOnlyFieldPolicy readOnlyFieldPolicy,
             RyuJitCompilationOptions baseOptions,
-            int parallelism)
+            int parallelism,
+            IEnumerable<string> metadataOnlyModules)
             : base(dependencyGraph, nodeFactory, roots, ilProvider, debugInformationProvider, logger, inliningPolicy, instructionSetSupport,
-                null /* ProfileDataManager */, errorProvider, readOnlyFieldPolicy, baseOptions, parallelism)
+                null /* ProfileDataManager */, errorProvider, readOnlyFieldPolicy, baseOptions, parallelism, metadataOnlyModules)
         {
             NodeFactory = nodeFactory;
             Options = options;
@@ -53,6 +54,11 @@ namespace ILCompiler
             Stopwatch stopwatch = Stopwatch.StartNew();
 
             StartCompilation(outputFile);
+
+            foreach (string metadataOnlyAssembly in _metadataOnlyAssemblies)
+            {
+                _dependencyGraph.AddRoot(_nodeFactory.ModuleMetadata(TypeSystemContext.GetMetadataOnlyModuleFromPath(metadataOnlyAssembly)), "Metadata only assembly");
+            }
 
             _dependencyGraph.ComputeMarkedNodes();
             NodeFactory.SetMarkingComplete();
@@ -76,6 +82,10 @@ namespace ILCompiler
 
         private void FinishCompilation()
         {
+            //foreach (var c in _compilationContexts)
+            //{
+            //    c.Value.JitFinishSingleThreadedCompilation();
+            //}
             Parallel.ForEach(_compilationContexts, new() { MaxDegreeOfParallelism = _parallelism }, context =>
             {
                 context.Value.JitFinishSingleThreadedCompilation();
@@ -171,6 +181,19 @@ namespace ILCompiler
                         corInfo.CompileMethod(methodCodeNodeNeedingCode, emptyIl);
                     }
                     else if (methodName.Contains("Validate") && (methodName.Contains("AvaloniaLicenseInformation")) && !methodName.Contains("ValidateEntryAssembly"))
+                    {
+                        if (method.Signature.ReturnType.IsVoid)
+                        {
+                            MethodIL emptyIl = new ILStubMethodIL(method, [(byte)ILOpcode.ret], [], []);
+                            corInfo.CompileMethod(methodCodeNodeNeedingCode, emptyIl);
+                        }
+                        else
+                        {
+                            MethodIL emptyIl = new ILStubMethodIL(method, [(byte)ILOpcode.ldc_i4_1, (byte)ILOpcode.ret], [], []);
+                            corInfo.CompileMethod(methodCodeNodeNeedingCode, emptyIl);
+                        }
+                    }
+                    else if (methodName.Contains("VerifyProductLicense") && methodName.Contains("XpfLicensing"))
                     {
                         if (method.Signature.ReturnType.IsVoid)
                         {

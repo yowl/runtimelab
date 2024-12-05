@@ -1260,6 +1260,19 @@ namespace ILCompiler
         public virtual void NoteOverridingMethod(MethodDesc baseMethod, MethodDesc overridingMethod, TypeSystemEntity origin = null)
         {
         }
+
+        public void AddMetadataOnlyAssemblies(IEnumerable<string> metadataOnlyAssemblies)
+        {
+            foreach(string filePath in metadataOnlyAssemblies)
+            {
+                ModuleDesc module = _typeSystemContext.GetMetadataOnlyModuleFromPath(filePath);
+                AddMetadataOnlyModule(module);
+            }
+        }
+
+        public virtual void AddMetadataOnlyModule(ModuleDesc module)
+        {
+        }
     }
 
     public readonly struct MetadataMapping<TEntity>

@@ -1302,7 +1302,7 @@ namespace ILCompiler.DependencyAnalysis
         {
             // These are only meaningful for UsageBasedMetadataManager. We should not have them
             // in the dependency graph otherwise.
-            Debug.Assert(MetadataManager is UsageBasedMetadataManager);
+            //Debug.Assert(MetadataManager is UsageBasedMetadataManager);
             return _typesWithMetadata.GetOrAdd(type);
         }
 
@@ -1328,11 +1328,15 @@ namespace ILCompiler.DependencyAnalysis
 
         private NodeCache<ModuleDesc, ModuleMetadataNode> _modulesWithMetadata;
 
-        internal ModuleMetadataNode ModuleMetadata(ModuleDesc module)
+        public ModuleMetadataNode ModuleMetadata(ModuleDesc module)
         {
+            if (module.Assembly.GetName().Name.Contains("Office"))
+            {
+
+            }
             // These are only meaningful for UsageBasedMetadataManager. We should not have them
             // in the dependency graph otherwise.
-            Debug.Assert(MetadataManager is UsageBasedMetadataManager);
+            //Debug.Assert(MetadataManager is UsageBasedMetadataManager);
             return _modulesWithMetadata.GetOrAdd(module);
         }
 

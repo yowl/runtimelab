@@ -83,7 +83,8 @@ namespace ILCompiler
             IEnumerable<string> rootEntireAssembliesModules,
             IEnumerable<string> additionalRootedAssemblies,
             IEnumerable<string> trimmedAssemblies,
-            IEnumerable<string> satelliteAssemblyFilePaths)
+            IEnumerable<string> satelliteAssemblyFilePaths,
+            IEnumerable<string> metadataOnlyAssemblies)
             : base(typeSystemContext, blockingPolicy, resourceBlockingPolicy, logFile, stackTracePolicy, invokeThunkGenerationPolicy, options, flowAnnotations)
         {
             _compilationModuleGroup = group;
@@ -940,6 +941,12 @@ namespace ILCompiler
             static bool ShouldSkipDataflowForMethod(MethodIL method)
                 => method.GetMethodILDefinition() == method &&
                 method.OwningMethod.GetTypicalMethodDefinition() != method.OwningMethod;
+
+        }
+
+        public override void AddMetadataOnlyModule(ModuleDesc module)
+        {
+            _modulesWithMetadata.Add(module);
         }
 
         private struct ReflectableEntityBuilder<T>
@@ -975,6 +982,7 @@ namespace ILCompiler
                     yield return new ReflectableEntity<T>(entry.Key, entry.Value);
                 }
             }
+
         }
 
         private struct GeneratedTypesAndCodeMetadataPolicy : IMetadataPolicy

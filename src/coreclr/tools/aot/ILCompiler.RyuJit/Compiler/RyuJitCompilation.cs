@@ -28,6 +28,7 @@ namespace ILCompiler
         protected readonly MethodImportationErrorProvider _methodImportationErrorProvider;
         private readonly ReadOnlyFieldPolicy _readOnlyFieldPolicy;
         protected readonly int _parallelism;
+        protected readonly IEnumerable<string> _metadataOnlyAssemblies;
 
         public InstructionSetSupport InstructionSetSupport { get; }
 
@@ -44,7 +45,8 @@ namespace ILCompiler
             MethodImportationErrorProvider errorProvider,
             ReadOnlyFieldPolicy readOnlyFieldPolicy,
             RyuJitCompilationOptions options,
-            int parallelism)
+            int parallelism,
+            IEnumerable<string> metadataOnlyAssemblies)
             : base(dependencyGraph, nodeFactory, roots, ilProvider, debugInformationProvider, inliningPolicy, logger)
         {
             _compilationOptions = options;
@@ -57,6 +59,8 @@ namespace ILCompiler
             _readOnlyFieldPolicy = readOnlyFieldPolicy;
 
             _parallelism = parallelism;
+
+            _metadataOnlyAssemblies = metadataOnlyAssemblies;
         }
 
         public ProfileDataManager ProfileData => _profileDataManager;
