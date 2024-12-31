@@ -310,7 +310,7 @@ COPY /y %CORE_ROOT%\CoreShim.dll .
 $(BatchLinkerTestLaunchCmds)
 $(BatchCopyCoreShimLocalCmds)
 
-IF NOT "%CLRCustomTestLauncher%"=="" (
+IF NOT "!CLRCustomTestLauncher!"=="" (
   set LAUNCHER=call %CLRCustomTestLauncher% %scriptPath%
 ) ELSE IF %_RunWithWatcher% EQU 1 (
   set LAUNCHER=$(WatcherRunFile) $(CLRTestRunFile)

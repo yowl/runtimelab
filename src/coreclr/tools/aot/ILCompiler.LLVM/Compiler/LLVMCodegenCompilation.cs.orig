@@ -78,8 +78,16 @@ namespace ILCompiler
 
         private void FinishCompilation()
         {
+<<<<<<< HEAD
+            //foreach (var c in _compilationContexts)
+            //{
+            //    c.Value.JitFinishSingleThreadedCompilation();
+            //}
+            Parallel.ForEach(_compilationContexts, new() { MaxDegreeOfParallelism = _parallelism }, context =>
+=======
             NodeFactory.SetMarkingComplete();
             Parallel.ForEach(_compilationContexts, _parallelOptions, context =>
+>>>>>>> origin/feature/NativeAOT-LLVM
             {
                 context.Value.JitFinishSingleThreadedCompilation();
             });

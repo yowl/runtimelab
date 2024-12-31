@@ -9,14 +9,11 @@ $ProgressPreference = "SilentlyContinue"
 
 Set-Location $InstallDir
 
-$WasmtimeVersion = "v26.0.1"
+# Currently we need to use the daily releases for the debugging test to work.
+$UsePreRelease = $true
+$WasmtimeVersion = $UsePreRelease ? "dev" : "v26.0.1"
 
-if (!(Test-Path variable:global:IsWindows))
-{
-    $IsWindows = [Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
-}
-
-if ($IsWIndows)
+if ($IsWindows)
 {
     $WasmtimeBaseName = "wasmtime-$WasmtimeVersion-x86_64-windows"
     $WasmtimeArchive = "$WasmtimeBaseName.zip"
@@ -28,19 +25,17 @@ else
 }
 
 Invoke-WebRequest -Uri https://github.com/bytecodealliance/wasmtime/releases/download/$WasmtimeVersion/$WasmtimeArchive -OutFile $WasmtimeArchive
-if ($IsWIndows)
+if ($IsWindows)
 {
     Expand-Archive -LiteralPath $WasmtimeArchive -DestinationPath .
 }
 else
 {
-    New-Item -ItemType Directory -Force -Path $WasmtimeBaseName
-    tar -xf $WasmtimeArchive -C $WasmtimeBaseName
+    tar -xf $WasmtimeArchive
 }
 
 if ($CI)
 {
-    Write-Host "Setting WASMTIME_EXECUTABLE to '$pwd/$WasmtimeBaseName/$WasmtimeBaseName/wasmtime'"
-    Write-Output "##vso[task.setvariable variable=WASMTIME_EXECUTABLE]$pwd/$WasmtimeBaseName/$WasmtimeBaseName/wasmtime"
+    Write-Host "Adding to PATH: '$pwd/$WasmtimeBaseName'"
     Write-Output "##vso[task.prependpath]$pwd/$WasmtimeBaseName"
 }

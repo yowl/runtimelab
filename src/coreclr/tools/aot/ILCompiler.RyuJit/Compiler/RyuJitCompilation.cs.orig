@@ -27,8 +27,12 @@ namespace ILCompiler
         private readonly ProfileDataManager _profileDataManager;
         protected readonly MethodImportationErrorProvider _methodImportationErrorProvider;
         private readonly ReadOnlyFieldPolicy _readOnlyFieldPolicy;
-        private readonly int _parallelism;
+<<<<<<< HEAD
+        protected readonly int _parallelism;
         protected readonly IEnumerable<string> _metadataOnlyAssemblies;
+=======
+        private readonly int _parallelism;
+>>>>>>> origin/feature/NativeAOT-LLVM
 
         public InstructionSetSupport InstructionSetSupport { get; }
 

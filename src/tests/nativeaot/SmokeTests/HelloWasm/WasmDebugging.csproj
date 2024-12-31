@@ -2,12 +2,36 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <CLRTestKind>BuildAndRun</CLRTestKind>
-    <CLRTestPriority>0</CLRTestPriority>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <InvariantGlobalization>true</InvariantGlobalization>
     <RequiresProcessIsolation>true</RequiresProcessIsolation>
     <ReferenceXUnitWrapperGenerator>false</ReferenceXUnitWrapperGenerator>
+
+    <!-- Only works without optimizations for now. -->
+    <CLRTestTargetUnsupported Condition="'$(Configuration)' != 'Debug'">true</CLRTestTargetUnsupported>
   </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetsWasi)' == 'true'">
+    <_LldbArgs>--no-lldbinit -b -o "command script import "$(MSBuildThisFileDirectory)WasmDebugging.py""</_LldbArgs>
+    <_WasmtimeArgs>-Ccache=n -Ddebug-info -Oopt-level=0</_WasmtimeArgs>
+    <CLRTestBatchPreCommands><![CDATA[
+if not defined WASM_DEBUGGING_LLDB (set WASM_DEBUGGING_LLDB=lldb)
+if not defined WASM_DEBUGGING_WASMTIME (set WASM_DEBUGGING_WASMTIME=wasmtime)
+set WasmFilePath=%scriptPath%\native\WasmDebugging.wasm
+
+set CLRCustomTestLauncher="$(MSBuildThisFileDirectory)WasmDebuggingTestLauncher.cmd"
+set CLRTestExecutionArguments="%WASM_DEBUGGING_LLDB%" $(_LldbArgs) -- "%WASM_DEBUGGING_WASMTIME%" $(_WasmtimeArgs) "%WasmFilePath%" %CLRTestExecutionArguments%
+    ]]></CLRTestBatchPreCommands>
+
+    <CLRTestBashPreCommands><![CDATA[
+if [ -z "$WASM_DEBUGGING_LLDB" ]%3B then WASM_DEBUGGING_LLDB=lldb%3B fi
+if [ -z "$WASM_DEBUGGING_WASMTIME" ]%3B then WASM_DEBUGGING_WASMTIME=%24(command -v wasmtime)%3B fi
+WasmFilePath=$PWD/native/WasmDebugging.wasm
+
+CLRCustomTestLauncher="$(MSBuildThisFileDirectory)WasmDebuggingTestLauncher.sh"
+CLRTestExecutionArguments=("$WASM_DEBUGGING_LLDB" $(_LldbArgs) -- "$WASM_DEBUGGING_WASMTIME" $(_WasmtimeArgs) "$WasmFilePath" "${CLRTestExecutionArguments[@]}")
+    ]]></CLRTestBashPreCommands>
+  </PropertyGroup>
+
   <ItemGroup>
     <Compile Include="WasmDebugging.cs" />
   </ItemGroup>
