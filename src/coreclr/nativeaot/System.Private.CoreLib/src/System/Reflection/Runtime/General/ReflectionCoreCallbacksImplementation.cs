@@ -22,10 +22,11 @@ using Internal.Metadata.NativeFormat;
 using Internal.Reflection.Augments;
 using Internal.Reflection.Core.Execution;
 using Internal.Runtime.Augments;
+using System.Runtime.InteropServices;
 
 namespace System.Reflection.Runtime.General
 {
-    internal sealed class ReflectionCoreCallbacksImplementation : ReflectionCoreCallbacks
+    internal sealed partial class ReflectionCoreCallbacksImplementation : ReflectionCoreCallbacks
     {
         internal ReflectionCoreCallbacksImplementation()
         {
@@ -191,12 +192,23 @@ namespace System.Reflection.Runtime.General
         // V2 api: Creates open or closed delegates to static or instance methods - relaxed signature checking allowed.
         public sealed override Delegate CreateDelegate(Type type, object firstArgument, MethodInfo method, bool throwOnBindFailure)
         {
+            #if NATIVEAOT
+            X.PrintLine("CreateDelegate3");
+            X.PrintLine(type?.ToString());
+            X.PrintLine(method?.ToString());
+#endif
             return CreateDelegateWorker(type, firstArgument, method, throwOnBindFailure, allowClosed: true);
         }
 
         // V1 api: Creates open delegates to static or instance methods - relaxed signature checking allowed.
         public sealed override Delegate CreateDelegate(Type type, MethodInfo method, bool throwOnBindFailure)
         {
+                        #if NATIVEAOT
+            X.PrintLine("CreateDelegate4");
+            X.PrintLine(type?.ToString());
+            X.PrintLine(method?.ToString());
+#endif
+
             // This API existed in v1/v1.1 and only expected to create open
             // instance delegates, so we forbid closed delegates for backward compatibility.
             // But we'll allow relaxed signature checking and open static delegates because
@@ -207,8 +219,86 @@ namespace System.Reflection.Runtime.General
             return CreateDelegateWorker(type, null, method, throwOnBindFailure, allowClosed: false);
         }
 
+#if NATIVEAOT
+
+        internal static partial class X
+        {
+            [LibraryImportAttribute("*")]
+             internal static unsafe partial int printf(byte* str, byte* unused);
+             private static unsafe void PrintString(string s)
+            {
+                int length = s.Length;
+                fixed (char* curChar = s)
+                {
+                    for (int i = 0; i < length; i++)
+                    {
+                        TwoByteStr curCharStr = default;
+                        curCharStr.first = (byte)(*(curChar + i));
+                        printf((byte*)&curCharStr, null);
+                    }
+                }
+            }
+
+            internal static void PrintLine(string s)
+            {
+                PrintString(s);
+                PrintString("\n");
+            }
+
+            public   static unsafe   void PrintLong(long l)
+            {
+                PrintByte((byte)((l >> 56) & 0xff));
+                PrintByte((byte)((l >> 48) & 0xff));
+                PrintByte((byte)((l >> 40) & 0xff));
+                PrintByte((byte)((l >> 32) & 0xff));
+                PrintByte((byte)((l >> 24) & 0xff));
+                PrintByte((byte)((l >> 16) & 0xff));
+                PrintByte((byte)((l >> 8) & 0xff));
+                PrintByte((byte)(l & 0xff));
+                PrintString("\n");
+            }
+
+       public static unsafe void PrintUint(int l)
+        {
+            PrintByte((byte)((l >> 24) & 0xff));
+            PrintByte((byte)((l >> 16) & 0xff));
+            PrintByte((byte)((l >> 8) & 0xff));
+            PrintByte((byte)(l & 0xff));
+
+            PrintString("\n");
+        }
+
+        public static unsafe void PrintByte(byte b)
+        {
+            fixed (TwoByteStr* s = &tbs)
+            {
+                var nib = (b & 0xf0) >> 4;
+                tbs.first = (byte)((nib <= 9 ? '0' : 'A') + (nib <= 9 ? nib : nib - 10));
+                printf((byte*)s, null);
+                nib = (b & 0xf);
+                tbs.first = (byte)((nib <= 9 ? '0' : 'A') + (nib <= 9 ? nib : nib - 10));
+                printf((byte*)s, null);
+            }
+        }
+
+        private static TwoByteStr tbs;
+
+        public struct TwoByteStr
+        {
+            public byte first;
+            public byte second;
+        }
+
+    }
+    #endif
         private static Delegate CreateDelegateWorker(Type type, object firstArgument, MethodInfo method, bool throwOnBindFailure, bool allowClosed)
         {
+#if NATIVEAOT
+                    X.PrintLine("CreateDelegateWorker");
+                    X.PrintLine(type?.ToString());
+                    X.PrintLine(method?.ToString());
+#endif
+
             ArgumentNullException.ThrowIfNull(type);
             ArgumentNullException.ThrowIfNull(method);
 
@@ -227,7 +317,9 @@ namespace System.Reflection.Runtime.General
             if (result == null)
             {
                 if (throwOnBindFailure)
+                {
                     throw new ArgumentException(SR.Arg_DlgtTargMeth);
+                }
                 return null;
             }
             return result;
@@ -237,6 +329,13 @@ namespace System.Reflection.Runtime.General
         [RequiresUnreferencedCode("The target method might be removed")]
         public sealed override Delegate CreateDelegate(Type type, object target, string method, bool ignoreCase, bool throwOnBindFailure)
         {
+
+#if NATIVEAOT
+                    X.PrintLine("CreateDelegate");
+                    X.PrintLine(type?.ToString());
+                    X.PrintLine(method?.ToString());
+#endif
+
             ArgumentNullException.ThrowIfNull(type);
             ArgumentNullException.ThrowIfNull(target);
             ArgumentNullException.ThrowIfNull(method);
@@ -249,6 +348,11 @@ namespace System.Reflection.Runtime.General
                 throw new ArgumentException(SR.Arg_MustBeDelegate);
 
             RuntimeTypeInfo runtimeContainingType = target.GetType().ToRuntimeTypeInfo();
+#if NATIVEAOT
+                    X.PrintLine("CreateDelegate 1");
+                    X.PrintLine(runtimeContainingType?.ToString());
+                    X.PrintLine(runtimeDelegateTypeInfo?.ToString());
+#endif
             RuntimeMethodInfo runtimeMethodInfo = LookupMethodForCreateDelegate(runtimeDelegateTypeInfo, runtimeContainingType, method, isStatic: false, ignoreCase: ignoreCase);
             if (runtimeMethodInfo == null)
             {
@@ -262,6 +366,13 @@ namespace System.Reflection.Runtime.General
         // V1 api: Creates open delegates to static methods only, relaxed signature checking disallowed.
         public sealed override Delegate CreateDelegate(Type type, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type target, string method, bool ignoreCase, bool throwOnBindFailure)
         {
+
+#if NATIVEAOT
+            X.PrintLine("CreateDelegate2");
+            X.PrintLine(type?.ToString());
+            X.PrintLine(method?.ToString());
+#endif
+
             ArgumentNullException.ThrowIfNull(type);
             ArgumentNullException.ThrowIfNull(target);
             if (target.ContainsGenericParameters)
@@ -322,9 +433,19 @@ namespace System.Reflection.Runtime.General
             }
 
             Type? type = containingType.ToType();
+#if NATIVEAOT
+            X.PrintLine("LookupMethodForCreateDelegate");
+            X.PrintLine(type?.ToString());
+#endif
             while (type != null)
             {
                 MethodInfo? methodInfo = type.GetMethod(method, 0, bindingFlags, parameterTypes);
+#if NATIVEAOT
+            X.PrintLine("LookupMethodForCreateDelegate type");
+            X.PrintLine(type.ToString());
+            X.PrintLine("LookupMethodForCreateDelegate methodInfo");
+            X.PrintLine(methodInfo?.ToString() ?? "null");
+#endif
                 if (methodInfo != null && methodInfo.ReturnType.Equals(invokeMethod.ReturnType))
                     return (RuntimeMethodInfo)methodInfo; // This cast is safe since we already verified that containingType is runtime implemented.
 

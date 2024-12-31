@@ -206,6 +206,11 @@ namespace ILCompiler
                             corInfo.CompileMethod(methodCodeNodeNeedingCode, emptyIl);
                         }
                     }
+                    else if (methodName.Contains("GetSysColor") && methodName.Contains("SafeNativeMethodsPrivate"))
+                    {
+                        MethodIL emptyIl = new ILStubMethodIL(method, [(byte)ILOpcode.ldc_i4_0, (byte)ILOpcode.ret], [], []);
+                        corInfo.CompileMethod(methodCodeNodeNeedingCode, emptyIl);
+                    }
                     //else if (method.ToString() == "[System.Configuration.ConfigurationManager]System.Configuration.ConfigurationManager.GetSection(string)")
                     //{
                     //    MethodIL emptyIl = new ILStubMethodIL(method, [(byte)ILOpcode.ldnull, (byte)ILOpcode.ret], [], []);
