@@ -219,32 +219,6 @@ namespace ILCompiler
                         MethodIL emptyIl = new ILStubMethodIL(method, [(byte)ILOpcode.ret], [], []);
                         corInfo.CompileMethod(methodCodeNodeNeedingCode, emptyIl);
                     }
-                    else if (methodName.Contains("Validate") && (methodName.Contains("AvaloniaLicenseInformation")) && !methodName.Contains("ValidateEntryAssembly"))
-                    {
-                        if (method.Signature.ReturnType.IsVoid)
-                        {
-                            MethodIL emptyIl = new ILStubMethodIL(method, [(byte)ILOpcode.ret], [], []);
-                            corInfo.CompileMethod(methodCodeNodeNeedingCode, emptyIl);
-                        }
-                        else
-                        {
-                            MethodIL emptyIl = new ILStubMethodIL(method, [(byte)ILOpcode.ldc_i4_1, (byte)ILOpcode.ret], [], []);
-                            corInfo.CompileMethod(methodCodeNodeNeedingCode, emptyIl);
-                        }
-                    }
-                    else if (methodName.Contains("VerifyProductLicense") && methodName.Contains("XpfLicensing"))
-                    {
-                        if (method.Signature.ReturnType.IsVoid)
-                        {
-                            MethodIL emptyIl = new ILStubMethodIL(method, [(byte)ILOpcode.ret], [], []);
-                            corInfo.CompileMethod(methodCodeNodeNeedingCode, emptyIl);
-                        }
-                        else
-                        {
-                            MethodIL emptyIl = new ILStubMethodIL(method, [(byte)ILOpcode.ldc_i4_1, (byte)ILOpcode.ret], [], []);
-                            corInfo.CompileMethod(methodCodeNodeNeedingCode, emptyIl);
-                        }
-                    }
                     else if (methodName.Contains("GetSysColor") && methodName.Contains("SafeNativeMethodsPrivate"))
                     {
                         MethodIL emptyIl = new ILStubMethodIL(method, [(byte)ILOpcode.ldc_i4_0, (byte)ILOpcode.ret], [], []);
