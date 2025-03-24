@@ -42,4 +42,7 @@
     </ItemGroup>
     <Copy SourceFiles="@(AnalyzerFile)" DestinationFolder="$(RuntimeBinDir)\analyzers\dotnet\cs" />
   </Target>
+
+  <Target Name="Restore" />
+  <Target Name="Pack" />
 </Project>
