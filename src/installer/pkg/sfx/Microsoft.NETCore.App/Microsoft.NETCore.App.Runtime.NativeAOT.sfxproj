@@ -24,9 +24,6 @@
                     Condition="Exists('$(CoreCLRArtifactsPath)StandardOptimizationData.mibc')" />
   </ItemGroup>
 
-  <PropertyGroup>
-    <RuntimeSpecificFrameworkSuffix>multithread</RuntimeSpecificFrameworkSuffix>
-  </PropertyGroup>
 
   <Import Project="Microsoft.NETCore.App.Runtime.props" />
 
