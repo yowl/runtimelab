@@ -228,7 +228,7 @@ jobs:
       - script: pwsh $(Build.SourcesDirectory)/eng/pipelines/runtimelab/install-jco.ps1 $(Build.SourcesDirectory)
         displayName: Install Jco
 
-    - ${{ if or(eq(parameters.platform, 'browser_wasm_win'), and(in(parameters.platform, 'wasi_wasm_win', 'wasi_multithread_wasm_win'), not(eq(parameters.runtimeFlavor, 'coreclr'))) }}:
+    - ${{ if or(eq(parameters.platform, 'browser_wasm_win'), and(in(parameters.platform, 'wasi_wasm_win', 'wasi_multithread_wasm_win'), not(eq(parameters.runtimeFlavor, 'coreclr')))) }}:
       # Update machine certs
       - task: PowerShell@2
         displayName: Update machine certs
