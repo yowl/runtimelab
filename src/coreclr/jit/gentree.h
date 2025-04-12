@@ -941,19 +941,15 @@ public:
                                                                              // and fix everyplace that reads undefined
                                                                              // values
         regNumber reg = (regNumber)_gtRegNum;
-#if !TARGET_WASM
         assert((gtRegTag == GT_REGTAG_NONE) || // TODO-Cleanup: get rid of the NONE case, and fix everyplace that reads
                                                // undefined values
                (reg >= REG_FIRST && reg <= REG_COUNT));
-#endif // !TARGET_WASM
         return reg;
     }
 
     void SetRegNum(regNumber reg)
     {
-#if !TARGET_WASM
         assert(reg >= REG_FIRST && reg <= REG_COUNT);
-#endif // !TARGET_WASM
         _gtRegNum = (regNumberSmall)reg;
         INDEBUG(gtRegTag = GT_REGTAG_REG;)
         assert(_gtRegNum == reg);
