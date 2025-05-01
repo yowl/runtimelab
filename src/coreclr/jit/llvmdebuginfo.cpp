@@ -180,9 +180,15 @@ static DISubprogram* CreateMethodDecl(DIBuilder* diBuilder, CORINFO_LLVM_METHOD_
 {
     DIType* debugOwnerType = getType(pInfo->OwnerType);
     DISubroutineType* debugFuncType = llvm::cast<DISubroutineType>(getType(pInfo->Type));
+    llvm::DITypeRefArray debugFuncParamTypes = debugFuncType->getTypeArray();
 
-    DISubprogram* debugDecl = diBuilder->createMethod(debugOwnerType, pInfo->Name, AsRef(pInfo->LinkageName), nullptr, 0,
-        debugFuncType, 0, 0, nullptr, DINode::FlagPrototyped);
+    DINode::DIFlags diFlags = DINode::FlagPrototyped;
+    if (debugFuncParamTypes.size() < 2 || !debugFuncParamTypes[1]->isObjectPointer())
+    {
+        diFlags |= DINode::FlagStaticMember;
+    }
+    DISubprogram* debugDecl = diBuilder->createMethod(debugOwnerType, pInfo->Name, AsRef(pInfo->LinkageName), nullptr,
+        0, debugFuncType, 0, 0, nullptr, diFlags);
     return debugDecl;
 }
 
@@ -215,7 +221,7 @@ void Llvm::initializeDebugInfo()
 
     DIFile* debugFile = m_diBuilder->createFile(info.FileName, info.Directory);
     m_diFunction = m_diBuilder->createFunction(nullptr, debugDecl->getName(), debugDecl->getLinkageName(),
-        debugFile, lineNo, debugDecl->getType(), 0, DINode::FlagPrototyped, funcFlags, nullptr, debugDecl);
+        debugFile, lineNo, debugDecl->getType(), 0, debugDecl->getFlags(), funcFlags, nullptr, debugDecl);
 
     initializeDebugVariables(&info);
 
@@ -249,22 +255,21 @@ void Llvm::initializeDebugVariables(CORINFO_LLVM_METHOD_DEBUG_INFO* pInfo)
         CORINFO_LLVM_VARIABLE_DEBUG_INFO* pVariableInfo = &pInfo->Variables[i];
         DIType* debugType = getOrCreateDebugType(pVariableInfo->Type);
         unsigned num = pVariableInfo->VarNumber;
+        unsigned lclNum = _compiler->compMapILvarNum(num);
 
         llvm::DILocalVariable* debugVariable;
         if (num < m_info->compILargsCount)
         {
-            bool isThis = (m_info->compThisArg != BAD_VAR_NUM) && (num == 0);
+            bool isThis = m_info->compThisArg == lclNum;
             DINode::DIFlags flags = isThis ? (DINode::FlagObjectPointer | DINode::FlagArtificial) : DINode::FlagZero;
 
             debugVariable = m_diBuilder->createParameterVariable(m_diFunction, pVariableInfo->Name, num + 1, debugFile,
-                                                                 0, debugType, flags);
+                                                                 0, debugType, false, flags);
         }
         else
         {
             debugVariable = m_diBuilder->createAutoVariable(m_diFunction, pVariableInfo->Name, debugFile, 0, debugType);
         }
-
-        unsigned lclNum = _compiler->compMapILvarNum(num);
         m_debugVariablesMap.Set(lclNum, debugVariable);
     }
 }
@@ -293,7 +298,7 @@ void Llvm::declareDebugVariables()
         }
 
         Value* addressValue;
-        DIExpression* debugExpression;
+        ArrayStack<uint64_t> diExpression(_compiler->getAllocator(CMK_DebugInfo));
         if (isShadowFrameLocal(varDsc))
         {
             // The obvious way to implement this (by just passing the shadow stack to dbg.declare) does not
@@ -307,20 +312,25 @@ void Llvm::declareDebugVariables()
             }
 
             addressValue = spilledShadowStackAddr;
-            unsigned offset = static_cast<unsigned>(varDsc->GetStackOffset());
-            debugExpression = m_diBuilder->createExpression({DW_OP_deref, DW_OP_plus_uconst, offset});
+            diExpression.Push(DW_OP_deref);
+            diExpression.Push(DW_OP_plus_uconst);
+            diExpression.Push(varDsc->GetStackOffset());
         }
         else if (varDsc->lvRefCnt() != 0)
         {
             addressValue = getLocalAddr(lclNum);
-            debugExpression = m_diBuilder->createExpression();
         }
         else
         {
             continue;
         }
+        if (_compiler->lvaIsImplicitByRefLocal(lclNum))
+        {
+            diExpression.Push(DW_OP_deref);
+        }
 
         llvm::DILocalVariable* debugVariable = lcl->GetValue();
+        DIExpression* debugExpression = m_diBuilder->createExpression(AsRef(diExpression));
         Instruction* debugInst =
             m_diBuilder->insertDeclare(addressValue, debugVariable, debugExpression, debugLocation, insertInst);
         JITDUMP("Declaring V%02u:\n", lclNum);
@@ -335,17 +345,21 @@ void Llvm::assignDebugVariable(unsigned lclNum, Value* value)
     llvm::DILocalVariable* debugVariable;
     if (m_debugVariablesMap.Lookup(lclNum, &debugVariable))
     {
+        DIExpression* diExpression = _compiler->lvaIsImplicitByRefLocal(lclNum)
+            ? m_diBuilder->createExpression({DW_OP_deref})
+            : m_diBuilder->createExpression();
+
         DILocation* debugLocation = getCurrentOrArtificialDebugLocation();
         Instruction* debugInst;
         if (_builder.GetInsertPoint() == _builder.GetInsertBlock()->end())
         {
-            debugInst = m_diBuilder->insertDbgValueIntrinsic(value, debugVariable, m_diBuilder->createExpression(),
-                                                             debugLocation, _builder.GetInsertBlock());
+            debugInst = m_diBuilder->insertDbgValueIntrinsic(
+                value, debugVariable, diExpression, debugLocation, _builder.GetInsertBlock());
         }
         else
         {
-            debugInst = m_diBuilder->insertDbgValueIntrinsic(value, debugVariable, m_diBuilder->createExpression(),
-                                                             debugLocation, &*_builder.GetInsertPoint());
+            debugInst = m_diBuilder->insertDbgValueIntrinsic(
+                value, debugVariable, diExpression, debugLocation, &*_builder.GetInsertPoint());
         }
         DBEXEC(CurrentBlock() == nullptr, JITDUMPEXEC(displayValue(debugInst)));
     }
@@ -506,7 +520,8 @@ static DIType* CreateFunctionType(
     debugParameters[index++] = getType(pInfo->ReturnType);
     if (pInfo->TypeOfThisPointer != NO_DEBUG_TYPE)
     {
-        debugParameters[index++] = getType(pInfo->TypeOfThisPointer);
+        DIType* objPtrType = getType(pInfo->TypeOfThisPointer);
+        debugParameters[index++] = diBuilder->createObjectPointerType(objPtrType);
     }
     for (size_t i = 0; i < pInfo->NumberOfArguments; i++)
     {
