@@ -516,6 +516,7 @@ jobs:
         runtimeFlavor: ${{ parameters.runtimeFlavor }}
         stagedBuild: ${{ parameters.stagedBuild }}
         buildConfig: ${{ parameters.buildConfig }}
+        ${{ insert }}: ${{ parameters.jobParameters }}
         # Turn on threads by adding to the buildArgs
 #        ${{ each param in parameters.jobParameters }}:
 #          ${{ each pair in param }}:
