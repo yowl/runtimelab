@@ -500,8 +500,8 @@ jobs:
         buildConfig: ${{ parameters.buildConfig }}
         ${{ insert }}: ${{ parameters.jobParameters }}
 
-- ${{ if containsValue(parameters.platforms, 'wasi_multithread_wasm_win') }}:
-  - template: xplat-setup.yml
+# - ${{ if containsValue(parameters.platforms, 'wasi_multithread_wasm_win') }}:
+#   - template: xplat-setup.yml
     # parameters:
     #   jobTemplate: ${{ parameters.jobTemplate }}
     #   helixQueuesTemplate: ${{ parameters.helixQueuesTemplate }}
