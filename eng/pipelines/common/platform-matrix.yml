@@ -509,7 +509,7 @@ jobs:
       osGroup: wasi
       archType: wasm
       targetRid: wasi-wasm
-      platform: wasi_wasm_win
+      platform: wasi_multithread_wasm_win
       shouldContinueOnError: ${{ parameters.shouldContinueOnError }}
       jobParameters:
         hostedOs: windows
