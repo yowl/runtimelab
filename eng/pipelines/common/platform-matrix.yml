@@ -482,7 +482,7 @@ jobs:
 
 # WASI WebAssembly windows
 
-- ${{ if or(containsValue(parameters.platforms, 'wasi_wasm_win'), containsValue(parameters.platforms, 'wasi_multithread_wasm_win')) }}:
+- ${{ if or(containsValue(parameters.platforms, 'wasi_wasm_win') }}:
   - template: xplat-setup.yml
     parameters:
       jobTemplate: ${{ parameters.jobTemplate }}
@@ -499,6 +499,25 @@ jobs:
         stagedBuild: ${{ parameters.stagedBuild }}
         buildConfig: ${{ parameters.buildConfig }}
         ${{ insert }}: ${{ parameters.jobParameters }}
+
+- ${{ if containsValue(parameters.platforms, 'wasi_multithread_wasm_win') }}:
+  - template: xplat-setup.yml
+    parameters:
+      jobTemplate: ${{ parameters.jobTemplate }}
+      helixQueuesTemplate: ${{ parameters.helixQueuesTemplate }}
+      variables: ${{ parameters.variables }}
+      osGroup: wasi
+      osSubgroup: multithread
+      archType: wasm
+      targetRid: wasi-wasm
+      platform: wasi_multithread_wasm_win
+      shouldContinueOnError: ${{ parameters.shouldContinueOnError }}
+      jobParameters:
+        hostedOs: windows
+        runtimeFlavor: ${{ parameters.runtimeFlavor }}
+        stagedBuild: ${{ parameters.stagedBuild }}
+        buildConfig: ${{ parameters.buildConfig }}
+        buildArgs: ${{ buildArgs }} '/p:WasmEnableThreads=true'
 
 # Browser WebAssembly Linux X64 for NAOT-LLVM
 # Use a different name to differentiate from upstream as we need the -sanitizer image to get build tools that are not present in the stock browser_wasm image.
