@@ -63,10 +63,27 @@ extends:
             - wasi_wasm_win
             - Browser_wasm_linux_x64_naot_llvm
             - wasi_wasm_linux_x64_naot_llvm
-            - wasi_multithread_wasm_win
             jobParameters:
               timeoutInMinutes: 300
               buildArgs: -s clr.aot+libs -c debug -rc $(_BuildConfig)
+              postBuildSteps:
+                - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
+                  parameters:
+                    librariesConfiguration: Debug
+
+        #
+        # Build and test Wasm Debug multithreaded libraries and Debug runtime
+        #
+        - template: /eng/pipelines/common/platform-matrix.yml
+          parameters:
+            jobTemplate: /eng/pipelines/common/global-build-job.yml
+            helixQueuesTemplate: /eng/pipelines/coreclr/templates/helix-queues-setup.yml
+            buildConfig: debug
+            platforms:
+            - wasi_multithread_wasm_win
+            jobParameters:
+              timeoutInMinutes: 300
+              buildArgs: -s clr.aot+libs -c debug -rc $(_BuildConfig) '/p:WasmEnableThreads=true'
               postBuildSteps:
                 - template: /eng/pipelines/runtimelab/runtimelab-post-build-steps.yml
                   parameters:
