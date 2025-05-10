@@ -520,8 +520,8 @@ jobs:
         # Turn on threads by adding to the buildArgs.
         ${{ each param in parameters.jobParameters }}:
           ${{ each pair in param }}:
-            ${{ if ne(pair.key, 'buildArgs') }}:
-              ${{ pair.key }}: ${{ pair.value }}
+            ${{ if ne(pair.name, 'buildArgs') }}:
+              ${{ pair.name }}: ${{ pair.value }}
         #buildArgs: ${{ buildArgs }} '/p:WasmEnableThreads=true'
 
 # Browser WebAssembly Linux X64 for NAOT-LLVM
