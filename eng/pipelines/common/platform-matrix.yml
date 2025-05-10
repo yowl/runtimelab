@@ -482,7 +482,7 @@ jobs:
 
 # WASI WebAssembly windows
 
-- ${{ if or(containsValue(parameters.platforms, 'wasi_wasm_win') }}:
+- ${{ if containsValue(parameters.platforms, 'wasi_wasm_win') }}:
   - template: xplat-setup.yml
     parameters:
       jobTemplate: ${{ parameters.jobTemplate }}
