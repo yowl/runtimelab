@@ -507,7 +507,7 @@ jobs:
       helixQueuesTemplate: ${{ parameters.helixQueuesTemplate }}
       variables: ${{ parameters.variables }}
       osGroup: wasi
-      archType: wasm
+      archType: wasmx
       targetRid: wasi-wasm
       platform: wasi_multithread_wasm_win
       shouldContinueOnError: ${{ parameters.shouldContinueOnError }}
