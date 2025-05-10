@@ -517,7 +517,7 @@ jobs:
         runtimeFlavor: ${{ parameters.runtimeFlavor }}
         stagedBuild: ${{ parameters.stagedBuild }}
         buildConfig: ${{ parameters.buildConfig }}
-        buildArgs: ${{ buildArgs }} '/p:WasmEnableThreads=true'
+        ${{ insert }}: ${{ parameters.jobParameters }}
 
 # Browser WebAssembly Linux X64 for NAOT-LLVM
 # Use a different name to differentiate from upstream as we need the -sanitizer image to get build tools that are not present in the stock browser_wasm image.
