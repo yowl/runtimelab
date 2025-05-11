@@ -58,7 +58,7 @@ steps:
       - script: $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} $(crossArg) $(_officialBuildParameter) ci 'tree nativeaot' /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
         displayName: Build tests
 
-    - ${{ if in(parameters.platform, 'browser_wasm_win', 'wasi_wasm_win') }}:
+    - ${{ if in(parameters.platform, 'browser_wasm_win', 'wasi_wasm_win', 'wasi_multithread_wasm_win') }}:
       - script: |
           call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
           $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.osGroup }}
