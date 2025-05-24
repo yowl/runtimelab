@@ -37,10 +37,14 @@ steps:
       - script: |
           $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} $(crossArg) $(_officialBuildParameter) ci wasi tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }}
         displayName: Build WebAssembly tests
+    - ${{ elseif eq(parameters.platform, 'browser_multithread_wasm_win') }}:
+      - script: |
+          $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} $(crossArg) $(_officialBuildParameter) ci browser tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }} /p:FeatureWasmManagedThreads=true
+        displayName: Build WebAssembly browser Mutlithread tests
     - ${{ elseif eq(parameters.platform, 'wasi_multithread_wasm_win') }}:
       - script: |
           $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} $(crossArg) $(_officialBuildParameter) ci wasi tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }} /p:FeatureWasmManagedThreads=true
-        displayName: Build WebAssembly Mutlithread tests
+        displayName: Build WebAssembly wasi Mutlithread tests
     - ${{ elseif eq(parameters.platform, 'Browser_wasm_linux_x64_naot_llvm') }}:
       - script: |
           source $(Build.SourcesDirectory)/wasm-tools/emsdk/emsdk_env.sh
@@ -63,7 +67,7 @@ steps:
           call $(Build.SourcesDirectory)\wasm-tools\emsdk\emsdk_env
           $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.osGroup }}
         displayName: Run WebAssembly tests in single file mode
-    - ${{ elseif eq(parameters.platform, 'wasi_multithread_wasm_win') }}:
+    - ${{ elseif in(parameters.platform, 'browser_multithread_wasm_win', 'wasi_multithread_wasm_win') }}:
       - script: $(Build.SourcesDirectory)/src/tests/run$(scriptExt) runnativeaottests $(buildConfigUpper) ${{ parameters.archType }} ${{ parameters.osGroup }}
         displayName: Run WebAssembly multithread tests in single file mode
     - ${{ elseif eq(parameters.osGroup, 'windows') }}:
