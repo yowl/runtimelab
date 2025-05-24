@@ -102,7 +102,7 @@ if not "%__ConfigureOnly%" == "1" (
 if /i "%__UseEmcmake%" == "1" (
     call "!EMSDK!/emsdk_env" > nul 2>&1 && emcmake "%CMakePath%" %__ExtraCmakeParams% --no-warn-unused-cli -G "%__CmakeGenerator%" -B %__IntermediatesDir% -S %__SourceDir%
 ) else (
-    "%CMakePath%" --trace-source=zlib-ng.cmake %__ExtraCmakeParams% --no-warn-unused-cli -G "%__CmakeGenerator%" -B %__IntermediatesDir% -S %__SourceDir%
+    "%CMakePath%" %__ExtraCmakeParams% --no-warn-unused-cli -G "%__CmakeGenerator%" -B %__IntermediatesDir% -S %__SourceDir%
 )
 
 if "%errorlevel%" == "0" (
