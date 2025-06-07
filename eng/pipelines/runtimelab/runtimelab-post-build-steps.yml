@@ -39,7 +39,7 @@ steps:
         displayName: Build WebAssembly tests
     - ${{ elseif eq(parameters.platform, 'browser_multithread_wasm_win') }}:
       - script: |
-          $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} $(crossArg) $(_officialBuildParameter) ci browser tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }} /p:FeatureWasmManagedThreads=true
+          $(Build.SourcesDirectory)/src/tests/build$(scriptExt) nativeaot $(buildConfigUpper) ${{ parameters.archType }} $(crossArg) $(_officialBuildParameter) ci browser tree nativeaot /p:LibrariesConfiguration=${{ parameters.librariesConfiguration }} /p:FeatureWasmManagedThreads=true /p:WasmEnableThreads=true
         displayName: Build WebAssembly browser Mutlithread tests
     - ${{ elseif eq(parameters.platform, 'wasi_multithread_wasm_win') }}:
       - script: |
