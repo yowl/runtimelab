@@ -194,7 +194,9 @@ extern "C" int __cxa_thread_atexit(Dtor dtor, void* obj, void*)
 // TODO-LLVM: For now, a copy of the single threaded implementation.
 #ifdef FEATURE_WASM_MANAGED_THREADS
 int __cxa_thread_atexit(void (*func)(), void *obj, void *dso_symbol)
-{}
+{
+    return 0;
+}
 
 //
 // Note that we return the native stack bounds here, not shadow stack ones. Currently this functionality is mainly
