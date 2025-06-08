@@ -78,8 +78,12 @@ steps:
         displayName: Run tests in single file mode
 
     - ${{ if eq(parameters.archType, 'wasm') }}:
-      - script: |
-            $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -test -a ${{ parameters.archType }} -os ${{ parameters.osGroup }} -lc ${{ parameters.librariesConfiguration }} -rc $(buildConfigUpper) /p:TestNativeAot=true /p:RunSmokeTestsOnly=true
+      - ${{ if in(parameters.platform, 'browser_multithread_wasm_win', 'wasi_multithread_wasm_win') }}:
+        - script: |
+              $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -test -a ${{ parameters.archType }} -os ${{ parameters.osGroup }} -lc ${{ parameters.librariesConfiguration }} -rc $(buildConfigUpper) /p:TestNativeAot=true /p:RunSmokeTestsOnly=true /p:FeatureWasmManagedThreads=true /p:WasmEnableThreads=true
+      - ${{ else }}:
+        - script: |
+              $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -test -a ${{ parameters.archType }} -os ${{ parameters.osGroup }} -lc ${{ parameters.librariesConfiguration }} -rc $(buildConfigUpper) /p:TestNativeAot=true /p:RunSmokeTestsOnly=true
         displayName: Build and run WebAssembly libraries tests
 
   # Upload unsigned artifacts
