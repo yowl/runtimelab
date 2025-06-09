@@ -80,11 +80,12 @@ steps:
     - ${{ if eq(parameters.archType, 'wasm') }}:
       - ${{ if in(parameters.platform, 'browser_multithread_wasm_win', 'wasi_multithread_wasm_win') }}:
         - script: |
-              $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -test -a ${{ parameters.archType }} -os ${{ parameters.osGroup }} -lc ${{ parameters.librariesConfiguration }} -rc $(buildConfigUpper) /p:TestNativeAot=true /p:RunSmokeTestsOnly=true /p:FeatureWasmManagedThreads=true /p:WasmEnableThreads=true
+            $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -test -a ${{ parameters.archType }} -os ${{ parameters.osGroup }} -lc ${{ parameters.librariesConfiguration }} -rc $(buildConfigUpper) /p:TestNativeAot=true /p:RunSmokeTestsOnly=true /p:FeatureWasmManagedThreads=true /p:WasmEnableThreads=true
+            displayName: Build and run WebAssembly libraries tests
       - ${{ else }}:
         - script: |
-              $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -test -a ${{ parameters.archType }} -os ${{ parameters.osGroup }} -lc ${{ parameters.librariesConfiguration }} -rc $(buildConfigUpper) /p:TestNativeAot=true /p:RunSmokeTestsOnly=true
-        displayName: Build and run WebAssembly libraries tests
+            $(Build.SourcesDirectory)/build$(scriptExt) libs.tests -test -a ${{ parameters.archType }} -os ${{ parameters.osGroup }} -lc ${{ parameters.librariesConfiguration }} -rc $(buildConfigUpper) /p:TestNativeAot=true /p:RunSmokeTestsOnly=true
+            displayName: Build and run WebAssembly libraries tests
 
   # Upload unsigned artifacts
   - ${{ if eq(parameters.uploadIntermediateArtifacts, true) }}:
