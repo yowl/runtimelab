@@ -32,8 +32,6 @@
   
       <!-- WaitForPendingFinalizers fails, FinalizeFinalizableObjects is not implemented when FeatureWasmManagedThreads. -->
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\DynamicGenerics\DynamicGenerics.csproj" Condition="'$(FeatureWasmManagedThreads)' == 'true'"/>
-      <!-- Hangs in what superficially seems like a busy loop -->
-      <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\HelloWasm\HelloWasm.csproj" Condition="'$(FeatureWasmManagedThreads)' == 'true' and '$(TargetOS)' == 'browser'"/>
       <!-- Fails with MONO_WASM: Assert failed: Expect to have one js-module-threads asset in resources -->
       <DisabledProjects Include="$(TestRoot)nativeaot\SmokeTests\DotnetJs\DotNetJs.App.csproj" Condition="'$(FeatureWasmManagedThreads)' == 'true' and '$(TargetOS)' == 'browser'"/>
     </ItemGroup>

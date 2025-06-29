@@ -609,7 +609,7 @@ The .NET Foundation licenses this file to you under the MIT license.
       <CustomLinkerArg Include="-s MAXIMUM_MEMORY=$(EmccMaximumHeapSize)" Condition="'$(EmccMaximumHeapSize)' != ''" />
       <CustomLinkerArg Include="-s INITIAL_MEMORY=$(EmccInitialHeapSize)" Condition="'$(EmccInitialHeapSize)' != ''" />
       <CustomLinkerArg Condition="'$(EmccEnableAssertions)' == 'true'" Include="-s ASSERTIONS=1" />
-      <CustomLinkerArg Condition="'$(WasmEnableThreads)' == 'true'" Include="-pthread" />
+      <CustomLinkerArg Condition="'$(WasmEnableThreads)' == 'true'" Include="-pthread --proxy-to-worker" />
     </ItemGroup>
 
     <!-- wasm-ld only supports listing exports on the command line -->
